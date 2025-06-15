@@ -1,17 +1,31 @@
 <div align="center">
-# Xega Benchmark
 
-[![arXiv](https://img.shields.io/badge/arXiv-Xega-b31b1b.svg)](https://arxiv.org/abs/2506.06832) [![Twitter](https://img.shields.io/badge/XentLabs?logo=X&logoColor=000&color=000&labelColor=white)](https://x.com/HonglerClement)
+# Xega Benchmark
+[![Xent.Tech](https://img.shields.io/badge/Xent-Tech-blue)](https://xent.tech) [![arXiv](https://img.shields.io/badge/arXiv-Xega-b31b1b.svg)](https://arxiv.org/abs/2506.06832) [![Twitter](https://img.shields.io/badge/twitter-x?logo=x&logoColor=white&color=%230f1419)](https://x.com/HonglerClement)
 
 <div align="center" style="font-family: Arial, sans-serif;">
   <p>
+    <a href="#about" style="text-decoration: none; font-weight: bold;">About</a> •
     <a href="#run" style="text-decoration: none; font-weight: bold;">Run</a> •
     <a href="#develop" style="text-decoration: none; font-weight: bold;">Develop</a> •
+    <a href="#license" style="text-decoration: none; font-weight: bold;">License</a> •
     <a href="#cite" style="text-decoration: none; font-weight: bold;">Cite</a>
   </p>
 </div>
 
 </div>
+
+## About
+
+Welcome to the Xega (XentGame) Benchmark Github 🥳
+
+Some quick notes:
+- Check out our website: [Xent.Tech](https://xent.tech)
+- View our paper: [arXiv](https://arxiv.org/abs/2506.06832)
+- Verified Leaderboard Coming Soon!
+- CLI Published to PyPI Coming Soon!
+- Better support for library usage of Xega coming soon
+
 
 ## Run
 
@@ -101,7 +115,7 @@ If that's you, then here is some good news! We have endeavored to make this rela
 
 Here are the key places you should look at to make those changes:
 
-- **`src/xega/runtime/base_player.py` - This contains the interface that player agents must implement. It also contains some guidance around adding new agents.
+- **`src/xega/runtime/base_player.py`** - This contains the interface that player agents must implement. It also contains some guidance around adding new agents.
 - **`src/xega/runtime/default_players.py`** - This contains the existing player agent implementation. You can use this as a reference implementation.
 - **`src/xega/runtime/players.py`** - This contains the registry and mapping between player types and player implementations.
 
@@ -155,7 +169,6 @@ A short list of features and changes that we are contemplating making.
 ## License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-Leaving in here as an example to update later
 ## Cite
 
 The code in this repository is developed from the paper below. Please cite it if you find the repository helpful.

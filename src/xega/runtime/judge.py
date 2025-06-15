@@ -1,0 +1,116 @@
+import logging
+import math
+import os
+from typing import Dict, Optional
+
+import torch
+import torch.nn.functional as F
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    PreTrainedModel,
+    PreTrainedTokenizer,
+)
+
+from xega.common.token_xent_list import TokenXentList
+from xega.common.x_string import XString
+
+
+class Judge:
+    def __init__(self, model_name: str, hf_dir_path: Optional[str] = None) -> None:
+        self.tokenizers_by_name: Dict[str, PreTrainedTokenizer] = {}
+        self.models_by_name: Dict[str, PreTrainedModel] = {}
+        self.device: torch.device = (
+            torch.device("cuda")
+            if torch.cuda.is_available()
+            else (
+                torch.device("mps") if torch.mps.is_available() else torch.device("cpu")
+            )
+        )
+        if (hf_dir_path is not None) and os.path.exists(hf_dir_path):
+            model_path: str = os.path.join(hf_dir_path, model_name)
+            self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
+                model_path
+            )
+            self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
+                model_path
+            ).to(self.device)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, device_map="auto"
+            )
+
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
+    def tokenize(self, string: str | XString) -> torch.Tensor:
+        if isinstance(string, XString):
+            string = str(string)
+        return self.tokenizer(string, return_tensors="pt").input_ids.to(
+            self.model.device
+        )
+
+    def num_tokens(self, string: str | XString) -> int:
+        return self.tokenize(string).shape[-1]
+
+    def first_n_tokens(self, string: str | XString, n: int) -> str | XString:
+        tokens: torch.Tensor = self.tokenize(string)
+        if tokens.shape[-1] <= n:
+            return string
+
+        return XString(self.detokenize(tokens[:, :n]))
+
+    def detokenize(self, tokens: torch.Tensor) -> str:
+        return self.tokenizer.decode(tokens.cpu().view(-1))
+
+    def comp_logits(self, tokens: torch.Tensor) -> torch.Tensor:
+        result = self.model(tokens, return_dict=True)
+        return result.logits
+
+    def xent(
+        self,
+        string: XString,
+        preprompt: str = "",
+    ) -> TokenXentList:
+        raw_string: str = str(string)
+        prefix: str = str(string.prefix + preprompt)
+
+        tokenized_prefix: torch.Tensor = self.tokenize(prefix).to(torch.int64)
+        tokenized_string: torch.Tensor = self.tokenize(raw_string).to(torch.int64)
+        prefix_length: int = tokenized_prefix.shape[-1]
+        tokens: torch.Tensor = torch.cat([tokenized_prefix, tokenized_string], dim=-1)
+        logits: torch.Tensor = self.comp_logits(tokens).view(tokens.shape[-1], -1)
+        tokens = tokens.view(-1)
+
+        target_tokens: torch.Tensor = tokens[prefix_length + 1 :]
+
+        xent_values: torch.Tensor = F.cross_entropy(
+            logits[prefix_length:-1, :], target_tokens, reduction="none"
+        )
+        # Convert to bits
+        xent_bits = xent_values / math.log(2)
+
+        token_strings: list[str] = []
+        for i in range(len(target_tokens)):
+            single_token_tensor: torch.Tensor = target_tokens[i : i + 1].unsqueeze(0)
+            token_str: str = self.detokenize(single_token_tensor)
+            token_strings.append(token_str)
+
+        paired_results: list[tuple[str, float]] = list(
+            zip(token_strings, xent_bits.tolist())
+        )
+        txl: TokenXentList = TokenXentList(paired_results)
+        logging.info(f"Xent for {string} with prefix {prefix}: {txl.total_xent()}")
+        return txl
+
+    def xed(self, string: XString, pre_prompt: str = "") -> TokenXentList:
+        no_prefix: XString = XString(str(string))
+        return self.xent(no_prefix, pre_prompt) - self.xent(string, pre_prompt)
+
+    def nex(self, string: XString, pre_prompt: str = "") -> TokenXentList:
+        result: TokenXentList = self.xent(string, pre_prompt)
+        return result * -1
+
+    def dex(self, string: XString, pre_prompt: str = "") -> TokenXentList:
+        result: TokenXentList = self.xed(string, pre_prompt)
+        return result * -1

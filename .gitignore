@@ -1,0 +1,12 @@
+TODO
+*.swp
+test_output/game_plots
+xega_config.json
+results/
+.vscode
+venv
+__pycache__/
+*.py[cod]
+*$py.class
+.DS_Store
+*.lyx~

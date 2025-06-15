@@ -1,0 +1,6 @@
+assign(s1=story(), s2=story())
+reveal(black, s1, s2)
+elicit(black, x, 10)
+assign(x1=remove_common_words(x, s1 + s2))
+reward(black, xed(s1 | x1))
+reward(black, dex(s2 | x1))

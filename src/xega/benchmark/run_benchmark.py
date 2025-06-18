@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -130,7 +131,9 @@ def print_game_history(game_results: XegaGameResult) -> None:
 
 
 async def run_benchmark(
-    benchmark_config: ExpandedXegaBenchmarkConfig, results_dir: str
+    benchmark_config: ExpandedXegaBenchmarkConfig,
+    results_dir: str,
+    max_concurrent_games: int,
 ) -> XegaBenchmarkResult:
     with open(os.path.join(results_dir, "benchmark_config.json"), "w") as f:
         f.write(dumps(benchmark_config, indent=4))
@@ -139,26 +142,34 @@ async def run_benchmark(
     logging.info(
         f"Starting benchmark with Benchmark ID: {benchmark_result['config']['benchmark_id']}"
     )
-    for game_config in benchmark_config["games"]:
-        existing_game_results = get_existing_game_results(results_dir, game_config)
-        if existing_game_results:
-            logging.info(
-                f"Skipping game {game_config['game']['name']} for player {game_config["players"][0]['id']} since its already completed"
-            )
-            benchmark_result["game_results"].append(existing_game_results)
-            continue
 
-        game_results = await run_game(game_config)
-        if game_results:
-            write_game_results(game_results, results_dir)
-            benchmark_result["game_results"].append(game_results)
-            print_game_history(game_results)
-        else:
-            logging.error(
-                f"Game {game_config['game']['name']} execution failed, no results returned"
-            )
+    semaphore = asyncio.Semaphore(max_concurrent_games)
+
+    async def run_game_with_retry(game_config):
+        async with semaphore:
+            existing = get_existing_game_results(results_dir, game_config)
+            if existing:
+                return existing
+
+            result = await run_game(game_config)
+            if result:
+                write_game_results(result, results_dir)
+                print_game_history(result)
+            return result
+
+    tasks = [
+        run_game_with_retry(game_config) for game_config in benchmark_config["games"]
+    ]
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Process results, handling any exceptions
+    for result in results:
+        if isinstance(result, BaseException):
+            logging.error(f"Game failed with error: {result}")
+        elif result:
+            benchmark_result["game_results"].append(result)
 
     write_benchmark_results(benchmark_result, results_dir)
-
     logging.info(f"Benchmark ({benchmark_result['config']['benchmark_id']}) completed")
     return benchmark_result

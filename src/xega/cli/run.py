@@ -61,6 +61,11 @@ def load_benchmark_config(
     is_flag=True,
     help="If set, a new benchmark ID will be generated. This is useful for running the same benchmark multiple times without overwriting previous results.",
 )
+@click.option(
+    "--parallel-games",
+    default=1,
+    help="Number of games to run in parallel. Default is 1. Increase this for higher throughput benchmarking.",
+)
 @click.option("--verbose", is_flag=True, help="Enable verbose logging")
 def run(
     config: str,
@@ -69,6 +74,7 @@ def run(
     clean: bool,
     regenerate_id: bool,
     verbose: bool,
+    parallel_games: int,
 ):
     """Execute Xega benchmark"""
     log_level = logging.INFO
@@ -107,7 +113,9 @@ def run(
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
-    benchmark_result = asyncio.run(run_benchmark(benchmark_config, results_dir))
+    benchmark_result = asyncio.run(
+        run_benchmark(benchmark_config, results_dir, parallel_games)
+    )
     if not dont_analyze:
         logging.info("Performing analysis on benchmark results")
         analyze.analyze(benchmark_result, results_dir)

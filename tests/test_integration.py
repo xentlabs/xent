@@ -109,7 +109,7 @@ def shared_benchmark_results(module_test_data_dir):
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
     # Run the benchmark once in the event loop
     benchmark_results = asyncio.run(
-        run_benchmark(expanded_config, f"{module_test_data_dir}")
+        run_benchmark(expanded_config, f"{module_test_data_dir}", 1)
     )
 
     # Also run the full analysis pipeline once
@@ -286,6 +286,6 @@ async def test_minimal_benchmark_smoke(test_data_dir):
     expanded_config = expand_benchmark_config(config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
 
-    results = await run_benchmark(expanded_config, f"{test_data_dir}")
+    results = await run_benchmark(expanded_config, f"{test_data_dir}", 1)
     assert results["config"]["benchmark_id"] == id_string
     assert len(results["game_results"]) == 1

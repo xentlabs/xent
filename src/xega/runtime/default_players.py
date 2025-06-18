@@ -5,15 +5,9 @@ from typing import List, Optional
 from xega.common.errors import XegaInternalError
 from xega.common.token_xent_list import round_xent
 from xega.common.util import dumps
-from xega.common.xega_types import (
-    LLMMessage,
-    PlayerName,
-    PlayerOptions,
-    XegaEvent,
-    XegaGameConfig,
-)
+from xega.common.xega_types import PlayerName, PlayerOptions, XegaEvent, XegaGameConfig
 from xega.runtime.base_player import XGP
-from xega.runtime.llm_api_client import make_client
+from xega.runtime.llm_api_client import LLMMessage, make_client
 
 
 class MockXGP(XGP):

@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Literal, Optional, TypedDict
 
 import google.genai as genai
 import google.genai.types as genai_types
@@ -20,12 +20,19 @@ from openai.types.chat import (
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from xega.common.errors import XegaConfigurationError
-from xega.common.xega_types import LLMMessage, PlayerOptions
+from xega.common.xega_types import PlayerOptions
 from xega.runtime.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,
     check_default_xgp_options,
 )
+
+LLMRole = Literal["user", "assistant", "system"]
+
+
+class LLMMessage(TypedDict):
+    role: LLMRole
+    content: str
 
 
 def guess_provider_from_model(model: str) -> str:

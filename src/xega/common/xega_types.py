@@ -2,6 +2,8 @@ from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from xega.common.token_xent_list import TokenXentList
 
+# Event types
+
 
 class BaseEvent(TypedDict):
     line: str
@@ -40,13 +42,7 @@ XegaEvent = Union[
     ElicitRequestEvent, ElicitResponseEvent, RevealEvent, RewardEvent, FailedEnsureEvent
 ]
 
-LLMRole = Literal["user", "assistant", "system"]
-
-
-class LLMMessage(TypedDict):
-    role: LLMRole
-    content: str
-
+# Configuration types. These are input to the Xega system to define benchmarks.
 
 PlayerName = Literal["black", "white", "alice", "bob", "carol", "env"]
 PlayerType = Literal["default", "human", "mock"]
@@ -76,15 +72,39 @@ class XegaMetadata(TypedDict):
 
 
 class XegaBenchmarkConfig(XegaMetadata):
+    config_type: Literal["short_benchmark_config"]
     games: List[GameConfig]
     players: List[List[PlayerConfig]]  # List of player configurations for each game
     benchmark_id: str
 
 
+# Execution types. These are unrolled configuration objects that fully specify the benchmark.
+
+
+# The `code` field in `ExpandedGameConfig` is the fully expanded game code.
+# Specifically, it doesn't contain any "story()" calls - those are preprocessed to
+# be replaced with string literals.
+class ExpandedGameConfig(TypedDict):
+    name: str
+    code: str
+    map_seed: str
+
+
 class XegaGameConfig(XegaMetadata):
-    game: GameConfig
+    game: ExpandedGameConfig
     players: List[PlayerConfig]
     map_seed: str
+
+
+# `ExpandedXegaBenchmarkConfig` defines the complete set of
+# independent work units that make up the benchmark.
+class ExpandedXegaBenchmarkConfig(XegaMetadata):
+    config_type: Literal["expanded_benchmark_config"]
+    games: List[XegaGameConfig]
+    benchmark_id: str
+
+
+# Result types
 
 
 class XegaGameIterationResult(TypedDict):
@@ -99,5 +119,5 @@ class XegaGameResult(TypedDict):
 
 
 class XegaBenchmarkResult(TypedDict):
-    config: XegaBenchmarkConfig
+    config: ExpandedXegaBenchmarkConfig
     game_results: List[XegaGameResult]

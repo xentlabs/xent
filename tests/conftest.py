@@ -10,6 +10,7 @@ FAKE_GAME_CONFIG: XegaGameConfig = {
     "game": {
         "name": "Fake Game",
         "code": "fake_code",
+        "map_seed": "test_seed_0",
     },
     "auto_replay": True,
     "max_steps": 100,
@@ -42,8 +43,8 @@ def xrt():
     game_config = FAKE_GAME_CONFIG.copy()
     player = MockXGP("black", {}, game_config)
     locals = build_locals([player], game_config)
-    model_utils = Judge("gpt2")
-    globals = build_globals(model_utils, game_config["map_seed"])
+    judge = Judge("gpt2")
+    globals = build_globals(judge)
     return XegaRuntime([player], locals, globals)
 
 
@@ -54,8 +55,8 @@ def xrt_multi_player():
     alice = MockXGP("alice", {}, game_config)
     bob = MockXGP("bob", {}, game_config)
     locals = build_locals([alice, bob], game_config)
-    model_utils = Judge("gpt2")
-    globals = build_globals(model_utils, game_config["map_seed"])
+    judge = Judge("gpt2")
+    globals = build_globals(judge)
     return XegaRuntime([alice, bob], locals, globals)
 
 
@@ -66,6 +67,6 @@ def xrt_zero_sum():
     black = MockXGP("black", {}, game_config)
     white = MockXGP("white", {}, game_config)
     locals = build_locals([black, white], game_config)
-    model_utils = Judge("gpt2")
-    globals = build_globals(model_utils, game_config["map_seed"])
+    judge = Judge("gpt2")
+    globals = build_globals(judge)
     return XegaRuntime([black, white], locals, globals)

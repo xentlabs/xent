@@ -6,9 +6,14 @@ import os
 import click
 
 from xega.analysis import analyze
+from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.cli_util import generate_benchmark_id
-from xega.common.xega_types import XegaBenchmarkConfig, XegaMetadata
+from xega.common.xega_types import (
+    ExpandedXegaBenchmarkConfig,
+    XegaBenchmarkConfig,
+    XegaMetadata,
+)
 
 DEFAULT_XEGA_CONFIG = XegaMetadata(
     judge_model="gpt2",
@@ -21,7 +26,9 @@ DEFAULT_XEGA_CONFIG = XegaMetadata(
 )
 
 
-def load_benchmark_config(benchmark_config_file_path: str) -> XegaBenchmarkConfig:
+def load_benchmark_config(
+    benchmark_config_file_path: str,
+) -> XegaBenchmarkConfig | ExpandedXegaBenchmarkConfig:
     with open(benchmark_config_file_path, "r") as f:
         benchmark_config = json.load(f)
 
@@ -77,6 +84,9 @@ def run(
         benchmark_id = generate_benchmark_id()
         logging.info(f"Generated new benchmark ID: {benchmark_id}")
         benchmark_config["benchmark_id"] = benchmark_id
+
+    if benchmark_config["config_type"] != "expanded_benchmark_config":
+        benchmark_config = expand_benchmark_config(benchmark_config)
 
     results_dir = os.path.join(results_dir, benchmark_config["benchmark_id"])
     if clean:

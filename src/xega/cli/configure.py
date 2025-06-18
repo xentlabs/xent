@@ -3,6 +3,7 @@ from typing import List
 
 import click
 
+from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.util import dumps
 from xega.common.xega_types import (
@@ -73,6 +74,7 @@ def build_benchmark_config(
         for model in models
     ]
     return XegaBenchmarkConfig(
+        config_type="short_benchmark_config",
         games=games,
         players=players,
         benchmark_id=benchmark_id,
@@ -132,6 +134,11 @@ def build_benchmark_config(
     type=int,
 )
 @click.option(
+    "--expand-config",
+    is_flag=True,
+    help="Fully expand the benchmark. This will generate a much more verbose configuration. This is useful for generating reproducible benchmarks, but the output will be much larger and more difficult to modify manually",
+)
+@click.option(
     "--print-config",
     is_flag=True,
     help="Print the configuration to stdout instead of writing to a file",
@@ -147,6 +154,7 @@ def configure(
     seed: str,
     num_maps_per_game: int,
     print_config: bool,
+    expand_config: bool,
 ):
     """Build Xega benchmark configuration"""
     if benchmark_id is None:
@@ -167,6 +175,9 @@ def configure(
         not no_auto_replay,
         num_maps_per_game,
     )
+
+    if expand_config:
+        config = expand_benchmark_config(config)
 
     config_str = dumps(config, indent=2)
     if print_config:

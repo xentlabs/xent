@@ -3,6 +3,7 @@ import logging
 import os
 
 import pytest
+from typeguard import check_type
 
 from xega.analysis.analyze import analyze, extract_results_from_dir
 from xega.analysis.plot import (
@@ -10,10 +11,16 @@ from xega.analysis.plot import (
     generate_score_iteration_plots,
 )
 from xega.analysis.report import generate_markdown_report
+from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.run import DEFAULT_XEGA_CONFIG
 from xega.common.util import dumps
-from xega.common.xega_types import GameConfig, PlayerConfig, XegaBenchmarkConfig
+from xega.common.xega_types import (
+    ExpandedXegaBenchmarkConfig,
+    GameConfig,
+    PlayerConfig,
+    XegaBenchmarkConfig,
+)
 
 
 @pytest.fixture
@@ -38,13 +45,14 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
         + hex(hash(str(datetime.datetime.now().timestamp())))[-6:]
     )
     return XegaBenchmarkConfig(
+        config_type="short_benchmark_config",
         benchmark_id=id_string,
         games=[
             # Game 1: Simple single player test
             GameConfig(
                 name="test_single",
                 code="""
-                    assign(s1=story(), s2=story())
+                    assign(s1="At the book club, I ran into this girl, Neila, who claims to only read books backwards: starting from the bottom-right corner of the last page and reading all the words in reverse order until the beginning, finishing with the title. Doesn't it spoil the fun of the story? Apparently not, she told me. The suspense is just distributed somewhat differently (some books' beginnings are apparently all too predictable), and some books get better or worse if you read them in one direction or another. She started reading backwards at age seven. Her name was sort of a predisposition.", s2="Hello, it is today a lovely day to use my skills in differential geometry and in the calculus of variation to estimate how much grass I will be able to eat. I aim to produce a lot of milk and to write a lot of theorems for my children, because that's what the beauty of life is about, dear physicists and cheese-makers. Have a great day!")
                     reveal(black, s1, s2)
                     elicit(black, x, 20)
                     reward(xent(x | s1))
@@ -55,7 +63,7 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
             GameConfig(
                 name="test_multi",
                 code="""
-                    assign(t1=story(), t2=story())
+                    assign(t1="At the book club, I ran into this girl, Neila, who claims to only read books backwards: starting from the bottom-right corner of the last page and reading all the words in reverse order until the beginning, finishing with the title. Doesn't it spoil the fun of the story? Apparently not, she told me. The suspense is just distributed somewhat differently (some books' beginnings are apparently all too predictable), and some books get better or worse if you read them in one direction or another. She started reading backwards at age seven. Her name was sort of a predisposition.", t2="Hello, it is today a lovely day to use my skills in differential geometry and in the calculus of variation to estimate how much grass I will be able to eat. I aim to produce a lot of milk and to write a lot of theorems for my children, because that's what the beauty of life is about, dear physicists and cheese-makers. Have a great day!")
                     reveal(black, t1)
                     elicit(black, y, 15)
                     reward(xent(y | t1))
@@ -97,16 +105,18 @@ def shared_benchmark_results(module_test_data_dir):
     logging.info(f"Running shared benchmark with config: {benchmark_config}")
     print(dumps(benchmark_config, indent=4))
 
+    expanded_config = expand_benchmark_config(benchmark_config)
+    check_type(expanded_config, ExpandedXegaBenchmarkConfig)
     # Run the benchmark once in the event loop
     benchmark_results = asyncio.run(
-        run_benchmark(benchmark_config, f"{module_test_data_dir}")
+        run_benchmark(expanded_config, f"{module_test_data_dir}")
     )
 
     # Also run the full analysis pipeline once
     analyze(benchmark_results, f"{module_test_data_dir}", make_pdf=False)
 
     return {
-        "config": benchmark_config,
+        "config": expanded_config,
         "results": benchmark_results,
         "test_dir": module_test_data_dir,
     }
@@ -175,9 +185,13 @@ def test_all_outputs_generated(shared_benchmark_results):
 
     # Check individual game plots
     for game in benchmark_config["games"]:
-        plot_path = os.path.join(test_dir, f"{game['name']}_score_vs_iteration.png")
-        assert os.path.exists(plot_path), f"Plot for {game['name']} not created"
-        assert os.path.getsize(plot_path) > 0, f"Plot for {game['name']} is empty"
+        plot_path = os.path.join(
+            test_dir, f"{game["game"]['name']}_score_vs_iteration.png"
+        )
+        assert os.path.exists(plot_path), f"Plot for {game['game']['name']} not created"
+        assert (
+            os.path.getsize(plot_path) > 0
+        ), f"Plot for {game['game']['name']} is empty"
 
     # Check summary chart
     summary_path = os.path.join(
@@ -202,15 +216,15 @@ def test_all_outputs_generated(shared_benchmark_results):
 
     # Check both games are included
     for game in benchmark_config["games"]:
-        assert f"### Game: {game['name']}" in report_content
+        assert f"### Game: {game['game']['name']}" in report_content
         assert "#### Game Code" in report_content
         assert "#### Game Configuration" in report_content
         assert "##### Average Player Scores" in report_content
-        assert game["code"] in report_content
-        assert f"{game['name']}_score_vs_iteration.png" in report_content
+        assert game["game"]["code"] in report_content
+        assert f"{game['game']['name']}_score_vs_iteration.png" in report_content
 
     # Check model information
-    player_id = str(benchmark_config["players"][0][0]["id"])
+    player_id = str(benchmark_config["games"][0]["players"][0]["id"])
     assert player_id in report_content
 
     # Check summary chart reference
@@ -242,6 +256,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
     """Quick smoke test with minimal configuration"""
     id_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
     config = XegaBenchmarkConfig(
+        config_type="short_benchmark_config",
         benchmark_id=id_string,
         games=[
             GameConfig(
@@ -268,6 +283,9 @@ async def test_minimal_benchmark_smoke(test_data_dir):
         num_maps_per_game=DEFAULT_XEGA_CONFIG["num_maps_per_game"],
     )
 
-    results = await run_benchmark(config, f"{test_data_dir}")
+    expanded_config = expand_benchmark_config(config)
+    check_type(expanded_config, ExpandedXegaBenchmarkConfig)
+
+    results = await run_benchmark(expanded_config, f"{test_data_dir}")
     assert results["config"]["benchmark_id"] == id_string
     assert len(results["game_results"]) == 1

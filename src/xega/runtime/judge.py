@@ -1,8 +1,11 @@
+import hashlib
 import logging
 import math
 import os
+import random
 from typing import Dict, Optional
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import (
@@ -14,6 +17,22 @@ from transformers import (
 
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
+from xega.runtime.text_generation import generate_text
+
+DEFAULT_CHAT_TEMPLATE_JINJA = (
+    "{% for message in messages %}"
+    "{% if message['role'] == 'user' %}"
+    "{{ 'User: ' + message['content'] + '\n' }}"
+    "{% elif message['role'] == 'assistant' %}"
+    "{{ 'Assistant: ' + message['content'] + '\n' }}"
+    "{% else %}"
+    "{{ message['content'] + '\n' }}"
+    "{% endif %}"
+    "{% endfor %}"
+    "{% if add_generation_prompt %}"
+    "{{ 'Assistant: ' }}"
+    "{% endif %}"
+)
 
 
 class Judge:
@@ -37,7 +56,7 @@ class Judge:
             ).to(self.device)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model = AutoModelForCausalLM.from_pretrained(
+            self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
                 model_name, device_map="auto"
             )
 
@@ -114,3 +133,18 @@ class Judge:
     def dex(self, string: XString, pre_prompt: str = "") -> TokenXentList:
         result: TokenXentList = self.xed(string, pre_prompt)
         return result * -1
+
+    def generate_text(self, max_length: int = 50) -> str:
+        return generate_text(self.model, self.tokenizer, max_length)
+
+    def set_seed(self, global_seed: str, map_seed: str) -> None:
+        seed = self.full_seed(global_seed, map_seed)
+        int_seed = int(hashlib.sha256(seed.encode()).hexdigest()[:8], 16)
+        random.seed(seed)
+        np.random.seed(int_seed)
+        torch.manual_seed(int_seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(int_seed)
+
+    def full_seed(self, seed: str, map_seed: str) -> str:
+        return f"{seed}_{map_seed}"

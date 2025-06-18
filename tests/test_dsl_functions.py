@@ -1,11 +1,6 @@
 import pytest
 
-from tests.conftest import FAKE_GAME_CONFIG
-from xega.runtime.default_players import MockXGP
 from xega.runtime.execution import eval_line
-from xega.runtime.judge import Judge
-from xega.runtime.runtime import XegaRuntime
-from xega.runtime.variables import build_globals, build_locals
 
 # STRING OPERATION TESTS
 
@@ -64,35 +59,6 @@ async def test_string_after_operator(xrt):
 
 
 # FUNCTION TESTS
-
-
-@pytest.mark.asyncio
-async def test_story_function(xrt):
-    await eval_line("assign(s1=story())", 1, xrt)
-    await eval_line("assign(s2=story())", 1, xrt)
-
-    assert len(str(xrt.local_vars["s1"])) > 0
-    assert len(str(xrt.local_vars["s2"])) > 0
-    assert str(xrt.local_vars["s1"]) != str(xrt.local_vars["s2"])
-
-    # Make sure we can get a lot of stories without issues
-    for i in range(100):
-        await eval_line("assign(s=story(), s1=story())", i, xrt)
-
-
-@pytest.mark.asyncio
-async def test_story_map_seed():
-    game_config = FAKE_GAME_CONFIG.copy()
-    game_config["map_seed"] = "test_seed_99"
-    player = MockXGP("black", {}, game_config)
-    locals = build_locals([player], game_config)
-    model_utils = Judge("gpt2")
-    globals = build_globals(model_utils, game_config["map_seed"])
-    xrt = XegaRuntime([player], locals, globals)
-
-    # Make sure we can get a lot of stories without issues
-    for i in range(100):
-        await eval_line("assign(s=story(), s1=story())", i, xrt)
 
 
 @pytest.mark.asyncio

@@ -54,9 +54,9 @@ async def test_assign_static_registers(xrt):
 @pytest.mark.asyncio
 async def test_assign_function_results(xrt):
     """Test assigning results of functions to registers."""
-    await eval_line("assign(t=story())", 1, xrt)
+    await eval_line("assign(t='test string')", 1, xrt)
     assert "t" in xrt.local_vars
-    assert len(str(xrt.local_vars["t"])) > 0
+    assert str(xrt.local_vars["t"]) == "test string"
 
 
 @pytest.mark.asyncio
@@ -102,8 +102,9 @@ async def test_assign_empty_string(xrt):
 async def test_assign_complex_expressions(xrt):
     """Test assigning results of complex expressions."""
     # Test function chaining
-    await eval_line("assign(s1=story(), s2=first_n_tokens(s1, 5))", 1, xrt)
+    await eval_line("assign(s1='test string', s2=first_n_tokens(s1, 5))", 1, xrt)
     assert "s2" in xrt.local_vars
+    assert str(xrt.local_vars["s2"]) == "test string"
 
     # Test nested operations dont work
     # First, lets clear the state

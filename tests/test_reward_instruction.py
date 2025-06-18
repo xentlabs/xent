@@ -151,7 +151,7 @@ async def test_reward_xed_function(xrt):
 async def test_reward_in_game_context(xrt):
     """Test reward in a complete game context."""
     game_code = """
-    assign(s=story())
+    assign(s='My favorite breakfast is huevos rancheros')
     reveal(black, s)
     elicit(s1, 20)
     reward(black, xed(s | s1))

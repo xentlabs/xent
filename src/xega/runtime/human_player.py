@@ -39,6 +39,17 @@ class HumanXGP(XGP):
             pprint.pprint(event)
             if event["type"] == "reward":
                 print(f"Score: {event['value'].total_xent()}")
+                print("Colored score: ")
+                print(
+                    "".join(
+                        [
+                            self._get_flocol_str(
+                                event["value"].pairs[i][0], event["value"].pairs[i][1]
+                            )
+                            for i in range(len(event["value"].pairs))
+                        ]
+                    )
+                )
             print("\n")
         print("-------End of event history-------\n")
 
@@ -51,3 +62,16 @@ class HumanXGP(XGP):
     def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")
         self.event_history.append(event)
+
+    # writes a string s with a color f as a float in [-1, 1] in the format for the unix terminal
+    def _get_flocol_str(self, s: str, f: float, neutralize_at_the_end: bool = True):
+        (r, g, b) = (
+            (5, max(5 - int(+f * 6), 0), max(5 - int(+f * 6), 0))
+            if f > 0.0
+            else (max(5 - int(-f * 6), 0), max(5 - int(-f * 6), 0), 5)
+        )  # 0.0->(5,5,5)
+        return (
+            f"\x1b[38;5;{r * 36 + g * 6 + b + 16}m"
+            + s
+            + ("\x1b[0m" if neutralize_at_the_end else "")
+        )

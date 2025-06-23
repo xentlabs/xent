@@ -4,6 +4,20 @@ from xega.runtime.base_player import XGP
 from xega.runtime.default_players import DefaultXGP, MockXGP
 from xega.runtime.human_player import HumanXGP
 
+player_constructors = {
+    "mock": MockXGP,
+    "default": DefaultXGP,
+    "human": HumanXGP,
+}
+
+
+def register_player_type(player_type: str, constructor: type[XGP]) -> None:
+    if player_type in player_constructors:
+        raise XegaConfigurationError(
+            f"Player type {player_type} is already registered."
+        )
+    player_constructors[player_type] = constructor
+
 
 def make_player(player_name: PlayerName, game_config: XegaGameConfig) -> XGP:
     player_config = next(
@@ -14,15 +28,9 @@ def make_player(player_name: PlayerName, game_config: XegaGameConfig) -> XGP:
             f"Player configuration for {player_name} not found in game config."
         )
     player_type = player_config["player_type"]
-    if player_type == "mock":
-        return MockXGP(player_name, player_config.get("options", {}), game_config)
-    elif player_type == "default":
-        return DefaultXGP(
-            player_config["name"], player_config.get("options", {}), game_config
+    if player_type not in player_constructors:
+        raise XegaConfigurationError(
+            f"Player type {player_type} is not registered. Available types: {list(player_constructors.keys())}"
         )
-    elif player_type == "human":
-        return HumanXGP(
-            player_config["name"], player_config.get("options", {}), game_config
-        )
-    else:
-        raise XegaConfigurationError(f"Unknown player type: {player_type}")
+    constructor = player_constructors[player_type]
+    return constructor(player_name, player_config.get("options", {}), game_config)

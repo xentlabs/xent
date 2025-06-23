@@ -145,7 +145,7 @@ async def run_benchmark(
 
     semaphore = asyncio.Semaphore(max_concurrent_games)
 
-    async def run_game_with_retry(game_config):
+    async def run_game_or_get_results(game_config):
         async with semaphore:
             existing = get_existing_game_results(results_dir, game_config)
             if existing:
@@ -158,7 +158,8 @@ async def run_benchmark(
             return result
 
     tasks = [
-        run_game_with_retry(game_config) for game_config in benchmark_config["games"]
+        run_game_or_get_results(game_config)
+        for game_config in benchmark_config["games"]
     ]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)

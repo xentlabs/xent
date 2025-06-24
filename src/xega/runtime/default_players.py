@@ -33,7 +33,7 @@ class MockXGP(XGP):
     async def make_move(self, var_name: str) -> str:
         return "mocked_move"
 
-    def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")
         self.event_history.append(event)
         self.history.append(event_to_message(event))
@@ -91,7 +91,7 @@ class DefaultXGP(XGP):
         logging.info(f"Parsed LLM move: {result}")
         return result
 
-    def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received message: {event}")
         self.event_history.append(event)
         self.history.append(event_to_message(event))

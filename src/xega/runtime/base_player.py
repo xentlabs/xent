@@ -66,5 +66,5 @@ class XGP(ABC):
         pass
 
     @abstractmethod
-    def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XegaEvent) -> None:
         pass

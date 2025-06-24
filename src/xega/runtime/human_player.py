@@ -59,7 +59,7 @@ class HumanXGP(XGP):
         move = input("Enter your move: ")
         return move
 
-    def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")
         self.event_history.append(event)
 

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Set, Tuple
 
 from xega.common.constants import ZERO_SUM_PLAYER_PAIRS
 from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
-from xega.common.token_xent_list import TokenXentList, ValidatedBool, round_xent
+from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.x_flag import XFlag
 from xega.common.x_string import XString
 from xega.common.xega_types import (
@@ -69,11 +69,11 @@ class XegaRuntime:
             elif instruction_name == "elicit":
                 return await self.elicit(args, kwargs, line_num, line)
             elif instruction_name == "reveal":
-                return self.reveal(args, kwargs, line_num, line)
+                return await self.reveal(args, kwargs, line_num, line)
             elif instruction_name == "reward":
-                return self.reward(args, kwargs, line_num, line)
+                return await self.reward(args, kwargs, line_num, line)
             elif instruction_name == "ensure":
-                return self.ensure(args, kwargs, line_num, line)
+                return await self.ensure(args, kwargs, line_num, line)
             elif instruction_name == "beacon":
                 return self.beacon(args, kwargs, line_num)
             elif instruction_name == "replay":
@@ -102,8 +102,8 @@ class XegaRuntime:
                 f"Keyword arguments are not allowed for {instruction_name}"
             )
 
-    def send_event(self, player: XGP, event: XegaEvent) -> None:
-        player.post(event)
+    async def send_event(self, player: XGP, event: XegaEvent) -> None:
+        await player.post(event)
         self.history.append(event)
 
     def _validate_assign_register(self, var_name: str) -> XString:
@@ -196,7 +196,7 @@ class XegaRuntime:
                 var_name=var.name,
                 max_len=max_len,
             )
-            self.send_event(player, request_event)
+            await self.send_event(player, request_event)
 
             player_move = await player.make_move(var.name)
             trimmed_move = self._first_n_tokens(player_move, max_len)
@@ -212,7 +212,7 @@ class XegaRuntime:
                 player=player.name,
                 response=str(trimmed_move),
             )
-            self.send_event(player, response_event)
+            await self.send_event(player, response_event)
 
             logging.info(f'Setting {var.name} to "{trimmed_move}"')
             var.primary_string = trimmed_move
@@ -221,7 +221,7 @@ class XegaRuntime:
         self.beacons["previous_elicit"] = XFlag("previous_elicit", line_num)
         self.last_elicit_player = player
 
-    def reveal(
+    async def reveal(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
     ) -> None:
         self.assert_no_kwargs(kwargs, "reveal")
@@ -242,14 +242,14 @@ class XegaRuntime:
             player=player.name,
             values=rest_of_args,
         )
-        self.send_event(player, reveal_event)
+        await self.send_event(player, reveal_event)
 
         logging.info(f"Revealed {reveal_event} to player {player.name}")
         if not self.beacons.get("main"):
             self.beacons["main"] = XFlag("main", line_num + 1)
             self.local_vars["main"] = self.beacons["main"]
 
-    def reward(
+    async def reward(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
     ) -> None:
         self.assert_no_kwargs(kwargs, "reward")
@@ -285,7 +285,7 @@ class XegaRuntime:
             player=player.name,
             value=score,
         )
-        self.send_event(player, reward_event)
+        await self.send_event(player, reward_event)
         logging.info(
             f"Rewarded player {player.name} with {score.total_xent()}. Reward event: {reward_event}"
         )
@@ -306,7 +306,7 @@ class XegaRuntime:
                         player=other_player.name,
                         value=neg_score,
                     )
-                    self.send_event(other_player, reward_event)
+                    await self.send_event(other_player, reward_event)
                     logging.info(
                         f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
                     )
@@ -336,7 +336,7 @@ class XegaRuntime:
             )
         return self.last_elicit_player
 
-    def ensure(
+    async def ensure(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
     ) -> None | XFlag:
         self.assert_no_kwargs(kwargs, "ensure")
@@ -362,7 +362,7 @@ class XegaRuntime:
             ensure_results=args,
             beacon=previous_elicit.name,
         )
-        self.send_event(last_elicit_player, ensure_event)
+        await self.send_event(last_elicit_player, ensure_event)
         self.replay_counters[line_num] = fail_count + 1
         return previous_elicit
 

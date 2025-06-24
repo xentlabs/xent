@@ -1,6 +1,7 @@
 from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 from xega.common.token_xent_list import TokenXentList
+from xega.common.x_string import XString
 
 # Event types
 
@@ -24,7 +25,7 @@ class ElicitResponseEvent(BaseEvent):
 
 class RevealEvent(BaseEvent):
     type: Literal["reveal"]
-    values: List[str]
+    values: List[XString]
 
 
 class RewardEvent(BaseEvent):

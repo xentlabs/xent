@@ -45,14 +45,13 @@ XegaEvent = Union[
 # Configuration types. These are input to the Xega system to define benchmarks.
 
 PlayerName = Literal["black", "white", "alice", "bob", "carol", "env"]
-PlayerType = Literal["default", "human", "mock"]
 PlayerOptions = Dict[str, Union[str, int, float, bool]]
 
 
 class PlayerConfig(TypedDict):
     name: PlayerName
     id: str
-    player_type: PlayerType
+    player_type: str
     options: Optional[PlayerOptions]
 
 

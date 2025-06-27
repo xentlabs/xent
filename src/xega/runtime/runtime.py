@@ -195,6 +195,15 @@ class XegaRuntime:
         )
         return register_states
 
+    def _set_main_flag(self, line_num: int, is_reveal: bool) -> None:
+        if "main" in self.beacons:
+            return
+
+        if is_reveal:
+            line_num += 1
+        self.beacons["main"] = XFlag("main", line_num)
+        self.local_vars["main"] = self.beacons["main"]
+
     async def elicit(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
     ) -> None:
@@ -202,6 +211,7 @@ class XegaRuntime:
         var_arg_start, var_arg_end, player, max_len = self._validate_elicit_args(
             args, line_num
         )
+        self._set_main_flag(line_num, is_reveal=False)
         for i in range(var_arg_start, var_arg_end):
             var = args[i]
             self._validate_elicit_arg(var)
@@ -265,9 +275,7 @@ class XegaRuntime:
         await self.send_event(player, reveal_event)
 
         logging.info(f"Revealed {reveal_event} to player {player.name}")
-        if not self.beacons.get("main"):
-            self.beacons["main"] = XFlag("main", line_num + 1)
-            self.local_vars["main"] = self.beacons["main"]
+        self._set_main_flag(line_num, is_reveal=True)
 
     async def reward(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str

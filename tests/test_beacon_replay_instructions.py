@@ -198,3 +198,19 @@ async def test_main_flag(xrt):
     player = xrt.players[0]
     # Should have executed the replay 3 times, but it doesn't create a new history entry
     assert len(player.history) == 1
+
+
+@pytest.mark.asyncio
+async def test_main_flag_no_reveal(xrt):
+    """Test explicit replay of main beacon."""
+    game_code = """
+    assign(s='test')
+    elicit(black, t, 10)
+    replay(main, 3)
+    """
+
+    await play_game(game_code, xrt, auto_replay=False)
+
+    player = xrt.players[0]
+    logging.info(f"Player history: {player.history}")
+    assert len(player.history) == 8  # 4x elicit request + response

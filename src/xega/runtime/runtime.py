@@ -16,6 +16,7 @@ from xega.common.xega_types import (
     RewardEvent,
     XegaEvent,
     XegaGameIterationResult,
+    is_omniscient_player_name,
 )
 from xega.runtime.base_player import XGP
 
@@ -178,6 +179,22 @@ class XegaRuntime:
                 f"Elicit target is static. Elicit requires a non-static register target"
             )
 
+    def _gather_register_states(self, player_name: str) -> Dict[str, XString]:
+        register_states = {}
+        for var_name, var in self.local_vars.items():
+            if not isinstance(var, XString):
+                continue
+
+            if var.public:
+                register_states[var_name] = var
+            elif is_omniscient_player_name(player_name):
+                register_states[var_name] = var
+
+        logging.debug(
+            f"Gathered register states for player {player_name}: {register_states}"
+        )
+        return register_states
+
     async def elicit(
         self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
     ) -> None:
@@ -188,7 +205,7 @@ class XegaRuntime:
         for i in range(var_arg_start, var_arg_end):
             var = args[i]
             self._validate_elicit_arg(var)
-
+            register_states = self._gather_register_states(player.name)
             request_event = ElicitRequestEvent(
                 type="elicit_request",
                 line=line,
@@ -196,6 +213,7 @@ class XegaRuntime:
                 player=player.name,
                 var_name=var.name,
                 max_len=max_len,
+                registers=register_states,
             )
             await self.send_event(player, request_event)
 

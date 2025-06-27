@@ -251,3 +251,28 @@ async def test_multi_player_reveal_elicit(xrt_multi_player):
 
     # Bob should NOT have received the original secret
     assert not any("secret for alice" in h for h in bob.history)
+
+
+@pytest.mark.asyncio
+async def test_elicit_registers(xrt):
+    """Test basic elicit operation with default player."""
+    await eval_line("assign(s1='test1')", 1, xrt)
+    await eval_line("assign(s2='test2')", 1, xrt)
+    await eval_line("assign(s3='test3')", 1, xrt)
+    await eval_line("assign(t1='test4')", 1, xrt)
+    await eval_line("assign(t2='test5')", 1, xrt)
+    await eval_line("assign(t3='test6')", 1, xrt)
+    await eval_line("elicit(s, 10)", 1, xrt)
+
+    player = xrt.players[0]
+    assert player.event_history[-1]["type"] == "elicit_response"
+    assert player.event_history[-2]["type"] == "elicit_request"
+    event = player.event_history[-2]
+    registers = event["registers"]
+    assert len(registers) == 32  # 4 * 8 registers
+    assert registers["s1"] == "test1"
+    assert registers["s2"] == "test2"
+    assert registers["s3"] == "test3"
+    assert registers["t1"] == "test4"
+    assert registers["t2"] == "test5"
+    assert registers["t3"] == "test6"

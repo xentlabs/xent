@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, TypedDict, Union
+from typing import Dict, List, Literal, Optional, TypedDict, TypeGuard, Union
 
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
@@ -16,6 +16,7 @@ class ElicitRequestEvent(BaseEvent):
     type: Literal["elicit_request"]
     var_name: str
     max_len: int
+    registers: dict[str, XString]
 
 
 class ElicitResponseEvent(BaseEvent):
@@ -47,6 +48,13 @@ XegaEvent = Union[
 # Configuration types. These are input to the Xega system to define benchmarks.
 
 PlayerName = Literal["black", "white", "alice", "bob", "carol", "env"]
+OmniscientPlayerName = Literal["black", "white", "env"]
+
+
+def is_omniscient_player_name(value: str) -> TypeGuard[OmniscientPlayerName]:
+    return value in ("black", "white", "env")
+
+
 PlayerOptions = Dict[str, Union[str, int, float, bool]]
 
 

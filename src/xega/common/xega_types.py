@@ -25,7 +25,8 @@ class ElicitResponseEvent(BaseEvent):
 
 class RevealEvent(BaseEvent):
     type: Literal["reveal"]
-    values: List[XString]
+    # Map of variable names to their values.
+    values: dict[str, XString]
 
 
 class RewardEvent(BaseEvent):

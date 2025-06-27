@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any, Dict, List, Set, Tuple
 
 from xega.common.constants import ZERO_SUM_PLAYER_PAIRS
@@ -234,13 +235,14 @@ class XegaRuntime:
         if not isinstance(player, XGP):
             raise XegaSyntaxError("First argument of reveal must be a player")
 
+        var_names = extract_reveal_parameters(line)
         rest_of_args = args[1:]
         reveal_event = RevealEvent(
             type="reveal",
             line=line,
             line_num=line_num,
             player=player.name,
-            values=rest_of_args,
+            values={name: rest_of_args[i] for i, name in enumerate(var_names)},
         )
         await self.send_event(player, reveal_event)
 
@@ -411,3 +413,11 @@ class XegaRuntime:
 
         self.replay_counters[line_num] = replay_count + 1
         return flag
+
+
+def extract_reveal_parameters(input_str: str) -> list[str]:
+    match = re.search(r"\(([^)]+)\)", input_str)
+    if not match:
+        return []
+    params = [param.strip() for param in match.group(1).split(",")]
+    return params[1:]

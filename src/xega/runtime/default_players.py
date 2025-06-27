@@ -196,7 +196,7 @@ def event_to_message(event: XegaEvent) -> str:
     elif event["type"] == "elicit_response":
         return f"{event["line_num"]:02d}-<elicit response>: {event["response"]}"
     elif event["type"] == "reveal":
-        return f"{event["line_num"]:02d}-<reveal>: {str([f'"{str(arg)}"' for arg in event['values']])}"
+        return f"{event["line_num"]:02d}-<reveal>: {str([f'{arg}: "{str(event['values'][arg])}' for arg in event['values']])}"
     elif event["type"] == "reward":
         return f"{event["line_num"]:02d}-<reward>: Total reward: {round_xent(event['value'].total_xent())}, per-token rewards: {str(event['value'])}"
     elif event["type"] == "failed_ensure":

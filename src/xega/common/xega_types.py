@@ -3,9 +3,8 @@ from typing import Dict, List, Literal, Optional, TypedDict, TypeGuard, Union
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
 
+
 # Event types
-
-
 class BaseEvent(TypedDict):
     line: str
     line_num: int

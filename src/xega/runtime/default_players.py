@@ -106,7 +106,7 @@ def get_system_prompt(
     player_name: str, game_code: str, num_registers_per_type: int
 ) -> str:
     prompt = f"""
-You are playing a game described in a custom language. You are playing as "{player_name}". Here is a brief overview of the language:
+You are playing a game described in a custom language. Here is a brief overview of the language:
 
 <game_language>
 The game language is a simple python DSL that is structured as follows:
@@ -115,11 +115,11 @@ Each line of code starts with an instruction. Each instruction can have a number
 
 <instructions>
 - `assign`: Assign values to registers. Each keyword argument name is a variable name, and the value is assigned to that register. Assign only takes keyword arguments.
-- `reveal`: Reveal information to a player. The first argument can be the player to which the data is revealed. If a player isn't specified, the default player is 'black'. The rest of the arguments are the data to reveal. Reveal only takes positional arguments.
-- `elicit`: Ask player for input. The first argument can be the player asked. If a player isn't specified, the default player is 'black'. The subsequent arguments are registers that will hold the result of the elicit. If there are multiple variables specified, then there will be one `elicit` performed for each. The final argument is the max number of tokens to elicit. Elicit only takes positional arguments.
+- `reveal`: Reveal information to player. The arguments are the data to reveal. Reveal only takes positional arguments.
+- `elicit`: Ask player for input. The arguments are the registers that will hold the result of the elicit. If there are multiple variables specified, then there will be one `elicit` performed for each. The final argument is the max number of tokens to elicit. Elicit only takes positional arguments.
 - `ensure`: Validate conditions. Each positional argument is a condition to validate and should evaluate to True or False. If conditions are all met, the code continues to the next line. If not, the code jumps to the last executed `elicit` line. The game allows for a maximum of 10 consecutive failures to meet an ensure before exiting. `Ensure` only takes positional arguments.
-- `reward`: Reward a player. The first argument can be the player to reward. If a player isn't specified, the default player is 'black'. The rest of the arguments are numerical amounts to reward that player. Reward only takes positional arguments.
-- `beacon`: Set a flag in the code to jump to. `beacon` only takes a single position argument, which is the flag object.
+- `reward`: Reward player. The arguments are numerical amounts to reward that player. Reward only takes positional arguments.
+- `beacon`: Set a flag in the code to jump to. `beacon` only takes a single position argument, which is the flag object. There are only 2 flags defined: `flag_1` and `flag_2`.
 - `replay`: Jump to a previously set flag. The first argument is the flag to jump to. The second argument is the number of times to perform the jump. Once that count has been reached, `replay` will allow execution to continue to the next line.
 </instructions>
 
@@ -151,36 +151,17 @@ The game has a fixed number of registers for holding data. Registers only hold s
 There are fixed sets of registers named: ["a", "b", "c", "s", "t", "x", "y", "p"]
 There are {num_registers_per_type} registers per type. The names are in the format of "a", "a1", "a2", etc
 
-There are three static register types: ["a", "b", "c"]. Static registers are not allowed to be modified.
-There are three public register types: ["a", "b", "p"]. Public registers are visible to all players at all times.
+Registers can only hold strings. All registers are initialized to the empty string "".
 </registers>
-
-<flags>
-The game has two flag objects defined: flag_1 and flag_2. These are used by `beacon` and `replay` calls to jump to a line of code.
-</flags>
-
-<players>
-The game can be played by multiple players. Each player has a name. The players are: ["black", "white", "alice", "bob", "carol", "env"]
-
-If a game is single-player, the default player is "black".
-
-The players "black", "white", and "env" are omniscient players. They can see all registers at all times.
-
-The players "black" and "white" are a zero-sum pair. Any reward given to one of these players is subtracted from the other.
-
-The player "env" does not receive any rewards. It is used to provide a game environment for the other players.
-</players>
-
 </game_language>
 
-You are playing as player "{player_name}". Your goal is to maximize your score, which is given to you as prescribed by the reward function.
+Your goal is to maximize your score, which is given to you as prescribed by the reward function.
 
 When you receive an `elicit` request, you must respond with a move within `<move></move>` tags. Any other text in your response will be ignored.
 
 When you are given an `elicit` request, you will also receive a log of the current game state. This will include the `reveal` results as well as previous `reward` and `elicit` results. Each log line will contain the line number of the game code that generated it. You can use this information to understand the game state and make your move.
 
-Here is the game you are playing as "{player_name}":
-
+Here is the game you are playing:
 <game_code>
 {game_code}
 </game_code>

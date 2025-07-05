@@ -1,7 +1,9 @@
+# Game overview: your goal is to provide `x` such that when the stories `s1`, `s2`, and `s3` are prefixed with `x`, the cross entropy of the story is minimized.
+# You will be able to see the per-token cross entropy values after each reward. Use these to find a better `x` for your next try.
+# So try to think hard of what you can say in 10 tokens that will make each of the stories more likely. Remember that you can't use any words that exist in any of the stories.
 assign(s1=story(), s2=story(), s3=story())
-reveal(black, s1, s2, s3)
-elicit(black, x, 10)
+elicit(x, 10)
 assign(x1=remove_common_words(x, s1 + s2 + s3)) # Remove any in stories from input text
-reward(black, xed(s1 | x1))
-reward(black, xed(s2 | x1))
-reward(black, xed(s3 | x1))
+reward(xed(s1 | x1))
+reward(xed(s2 | x1))
+reward(xed(s3 | x1))

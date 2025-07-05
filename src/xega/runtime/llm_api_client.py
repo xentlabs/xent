@@ -40,7 +40,7 @@ def guess_provider_from_model(model: str) -> str:
     Guess the provider based on the model name.
     This is a heuristic and may not be accurate for all models.
     """
-    if "gpt" in model.lower():
+    if "gpt" in model.lower() or "o3" in model.lower() or "o4" in model.lower():
         return "openai"
     elif "claude" in model.lower():
         return "anthropic"

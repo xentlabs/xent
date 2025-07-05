@@ -97,76 +97,34 @@ class DefaultXGP(XGP):
         self.history.append(event_to_message(event))
 
     def system_prompt(self) -> str:
-        return get_system_prompt(
-            self.name, self.game_code, self.game_config["num_variables_per_register"]
-        )
+        return get_system_prompt(self.game_code)
 
 
-def get_system_prompt(
-    player_name: str, game_code: str, num_registers_per_type: int
-) -> str:
+def get_system_prompt(game_code: str) -> str:
     prompt = f"""
-You are playing a game described in a custom language. Here is a brief overview of the language:
+You are playing a game described in a custom language. The game is based around the cross entropy of a judge model. Here is a brief overview of the language:
 
 <game_language>
-The game language is a simple python DSL that is structured as follows:
-
-Each line of code starts with an instruction. Each instruction can have a number of arguments, which are either positional or keyword arguments. Here are the instructions:
+Each line of code starts with an instruction. Here are the most important instructions:
 
 <instructions>
-- `assign`: Assign values to registers. Each keyword argument name is a variable name, and the value is assigned to that register. Assign only takes keyword arguments.
-- `reveal`: Reveal information to player. The arguments are the data to reveal. Reveal only takes positional arguments.
-- `elicit`: Ask player for input. The arguments are the registers that will hold the result of the elicit. If there are multiple variables specified, then there will be one `elicit` performed for each. The final argument is the max number of tokens to elicit. Elicit only takes positional arguments.
-- `ensure`: Validate conditions. Each positional argument is a condition to validate and should evaluate to True or False. If conditions are all met, the code continues to the next line. If not, the code jumps to the last executed `elicit` line. The game allows for a maximum of 10 consecutive failures to meet an ensure before exiting. `Ensure` only takes positional arguments.
-- `reward`: Reward player. The arguments are numerical amounts to reward that player. Reward only takes positional arguments.
-- `beacon`: Set a flag in the code to jump to. `beacon` only takes a single position argument, which is the flag object. There are only 2 flags defined: `flag_1` and `flag_2`.
-- `replay`: Jump to a previously set flag. The first argument is the flag to jump to. The second argument is the number of times to perform the jump. Once that count has been reached, `replay` will allow execution to continue to the next line.
+- `assign`: Each keyword argument name is a variable name, and the value is assigned to that variable.
+- `reveal`: Reveal information to player, the arguments are the variables to reveal.
+- `elicit`: Ask player for input. The arguments are the variables that will hold the result of the elicit. If there are multiple variables specified, then there will be one `elicit` performed for each. The final argument is the max number of tokens to elicit.
+- `ensure`: Validate conditions. If a condition is not met, code execution jumps to the last executed `elicit` line.
+- `reward`: Reward points. The arguments are the variables that hold the numerical score you will be rewarded.
 </instructions>
 
-In addition to the instructions, there are a number of functions defined in the game language. Here are the functions:
-<functions>
-- `story()`: Returns a string that contains a story from a corpus provided by the language
-- `common_word_set(s1, s2)`: Returns a set of common words between two strings
-- `first_n_tokens(s, n)`: Returns a string that is the first n tokens of `s`
-- `remove_common_words(s1, s2)`: Returns a string that is `s1` with all common words with `s2` removed
-- `xent(s1)`: Returns the summed cross entropy of a string with respect to the model
-- `xent(s1 | s2)`: Returns the cross entropy of s1 when prefixed with s2. So this is basically xent(f"{{prefix}}{{s1}}") - xent(prefix).
-- `nex`: A shorthand for `-1 * xent`
-- `xed(s1 | s2)`: A shorthand to `xent(s1) - xent(s1 | s2)`. This is basically saying how much the prefix `s2` helps in predicting `s1`.
-- `xed(s1 | s2, pre_prompt="abc")`: This is a special shorthand for `xent(s1 | pre_prompt) - xent(s1 | (pre_prompt + s2))`.
-- `dex`: A shorthand for `-1 * xed`
-</functions>
-
-There are also a few special string operations defined:
-<operations>
-- `s1 + s2`: Concatenate two strings
-- `s1 // s2`: the substring of `s1` that comes before the first occurrence of `s2` (does not include `s2`). If `s2` is not in `s1`, then `s1` is returned.
-- `s1 % s2`: the substring of `s1` that comes after the first occurrence of `s2` (does not include `s2`). If `s2` is not in `s1`, then "" is returned.
-
-By convention, we say that `s2` does not appear in `s1` if `s2` is the empty string. So `s1 // ""` is always `s1` and `s1 % ""` is always "".
-</operations>
-
-The game has a fixed number of registers for holding data. Registers only hold strings. Here are the registers:
-<registers>
-There are fixed sets of registers named: ["a", "b", "c", "s", "t", "x", "y", "p"]
-There are {num_registers_per_type} registers per type. The names are in the format of "a", "a1", "a2", etc
-
-Registers can only hold strings. All registers are initialized to the empty string "".
-</registers>
-</game_language>
-
-Your goal is to maximize your score, which is given to you as prescribed by the reward function.
+Your goal is to maximize your score. Do this by making your rewards as large as possible.
 
 When you receive an `elicit` request, you must respond with a move within `<move></move>` tags. Any other text in your response will be ignored.
 
-When you are given an `elicit` request, you will also receive a log of the current game state. This will include the `reveal` results as well as previous `reward` and `elicit` results. Each log line will contain the line number of the game code that generated it. You can use this information to understand the game state and make your move.
-
-Here is the game you are playing:
+The game code will have some comments that describe the game and some basic strategy. Here is the game you are playing:
 <game_code>
 {game_code}
 </game_code>
 
-Remember, you must respond to the `elicit` request with your move within `<move></move>` tags. Any other text in your response will be ignored. Your move should be text that will be stored in the variable specified in the `elicit` request. Use the game code and state to determine what text to provide such that it will maximize your score. Make sure your move is valid and will meet the conditions specified in the ensure statements in the game code.
+Remember, you must respond to the `elicit` request with your move within `<move></move>` tags. Any other text in your response will be ignored. Use the game code and state to determine what text to provide such that it will maximize your score. Make sure your move is valid and will meet the conditions specified in the ensure statements in the game code.
 """
     return prompt
 

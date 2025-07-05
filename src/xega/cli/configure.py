@@ -1,5 +1,7 @@
+import json
 import os
-from typing import List
+from copy import deepcopy
+from typing import List, Optional
 
 import click
 
@@ -7,9 +9,11 @@ from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.util import dumps
 from xega.common.xega_types import (
+    ExpandedXegaBenchmarkConfig,
     GameConfig,
     PlayerConfig,
     XegaBenchmarkConfig,
+    XegaGameConfig,
     XegaMetadata,
 )
 from xega.runtime.llm_api_client import guess_provider_from_model
@@ -88,7 +92,45 @@ def build_benchmark_config(
     )
 
 
-@click.command()
+def add_player_to_expanded_config(
+    config: ExpandedXegaBenchmarkConfig, new_player: PlayerConfig
+) -> ExpandedXegaBenchmarkConfig:
+    """Add a new player to an expanded benchmark config"""
+    # Get unique games from the existing config
+    unique_games = {}
+    for game_config in config["games"]:
+        game_key = (game_config["game"]["name"], game_config["game"]["code"])
+        if game_key not in unique_games:
+            unique_games[game_key] = game_config["game"]
+
+    # Create new game configs for the new player
+    new_game_configs = []
+    for game in unique_games.values():
+        new_game_config: XegaGameConfig = {
+            # Copy metadata fields
+            "judge_model": config["judge_model"],
+            "npc_players": config["npc_players"],
+            "num_variables_per_register": config["num_variables_per_register"],
+            "max_steps": config["max_steps"],
+            "auto_replay": config["auto_replay"],
+            "seed": config["seed"],
+            "num_maps_per_game": config["num_maps_per_game"],
+            # Game-specific fields
+            "game": deepcopy(game),
+            "players": [new_player],
+            "map_seed": game["map_seed"],
+        }
+        new_game_configs.append(new_game_config)
+
+    # Create new expanded config with all games
+    new_config = deepcopy(config)
+    new_config["games"].extend(new_game_configs)
+
+    return new_config
+
+
+@click.group(invoke_without_command=True)
+@click.pass_context
 @click.option(
     "--output", help="Output configuration path", default="./xega_config.json"
 )
@@ -144,6 +186,7 @@ def build_benchmark_config(
     help="Print the configuration to stdout instead of writing to a file",
 )
 def configure(
+    ctx: click.Context,
     output: str,
     game_dir: str,
     model: List[str],
@@ -157,6 +200,11 @@ def configure(
     expand_config: bool,
 ):
     """Build Xega benchmark configuration"""
+    # If a subcommand is invoked, let it handle the operation
+    if ctx.invoked_subcommand is not None:
+        return
+
+    # Original behavior when called without subcommand
     if benchmark_id is None:
         benchmark_id = generate_benchmark_id()
 
@@ -186,3 +234,70 @@ def configure(
         with open(output, "w") as f:
             f.write(config_str)
             print(f"Config written to {output}")
+
+
+@configure.command("add-player")
+@click.argument(
+    "config_path",
+    type=click.Path(exists=True, readable=True),
+    default="./xega_config.json",
+)
+@click.option(
+    "--model",
+    "-m",
+    multiple=True,
+    required=True,
+    help="Model to add as a player (can be used multiple times)",
+)
+@click.option(
+    "--output",
+    "-o",
+    help="Output configuration path. If not specified, overwrites the input file.",
+)
+def add_player_cmd(
+    config_path: str,
+    model: List[str],
+    output: Optional[str],
+):
+    """Add players to an existing expanded Xega benchmark configuration"""
+
+    # Load the existing config
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    # Verify it's an expanded config
+    if config.get("config_type") != "expanded_benchmark_config":
+        click.echo(
+            "Error: This command only works with expanded configurations.", err=True
+        )
+        click.echo(
+            "Use --expand-config when creating the configuration or convert it first.",
+            err=True,
+        )
+        raise click.Abort()
+
+    # Add each model as a new player using the same pattern as build_benchmark_config
+    for model_name in model:
+        new_player = PlayerConfig(
+            name="black",
+            id=model_name,
+            player_type="default",
+            options={
+                "model": model_name,
+                "provider": guess_provider_from_model(model_name),
+            },
+        )
+        config = add_player_to_expanded_config(config, new_player)
+        click.echo(f"Added player: {model_name}")
+
+    # Output
+    config_str = dumps(config, indent=2)
+    output_path = output or config_path
+
+    with open(output_path, "w") as f:
+        f.write(config_str)
+
+    if output_path == config_path:
+        click.echo(f"Updated config in place: {output_path}")
+    else:
+        click.echo(f"Updated config written to: {output_path}")

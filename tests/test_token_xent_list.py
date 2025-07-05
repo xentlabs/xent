@@ -261,7 +261,7 @@ def test_repr_and_str():
 
     # Test __str__ - should round to integer values
     str_rep = str(list1)
-    assert str_rep == "[('hello', 1), ('world', 3)]"
+    assert str_rep == "hello|1 world|3"
 
     # Test __repr__
     repr_str = repr(list1)
@@ -276,7 +276,7 @@ def test_edge_cases():
     # Empty list
     empty = TokenXentList([])
     assert empty.total_xent() == 0.0
-    assert str(empty) == "[]"
+    assert str(empty) == ""
 
     # Single element
     single = TokenXentList([("only", 5.0)])

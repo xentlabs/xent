@@ -33,10 +33,8 @@ So how do you run a Xega benchmark? Lets break it into steps
 
 ### Initial configuration
 
-In order to run Xega, you need to have [Poetry](https://python-poetry.org/) installed. See the [installation instructions](https://python-poetry.org/docs/#installing-with-the-official-installer) or just run `curl -sSL https://install.python-poetry.org | python3 -` 
+In order to run Xega, you need to have [uv](https://github.com/astral-sh/uv) installed. See the [installation instructions](https://github.com/astral-sh/uv?tab=readme-ov-file#installation) or just run `curl -LsSf https://astral.sh/uv/install.sh | sh` 
 
-
-Once Poetry is installed, install Xega dependencies by running `poetry run install`. Your local Xega environment is now ready to run!
 
 ### Benchmark Configuration
 
@@ -47,17 +45,17 @@ First, we'll create a configuration for your benchmark run. This configuration w
 - Whether games should be played iteratively
 - The maximum number of game-code lines to execute per game
 
-To generate such a configuration you call `poetry run xega configure`. 
+To generate such a configuration you call `uv run xega configure`. 
 
 ```bash
 # Generate a minimal configuration with a simple game played by gpt-4o
-poetry run xega configure
+uv run xega configure
 # Generate a configuration with a simple game played by gpt-4.1 and o3
-poetry run xega configure --model gpt-4.1 --model o3
+uv run xega configure --model gpt-4.1 --model o3
 # Generate a configuration from games defined in a directory
-poetry run xega configure --game-dir ./games
+uv run xega configure --game-dir ./games
 # See more CLI configuration options
-poetry run xega configure --help
+uv run xega configure --help
 ```
 
 The configuration will be stored in a json file (`./xega_config.json` by default) which can be passed to `xega run` for execution.
@@ -68,11 +66,11 @@ So, now that we have a configuration, how do we run it?
 
 ### Benchmark Execution
 
-To run a benchmark simply `poetry run xega run`. But before you do that, here are some notes:
+To run a benchmark simply `uv run xega run`. But before you do that, here are some notes:
 
-By default, `xega run` will use `./xega_config.json` as the path to the benchmark configuration. You can change this by doing `poetry run xega run --config path/to/config.json`
+By default, `xega run` will use `./xega_config.json` as the path to the benchmark configuration. You can change this by doing `uv run xega run --config path/to/config.json`
 
-During execution, `xega run` will place results and execution artifacts into a directory. By default this is `./results/<benchmark id>`. You can modify that path via `poetry run xega run --results-dir path/to/results`. Xega will create a new directory in the specified path with the benchmark_id.
+During execution, `xega run` will place results and execution artifacts into a directory. By default this is `./results/<benchmark id>`. You can modify that path via `uv run xega run --results-dir path/to/results`. Xega will create a new directory in the specified path with the benchmark_id.
 
 In order to be somewhat robust to failure or interruption, Xega will look into the results directory for completed work. So if you re-run an already completed benchmark, it will effectively be a no-op. Instead you can pass either `--regenerate-id` (which will make a new, timestamped, benchmark id for the run) or `--clean` which will destroy any existing data in the results dir. Be careful using `--clean`! You can totally delete your valuable results! I recommend using `--regenerate-id`
 
@@ -129,17 +127,11 @@ A short guide to get you started modifying Xega and maybe (hopefully!) contribut
 
 1. Before you begin, ensure you have the following installed:
 - Python 3.12 or higher
-- [Poetry](https://python-poetry.org/) for dependency management
+- [uv](https://github.com/astral-sh/uv) for dependency management
 
-2. Install dependencies via poetry
-
+2. Run the CLI tool
 ```bash
-poetry install
-```
-
-3. Run the CLI tool
-```bash
-poetry run xega
+uv run xega
 ```
 
 4. Run tests
@@ -148,13 +140,13 @@ poetry run xega
 
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
 # Run a specific test
-poetry run pytest tests/test_x_string.py
+uv run pytest tests/test_x_string.py
 # Run only unit tests
-poetry run pytest -m "not integration"
+uv run pytest -m "not integration"
 # Run only integration tests
-poetry run pytest -m integration
+uv run pytest -m integration
 ```
 
 ### Future Work

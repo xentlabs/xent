@@ -151,11 +151,18 @@ async def run_benchmark(
             if existing:
                 return existing
 
-            result = await run_game(game_config)
-            if result:
-                write_game_results(result, results_dir)
-                print_game_history(result)
-            return result
+            try:
+                result = await run_game(game_config)
+                if result:
+                    write_game_results(result, results_dir)
+                    print_game_history(result)
+                return result
+            except Exception as e:
+                logging.exception(
+                    f"Error running game {game_config['game']['name']} with players {[p['id'] for p in game_config['players']]}: {e}",
+                    exc_info=True,
+                )
+                return None
 
     tasks = [
         run_game_or_get_results(game_config)

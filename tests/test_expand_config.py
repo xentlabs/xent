@@ -235,27 +235,60 @@ def test_expand_game_config_empty_code():
     mock_judge.generate_text.assert_not_called()
 
 
-def test_expand_game_config_whitespace_preservation():
-    """Test that code whitespace and indentation is handled correctly"""
-    game_config = GameConfig(
-        name="test_whitespace",
-        code="""
-            assign(s1=story())
-                reveal(black, s1)
-            elicit(black, x, 10)
-        """,
+def test_full_line_comments_preserved(mock_judge):
+    """Verify that full-line comments are preserved."""
+    code = """
+# This is a full-line comment.
+assign(s=story())
+# Another comment
+    """
+    processed_code = preprocess_dsl_code(code, mock_judge)
+    assert "# This is a full-line comment." in processed_code
+    assert "assign(s='Once upon a time in a distant galaxy...')" in processed_code
+    assert "# Another comment" in processed_code
+
+
+def test_inline_comments_preserved(mock_judge):
+    """Verify that inline comments are preserved."""
+    code = "assign(s=story())  # This is an inline comment."
+    processed_code = preprocess_dsl_code(code, mock_judge)
+    assert "assign(s='Once upon a time in a distant galaxy...')" in processed_code
+    assert "# This is an inline comment." in processed_code
+
+
+def test_no_code_line_with_comment_preserved(mock_judge):
+    """Verify that a line with only a comment is preserved."""
+    code = "# Just a comment"
+    processed_code = preprocess_dsl_code(code, mock_judge)
+    assert code in processed_code
+
+
+def test_empty_lines_preserved(mock_judge):
+    """Verify that empty lines are preserved."""
+    code = """
+assign(s=story())
+
+reveal(black, s)
+    """
+    processed_code = preprocess_dsl_code(code, mock_judge)
+    assert "assign(s='Once upon a time in a distant galaxy...')" in processed_code
+    assert "\n\n" in processed_code
+    assert "reveal(black, s)" in processed_code
+
+
+def test_mixed_comments_and_code(mock_judge):
+    """Verify correct handling of mixed comments and code."""
+    code = """
+# Header comment
+assign(s1=story())  # First story
+assign(s2=story())  # Second story
+
+# Footer comment
+    """
+    processed_code = preprocess_dsl_code(code, mock_judge)
+    assert "# Header comment" in processed_code
+    assert "assign(s1='Once upon a time in a distant galaxy...')" in processed_code
+    assert (
+        "assign(s2='The mysterious stranger arrived at midnight...')" in processed_code
     )
-
-    mock_judge = Mock()
-    mock_judge.generate_text.return_value = "Story text"
-
-    expanded = expand_game_config(game_config, "seed", mock_judge)
-
-    # Check that lines are stripped and reconstructed properly
-    lines = expanded["code"].splitlines()
-    assert all(line == line.strip() for line in lines if line)
-
-    # Verify content
-    assert "assign(s1='Story text')" in expanded["code"]
-    assert "reveal(black, s1)" in expanded["code"]
-    assert "elicit(black, x, 10)" in expanded["code"]
+    assert "# Footer comment" in processed_code

@@ -1,5 +1,7 @@
 import ast
-from typing import List
+import io
+import tokenize
+from typing import List, Tuple
 
 from xega.common.xega_types import (
     ExpandedGameConfig,
@@ -99,15 +101,69 @@ class StoryRewriter(ast.NodeTransformer):
         return node
 
 
+def extract_comment_and_code(line: str) -> Tuple[str, str]:
+    """Extract code and comment parts from a line.
+    Returns (code_part, comment_part)
+    """
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(line).readline))
+        for token in tokens:
+            if token.type == tokenize.COMMENT:
+                comment_start = token.start[1]
+                code_part = line[:comment_start].rstrip()
+                comment_part = line[comment_start:]
+                return code_part, comment_part
+    except tokenize.TokenError:
+        # If tokenization fails, treat the whole line as code
+        pass
+    return line, ""
+
+
 def preprocess_dsl_code(code: str, judge: Judge) -> str:
     lines = code.splitlines()
     new_lines: List[str] = []
+
     for line in lines:
-        line = line.strip()
-        tree = ast.parse(line)
-        rewriter = StoryRewriter(judge)
-        new_tree = rewriter.visit(tree)
-        ast.fix_missing_locations(new_tree)
-        rewritten_code = ast.unparse(new_tree)
-        new_lines.append(rewritten_code)
+        stripped_line = line.strip()
+
+        # If it's an empty line, keep it as-is
+        if not stripped_line:
+            new_lines.append(line)
+            continue
+
+        # If it's a full-line comment, keep it as-is
+        if stripped_line.startswith("#"):
+            new_lines.append(line)
+            continue
+
+        # Extract code and comment parts
+        code_part, comment_part = extract_comment_and_code(line)
+
+        # If there's no actual code (just whitespace), keep original
+        if not code_part.strip():
+            new_lines.append(line)
+            continue
+
+        # Transform the code part
+        try:
+            # Get the indentation from the original line
+            original_indent = len(line) - len(line.lstrip())
+
+            tree = ast.parse(code_part.strip())
+            rewriter = StoryRewriter(judge)
+            new_tree = rewriter.visit(tree)
+            ast.fix_missing_locations(new_tree)
+            rewritten_code = ast.unparse(new_tree)
+
+            # Reconstruct the line with original indentation
+            if comment_part:
+                new_line = " " * original_indent + rewritten_code + " " + comment_part
+            else:
+                new_line = " " * original_indent + rewritten_code
+
+            new_lines.append(new_line)
+        except SyntaxError:
+            # If parsing fails, keep the original line
+            new_lines.append(line)
+
     return "\n".join(new_lines)

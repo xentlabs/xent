@@ -126,7 +126,7 @@ def game_results_json_filename(game_config: XegaGameConfig) -> str:
 
 
 def print_game_history(game_results: XegaGameResult) -> None:
-    logging.info(f"History for game {game_results["game"]["game"]['name']}:")
+    logging.info(f"History for game {game_results['game']['game']['name']}:")
     for game_result in game_results["game_results"]:
         for line in game_result["xrt_history"]:
             logging.info(line)
@@ -143,22 +143,31 @@ async def run_benchmark(
 
     benchmark_result = XegaBenchmarkResult(config=benchmark_config, game_results=[])
     logging.info(
-        f"Starting benchmark with Benchmark ID: {benchmark_result['config']['benchmark_id']}"
+        f"Starting benchmark with Benchmark ID: {benchmark_result['config']['benchmark_id']}. Preparing to run {len(benchmark_config['games'])} games."
     )
 
     semaphore = asyncio.Semaphore(max_concurrent_games)
 
     async def run_game_or_get_results(game_config, judge: Judge):
+        game_str = f"{game_config['game']['name']} with players {[p['id'] for p in game_config['players']]} and map seed {game_config['map_seed']}"
         async with semaphore:
             existing = get_existing_game_results(results_dir, game_config)
             if existing:
+                print(
+                    f"Found existing results for game {game_str}, skipping execution."
+                )
                 return existing
 
             try:
+                print(f"Executing game {game_str}")
                 result = await run_game(game_config, judge)
                 if result:
+                    print(f"Game {game_str} completed successfully")
                     write_game_results(result, results_dir)
                     print_game_history(result)
+                else:
+                    print(f"Game {game_str} failed to execute")
+
                 return result
             except Exception as e:
                 logging.exception(
@@ -176,6 +185,9 @@ async def run_benchmark(
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
+    print(
+        f"Benchmark {benchmark_result['config']['benchmark_id']} completed with {len(results)} games"
+    )
     # Process results, handling any exceptions
     for result in results:
         if isinstance(result, BaseException):
@@ -185,4 +197,5 @@ async def run_benchmark(
 
     write_benchmark_results(benchmark_result, results_dir)
     logging.info(f"Benchmark ({benchmark_result['config']['benchmark_id']}) completed")
+    print(f"Benchmark ({benchmark_result['config']['benchmark_id']}) completed")
     return benchmark_result

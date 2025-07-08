@@ -21,12 +21,15 @@ from xega.runtime.runtime import XegaRuntime
 from xega.runtime.variables import build_globals, build_locals
 
 
-async def run_game(game_config: XegaGameConfig) -> XegaGameResult | None:
+async def run_game(
+    game_config: XegaGameConfig, judge: Judge | None
+) -> XegaGameResult | None:
     game_name = game_config["game"]["name"]
     game_code = game_config["game"]["code"]
     player_configs = game_config["players"]
-    judge = Judge(game_config["judge_model"])
-    judge.set_seed(game_config["seed"], game_config["map_seed"])
+    if judge is None:
+        judge = Judge(game_config["judge_model"])
+        judge.set_seed(game_config["seed"], "")
     players: List[XGP] = []
     for player_config in player_configs:
         players.append(make_player(player_config["name"], game_config))
@@ -145,14 +148,14 @@ async def run_benchmark(
 
     semaphore = asyncio.Semaphore(max_concurrent_games)
 
-    async def run_game_or_get_results(game_config):
+    async def run_game_or_get_results(game_config, judge: Judge):
         async with semaphore:
             existing = get_existing_game_results(results_dir, game_config)
             if existing:
                 return existing
 
             try:
-                result = await run_game(game_config)
+                result = await run_game(game_config, judge)
                 if result:
                     write_game_results(result, results_dir)
                     print_game_history(result)
@@ -164,8 +167,10 @@ async def run_benchmark(
                 )
                 return None
 
+    judge = Judge(benchmark_config["judge_model"])
+    judge.set_seed(benchmark_config["seed"], "")
     tasks = [
-        run_game_or_get_results(game_config)
+        run_game_or_get_results(game_config, judge)
         for game_config in benchmark_config["games"]
     ]
 

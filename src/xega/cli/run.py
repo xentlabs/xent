@@ -66,22 +66,26 @@ def load_benchmark_config(
     default=1,
     help="Number of games to run in parallel. Default is 1. Increase this for higher throughput benchmarking.",
 )
-@click.option("--verbose", is_flag=True, help="Enable verbose logging")
+@click.option(
+    "-v", "--verbose", count=True, help="Enable verbose logging (-v, -vv, -vvv)"
+)
 def run(
     config: str,
     results_dir: str,
     dont_analyze: bool,
     clean: bool,
     regenerate_id: bool,
-    verbose: bool,
+    verbose: int,
     parallel_games: int,
 ):
     """Execute Xega benchmark"""
-    log_level = logging.INFO
+    log_level = logging.WARNING
     logging_format = (
         "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s"
     )
-    if verbose:
+    if verbose == 1:
+        log_level = logging.INFO
+    elif verbose >= 2:
         log_level = logging.DEBUG
     logging.basicConfig(level=log_level, format=logging_format)
 

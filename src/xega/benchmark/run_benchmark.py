@@ -147,20 +147,24 @@ async def run_benchmark(
     )
 
     semaphore = asyncio.Semaphore(max_concurrent_games)
+    done_count = 0
 
     async def run_game_or_get_results(game_config, judge: Judge):
         game_str = f"{game_config['game']['name']} with players {[p['id'] for p in game_config['players']]} and map seed {game_config['map_seed']}"
         async with semaphore:
+            nonlocal done_count
             existing = get_existing_game_results(results_dir, game_config)
             if existing:
                 print(
                     f"Found existing results for game {game_str}, skipping execution."
                 )
+                done_count += 1
                 return existing
 
             try:
                 print(f"Executing game {game_str}")
                 result = await run_game(game_config, judge)
+                done_count += 1
                 if result:
                     print(f"Game {game_str} completed successfully")
                     write_game_results(result, results_dir)
@@ -168,6 +172,7 @@ async def run_benchmark(
                 else:
                     print(f"Game {game_str} failed to execute")
 
+                print(f"Completed {done_count}/{len(benchmark_config['games'])} games")
                 return result
             except Exception as e:
                 logging.exception(

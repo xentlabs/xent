@@ -8,7 +8,7 @@ from xega.common.util import dumps
 from xega.common.xega_types import PlayerOptions
 
 KNOWN_PROVIDER = Literal[
-    "openai", "anthropic", "gemini", "grok", "ollama", "huggingface"
+    "openai", "anthropic", "gemini", "grok", "ollama", "huggingface", "deepseek"
 ]
 
 

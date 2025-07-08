@@ -599,8 +599,8 @@ def make_client(unchecked_options: Optional[PlayerOptions]) -> LLMClient:
         return GeminiClient(options["model"])
     elif provider == "grok":
         return GrokClient(options["model"])
-    elif provider == "deekseek":
-        return GrokClient(options["model"])
+    elif provider == "deepseek":
+        return DeepSeekClient(options["model"])
     elif provider == "ollama":
         return OllamaClient(options["model"])
     elif provider == "huggingface":

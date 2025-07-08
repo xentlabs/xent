@@ -33,4 +33,6 @@ def make_player(player_name: PlayerName, game_config: XegaGameConfig) -> XGP:
             f"Player type {player_type} is not registered. Available types: {list(player_constructors.keys())}"
         )
     constructor = player_constructors[player_type]
-    return constructor(player_name, player_config.get("options", {}), game_config)
+    return constructor(
+        player_name, player_config["id"], player_config.get("options", {}), game_config
+    )

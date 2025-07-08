@@ -41,7 +41,7 @@ FAKE_GAME_CONFIG: XegaGameConfig = {
 def xrt():
     """Create a test XegaRuntime instance."""
     game_config = FAKE_GAME_CONFIG.copy()
-    player = MockXGP("black", {}, game_config)
+    player = MockXGP("black", "mock_black_id", {}, game_config)
     locals = build_locals([player], game_config)
     judge = Judge("gpt2")
     globals = build_globals(judge)
@@ -52,8 +52,8 @@ def xrt():
 def xrt_multi_player():
     """Create a test XegaRuntime instance with multiple players."""
     game_config = FAKE_GAME_CONFIG.copy()
-    alice = MockXGP("alice", {}, game_config)
-    bob = MockXGP("bob", {}, game_config)
+    alice = MockXGP("alice", "mock_alice_id", {}, game_config)
+    bob = MockXGP("bob", "mock_bob_id", {}, game_config)
     locals = build_locals([alice, bob], game_config)
     judge = Judge("gpt2")
     globals = build_globals(judge)
@@ -64,8 +64,8 @@ def xrt_multi_player():
 def xrt_zero_sum():
     """Create a test XegaRuntime instance with zero-sum players."""
     game_config = FAKE_GAME_CONFIG.copy()
-    black = MockXGP("black", {}, game_config)
-    white = MockXGP("white", {}, game_config)
+    black = MockXGP("black", "mock_black_id", {}, game_config)
+    white = MockXGP("white", "mock_white_id", {}, game_config)
     locals = build_locals([black, white], game_config)
     judge = Judge("gpt2")
     globals = build_globals(judge)

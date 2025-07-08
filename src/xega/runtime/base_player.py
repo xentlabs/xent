@@ -21,11 +21,13 @@ class XGP(ABC):
     def __init__(
         self,
         name: PlayerName,
+        id: str,
         options: Optional[PlayerOptions],
         game_config: XegaGameConfig,
     ):
         self._score = 0.0
         self._name: Final[PlayerName] = name
+        self._id: Final[str] = id
         self._options: Final[Optional[PlayerOptions]] = options
         self._game_config: Final[XegaGameConfig] = game_config
 
@@ -36,6 +38,10 @@ class XGP(ABC):
     @property
     def name(self) -> PlayerName:
         return self._name
+
+    @property
+    def id(self) -> str:
+        return self._id
 
     @property
     def options(self) -> Optional[PlayerOptions]:

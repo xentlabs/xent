@@ -34,7 +34,7 @@ def build_locals(players: List[XGP], game_config: XegaGameConfig):
 
     for player_name in ALL_PLAYERS:
         if player_name not in local_vars:
-            player = MockXGP(player_name, {}, game_config)
+            player = MockXGP(player_name, f"mock_{player_name}_id", {}, game_config)
             local_vars[player_name] = player
 
     return local_vars

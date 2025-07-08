@@ -14,10 +14,11 @@ class MockXGP(XGP):
     def __init__(
         self,
         name: PlayerName,
+        id: str,
         options: Optional[PlayerOptions],
         game_config: XegaGameConfig,
     ):
-        super().__init__(name, options, game_config)
+        super().__init__(name, id, options, game_config)
         self.history: List[str] = []
         self.event_history: List[XegaEvent] = []
 
@@ -43,10 +44,11 @@ class DefaultXGP(XGP):
     def __init__(
         self,
         name: PlayerName,
+        id: str,
         options: Optional[PlayerOptions],
         game_config: XegaGameConfig,
     ):
-        super().__init__(name, options, game_config)
+        super().__init__(name, id, options, game_config)
         self.client = make_client(options)
         self.game_code = game_config["game"]["code"]
         self.event_history: List[XegaEvent] = []

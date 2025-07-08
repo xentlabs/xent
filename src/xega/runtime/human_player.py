@@ -10,10 +10,11 @@ class HumanXGP(XGP):
     def __init__(
         self,
         name: PlayerName,
+        id: str,
         options: Optional[PlayerOptions],
         game_config: XegaGameConfig,
     ):
-        super().__init__(name, options, game_config)
+        super().__init__(name, id, options, game_config)
         self.event_history: List[XegaEvent] = []
 
     def add_score(self, score: float | int) -> None:

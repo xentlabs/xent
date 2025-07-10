@@ -99,13 +99,17 @@ def add_player_to_expanded_config(
     # Get unique games from the existing config
     unique_games = {}
     for game_config in config["games"]:
-        game_key = (game_config["game"]["name"], game_config["game"]["code"])
+        game_key = (
+            game_config["game"]["name"],
+            game_config["game"]["code"],
+            game_config["map_seed"],
+        )
         if game_key not in unique_games:
-            unique_games[game_key] = game_config["game"]
+            unique_games[game_key] = (game_config["game"], game_config["map_seed"])
 
     # Create new game configs for the new player
     new_game_configs = []
-    for game in unique_games.values():
+    for (game, map_seed) in unique_games.values():
         new_game_config: XegaGameConfig = {
             # Copy metadata fields
             "judge_model": config["judge_model"],
@@ -118,13 +122,39 @@ def add_player_to_expanded_config(
             # Game-specific fields
             "game": deepcopy(game),
             "players": [new_player],
-            "map_seed": game["map_seed"],
+            "map_seed": map_seed,
         }
         new_game_configs.append(new_game_config)
 
     # Create new expanded config with all games
     new_config = deepcopy(config)
     new_config["games"].extend(new_game_configs)
+
+    return new_config
+
+
+def remove_player_from_expanded_config(
+    config: ExpandedXegaBenchmarkConfig, player_id_to_remove: str
+) -> ExpandedXegaBenchmarkConfig:
+    """Remove a player from an expanded benchmark config."""
+    new_config = deepcopy(config)
+
+    # Filter the games, removing any associated with the specified player ID.
+    # In an expanded config, each game entry has exactly one player.
+    original_game_count = len(new_config["games"])
+    new_config["games"] = [
+        game_config
+        for game_config in new_config["games"]
+        if game_config["players"][0]["id"] != player_id_to_remove
+    ]
+
+    # Notify the user if the specified player was not found in the config
+    if len(new_config["games"]) == original_game_count:
+        click.echo(
+            f"Warning: Player with ID '{player_id_to_remove}' not found.", err=True
+        )
+    else:
+        click.echo(f"Successfully removed player: {player_id_to_remove}")
 
     return new_config
 
@@ -276,7 +306,7 @@ def add_player_cmd(
         )
         raise click.Abort()
 
-    # Add each model as a new player using the same pattern as build_benchmark_config
+    # Add each model as a new player
     for model_name in model:
         new_player = PlayerConfig(
             name="black",
@@ -289,6 +319,63 @@ def add_player_cmd(
         )
         config = add_player_to_expanded_config(config, new_player)
         click.echo(f"Added player: {model_name}")
+
+    # Output
+    config_str = dumps(config, indent=2)
+    output_path = output or config_path
+
+    with open(output_path, "w") as f:
+        f.write(config_str)
+
+    if output_path == config_path:
+        click.echo(f"Updated config in place: {output_path}")
+    else:
+        click.echo(f"Updated config written to: {output_path}")
+
+
+@configure.command("remove-player")
+@click.argument(
+    "config_path",
+    type=click.Path(exists=True, readable=True),
+    default="./xega_config.json",
+)
+@click.option(
+    "--model",
+    "-m",
+    multiple=True,
+    required=True,
+    help="Model ID to remove as a player (can be used multiple times).",
+)
+@click.option(
+    "--output",
+    "-o",
+    help="Output configuration path. If not specified, overwrites the input file.",
+)
+def remove_player_cmd(
+    config_path: str,
+    model: List[str],
+    output: Optional[str],
+):
+    """Remove players from an existing expanded Xega benchmark configuration."""
+
+    # Load the existing config
+    with open(config_path, "r") as f:
+        config = json.load(f)
+
+    # Verify it's an expanded config
+    if config.get("config_type") != "expanded_benchmark_config":
+        click.echo(
+            "Error: This command only works with expanded configurations.", err=True
+        )
+        click.echo(
+            "Use --expand-config when creating the configuration or convert it first.",
+            err=True,
+        )
+        raise click.Abort()
+
+    # Remove each specified player model
+    for model_name in model:
+        config = remove_player_from_expanded_config(config, model_name)
 
     # Output
     config_str = dumps(config, indent=2)

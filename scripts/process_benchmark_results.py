@@ -1,8 +1,11 @@
+import argparse
 import json
-import sys
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
-def process_benchmark_results(benchmark_result: Dict[str, Any]) -> Dict[str, Dict[str, List[Tuple[str, float]]]]:
+
+def process_benchmark_results(
+    benchmark_result: Dict[str, Any], summary_only: bool = False
+) -> Dict[str, Dict[str, List[Tuple[str, float]]]]:
     processed_data: Dict[str, Dict[str, List[Tuple[str, float]]]] = {}
 
     for game_result in benchmark_result["game_results"]:
@@ -15,37 +18,62 @@ def process_benchmark_results(benchmark_result: Dict[str, Any]) -> Dict[str, Dic
         player_id = player_config["id"]
         player_name = player_config["name"]
 
+        game_code = game_result["game"]["game"]["code"]
+
         if game_id not in processed_data:
             processed_data[game_id] = {}
+            # Add game code entry
+            processed_data[game_id]["CODE"] = [(game_code, 0.0)]
+
         if player_id not in processed_data[game_id]:
-            processed_data[game_id][player_id] = []
+            if summary_only:
+                processed_data[game_id][player_id] = [
+                    ("", -1.0)
+                ]  # Initialize with a low score
+            else:
+                processed_data[game_id][player_id] = []
 
         for iteration_result in game_result["game_results"]:
             elicit_response = None
             for event in iteration_result["xrt_history"]:
                 if event["type"] == "elicit_response":
                     elicit_response = event["response"]
-                    break # Assuming only one elicit_response per iteration for simplicity, or taking the first one
+                    break  # Assuming only one elicit_response per iteration for simplicity, or taking the first one
 
             # Extract score for the current player using player_name
             score = iteration_result["scores"].get(player_name)
 
             if elicit_response is not None and score is not None:
-                processed_data[game_id][player_id].append((elicit_response, score))
+                if summary_only:
+                    current_best_elicit, current_best_score = processed_data[game_id][
+                        player_id
+                    ][0]
+                    if score > current_best_score:
+                        processed_data[game_id][player_id][0] = (elicit_response, score)
+                else:
+                    processed_data[game_id][player_id].append((elicit_response, score))
 
     return processed_data
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python process_benchmark_results.py <path_to_benchmark_result.json>")
-        sys.exit(1)
 
-    file_path = sys.argv[1]
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Process benchmark results.")
+    parser.add_argument("file_path", help="Path to the benchmark result JSON file.")
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Display only the highest score for each game and player.",
+    )
+    args = parser.parse_args()
+
+    file_path = args.file_path
+    summary_only = args.summary
+
     try:
         with open(file_path, "r") as f:
             example_benchmark_result = json.load(f)
-        
-        output = process_benchmark_results(example_benchmark_result)
+
+        output = process_benchmark_results(example_benchmark_result, summary_only)
         print(json.dumps(output, indent=2))
 
     except FileNotFoundError:

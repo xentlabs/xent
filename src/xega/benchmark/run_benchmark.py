@@ -22,7 +22,7 @@ from xega.runtime.variables import build_globals, build_locals
 
 
 async def run_game(
-    game_config: XegaGameConfig, judge: Judge | None
+    game_config: XegaGameConfig, judge: Judge | None, raise_on_error: bool = False
 ) -> XegaGameResult | None:
     game_name = game_config["game"]["name"]
     game_code = game_config["game"]["code"]
@@ -61,6 +61,8 @@ async def run_game(
         logging.exception(
             f"Game {game_name} execution failed with exception: {e}", exc_info=True
         )
+        if raise_on_error:
+            raise e
         return None
 
 

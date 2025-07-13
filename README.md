@@ -6,6 +6,7 @@
 <div align="center" style="font-family: Arial, sans-serif;">
   <p>
     <a href="#about" style="text-decoration: none; font-weight: bold;">About</a> •
+    <a href="#leaderboard" style="text-decoration: none; font-weight: bold;">Leaderboard</a> •
     <a href="#run" style="text-decoration: none; font-weight: bold;">Run</a> •
     <a href="#develop" style="text-decoration: none; font-weight: bold;">Develop</a> •
     <a href="#license" style="text-decoration: none; font-weight: bold;">License</a> •
@@ -25,6 +26,27 @@ Some quick notes:
 - Verified Leaderboard Coming Soon!
 - CLI Published to PyPI Coming Soon!
 - Better support for library usage of Xega coming soon
+
+## Leaderboard
+
+See more in depth results at [xent.tech](https://xent.tech/leaderboard)
+
+| Rank | Player ID | Score |
+|:----:|:----------|------:|
+| 1 | o3 | 2224.82 |
+| 2 | deepseek-reasoner | 1785.18 |
+| 3 | claude-sonnet-4-20250514 | 1621.19 |
+| 4 | gemini-2.5-flash | 1608.86 |
+| 5 | claude-opus-4-20250514 | 1599.26 |
+| 6 | claude-3-7-sonnet-20250219 | 1574.04 |
+| 7 | o4-mini | 1470.44 |
+| 8 | claude-3-5-sonnet-20241022 | 1359.36 |
+| 9 | gpt-4.1 | 1308.66 |
+| 10 | gemini-2.5-pro | 1304.17 |
+| 11 | grok-3 | 1234.02 |
+| 12 | deepseek-chat | 1204.86 |
+| 13 | gpt-4o | 1178.54 |
+| 14 | grok-3-mini | 1072.38 |
 
 
 ## Run

@@ -94,7 +94,6 @@ class DefaultXGP(XGP):
         return result
 
     async def post(self, event: XegaEvent) -> None:
-        logging.info(f"Player received message: {event}")
         self.event_history.append(event)
         self.history.append(event_to_message(event))
 

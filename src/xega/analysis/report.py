@@ -4,7 +4,6 @@ import os
 import subprocess
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from xega.common.util import dumps, loads
 from xega.common.xega_types import (
@@ -27,7 +26,7 @@ def get_file_extension(image_path: str) -> str:
     return os.path.splitext(image_path)[1][1:]
 
 
-def calculate_arms(game_results: List[XegaGameIterationResult]) -> List[float]:
+def calculate_arms(game_results: list[XegaGameIterationResult]) -> list[float]:
     """
     Calculate Average Running Max Score (ARMS) for a set of game iterations.
     Returns a list of ARMS values, one for each iteration.
@@ -52,13 +51,13 @@ def calculate_arms(game_results: List[XegaGameIterationResult]) -> List[float]:
 
 
 def group_results_by_game_and_seed(
-    game_results: List[XegaGameResult],
-) -> Dict[str, Dict[str, List[XegaGameResult]]]:
+    game_results: list[XegaGameResult],
+) -> dict[str, dict[str, list[XegaGameResult]]]:
     """
     Group game results by game name and map seed.
     Returns: {game_name: {map_seed: [results]}}
     """
-    grouped: Dict[str, Dict[str, List[XegaGameResult]]] = defaultdict(
+    grouped: dict[str, dict[str, list[XegaGameResult]]] = defaultdict(
         lambda: defaultdict(list)
     )
 
@@ -71,8 +70,8 @@ def group_results_by_game_and_seed(
 
 
 def calculate_average_scores_across_seeds(
-    results_by_seed: Dict[str, List[XegaGameResult]],
-) -> Dict[str, Dict[PlayerName, float]]:
+    results_by_seed: dict[str, list[XegaGameResult]],
+) -> dict[str, dict[PlayerName, float]]:
     """
     Calculate average scores across all map seeds for each player.
     Returns: {map_seed: {player_name: score}}
@@ -355,8 +354,8 @@ def generate_markdown_report(
 def generate_pdf(
     results_dir: str,
     markdown_file: str,
-    output_pdf: Optional[str] = None,
-    pandoc_options: List[str] | None = None,
+    output_pdf: str | None = None,
+    pandoc_options: list[str] | None = None,
 ) -> str:
     """
     Generate a PDF from a markdown file using pandoc.

@@ -186,12 +186,12 @@ def test_all_outputs_generated(shared_benchmark_results):
     # Check individual game plots
     for game in benchmark_config["games"]:
         plot_path = os.path.join(
-            test_dir, f"{game["game"]['name']}_score_vs_iteration.png"
+            test_dir, f"{game['game']['name']}_score_vs_iteration.png"
         )
         assert os.path.exists(plot_path), f"Plot for {game['game']['name']} not created"
-        assert (
-            os.path.getsize(plot_path) > 0
-        ), f"Plot for {game['game']['name']} is empty"
+        assert os.path.getsize(plot_path) > 0, (
+            f"Plot for {game['game']['name']} is empty"
+        )
 
     # Check summary chart
     summary_path = os.path.join(
@@ -205,7 +205,7 @@ def test_all_outputs_generated(shared_benchmark_results):
     assert os.path.exists(report_path), "Markdown report not created"
 
     # Verify report content
-    with open(report_path, "r") as f:
+    with open(report_path) as f:
         report_content = f.read()
 
     # Check report structure

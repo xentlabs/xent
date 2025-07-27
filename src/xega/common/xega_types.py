@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, TypedDict, TypeGuard, Union
+from typing import Literal, TypedDict, TypeGuard, Union
 
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
@@ -42,7 +42,7 @@ class RewardEvent(BaseEvent):
 
 class FailedEnsureEvent(BaseEvent):
     type: Literal["failed_ensure"]
-    ensure_results: List[bool]
+    ensure_results: list[bool]
     beacon: str
 
 
@@ -60,14 +60,14 @@ def is_omniscient_player_name(value: str) -> TypeGuard[OmniscientPlayerName]:
     return value in ("black", "white", "env")
 
 
-PlayerOptions = Dict[str, Union[str, int, float, bool]]
+PlayerOptions = dict[str, str | int | float | bool]
 
 
 class PlayerConfig(TypedDict):
     name: PlayerName
     id: str
     player_type: str
-    options: Optional[PlayerOptions]
+    options: PlayerOptions | None
 
 
 class GameConfig(TypedDict):
@@ -77,7 +77,7 @@ class GameConfig(TypedDict):
 
 class XegaMetadata(TypedDict):
     judge_model: str
-    npc_players: List[PlayerConfig]
+    npc_players: list[PlayerConfig]
     num_variables_per_register: int
     max_steps: int
     auto_replay: bool
@@ -87,8 +87,8 @@ class XegaMetadata(TypedDict):
 
 class XegaBenchmarkConfig(XegaMetadata):
     config_type: Literal["short_benchmark_config"]
-    games: List[GameConfig]
-    players: List[List[PlayerConfig]]  # List of player configurations for each game
+    games: list[GameConfig]
+    players: list[list[PlayerConfig]]  # List of player configurations for each game
     benchmark_id: str
 
 
@@ -106,7 +106,7 @@ class ExpandedGameConfig(TypedDict):
 
 class XegaGameConfig(XegaMetadata):
     game: ExpandedGameConfig
-    players: List[PlayerConfig]
+    players: list[PlayerConfig]
     map_seed: str
 
 
@@ -114,7 +114,7 @@ class XegaGameConfig(XegaMetadata):
 # independent work units that make up the benchmark.
 class ExpandedXegaBenchmarkConfig(XegaMetadata):
     config_type: Literal["expanded_benchmark_config"]
-    games: List[XegaGameConfig]
+    games: list[XegaGameConfig]
     benchmark_id: str
 
 
@@ -122,18 +122,18 @@ class ExpandedXegaBenchmarkConfig(XegaMetadata):
 
 
 class XegaGameIterationResult(TypedDict):
-    scores: Dict[PlayerName, float]
-    token_usage: Dict[PlayerName, TokenUsage]
-    xrt_history: List[XegaEvent]
+    scores: dict[PlayerName, float]
+    token_usage: dict[PlayerName, TokenUsage]
+    xrt_history: list[XegaEvent]
 
 
 class XegaGameResult(TypedDict):
     game: XegaGameConfig
-    game_results: List[XegaGameIterationResult]
-    scores: Dict[PlayerName, float]
-    token_usage: Dict[PlayerName, TokenUsage]
+    game_results: list[XegaGameIterationResult]
+    scores: dict[PlayerName, float]
+    token_usage: dict[PlayerName, TokenUsage]
 
 
 class XegaBenchmarkResult(TypedDict):
     config: ExpandedXegaBenchmarkConfig
-    game_results: List[XegaGameResult]
+    game_results: list[XegaGameResult]

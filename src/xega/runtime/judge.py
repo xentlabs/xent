@@ -3,7 +3,6 @@ import logging
 import math
 import os
 import random
-from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -36,9 +35,9 @@ DEFAULT_CHAT_TEMPLATE_JINJA = (
 
 
 class Judge:
-    def __init__(self, model_name: str, hf_dir_path: Optional[str] = None) -> None:
-        self.tokenizers_by_name: Dict[str, PreTrainedTokenizer] = {}
-        self.models_by_name: Dict[str, PreTrainedModel] = {}
+    def __init__(self, model_name: str, hf_dir_path: str | None = None) -> None:
+        self.tokenizers_by_name: dict[str, PreTrainedTokenizer] = {}
+        self.models_by_name: dict[str, PreTrainedModel] = {}
         self.device: torch.device = (
             torch.device("cuda")
             if torch.cuda.is_available()
@@ -116,7 +115,7 @@ class Judge:
             token_strings.append(token_str)
 
         paired_results: list[tuple[str, float]] = list(
-            zip(token_strings, xent_bits.tolist())
+            zip(token_strings, xent_bits.tolist(), strict=False)
         )
         txl: TokenXentList = TokenXentList(paired_results)
         logging.info(f"Xent for {string} with prefix {prefix}: {txl.total_xent()}")

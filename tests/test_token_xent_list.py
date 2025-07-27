@@ -87,9 +87,9 @@ def test_type_preservation():
     ]
 
     for i, op_result in enumerate(operations):
-        assert isinstance(
-            op_result, TokenXentList
-        ), f"Operation {i} returned {type(op_result)} instead of TokenXentList"
+        assert isinstance(op_result, TokenXentList), (
+            f"Operation {i} returned {type(op_result)} instead of TokenXentList"
+        )
 
 
 def test_comparison_operations():

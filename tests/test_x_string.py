@@ -205,20 +205,20 @@ def test_equality_and_inequality():
     assert s_abc1 == s_abc2
     assert not (s_abc1 == s_def)
     assert s_abc1 == "abc"
-    assert "abc" == s_abc1  # Test reversed comparison
+    assert s_abc1 == "abc"  # Test reversed comparison
     assert not (s_abc1 == "def")
-    assert not ("def" == s_abc1)  # Test reversed comparison
+    assert not (s_abc1 == "def")  # Test reversed comparison
     assert not (s_abc1 == 123)  # Should be False due to NotImplemented
-    assert not (123 == s_abc1)  # Should be False
+    assert not (s_abc1 == 123)  # Should be False
 
     assert s_abc1 != s_def
     assert not (s_abc1 != s_abc2)
     assert s_abc1 != "def"
-    assert "def" != s_abc1  # Test reversed comparison
+    assert s_abc1 != "def"  # Test reversed comparison
     assert not (s_abc1 != "abc")
-    assert not ("abc" != s_abc1)  # Test reversed comparison
+    assert not (s_abc1 != "abc")  # Test reversed comparison
     assert s_abc1 != 123  # Should be True due to NotImplemented
-    assert 123 != s_abc1  # Should be True
+    assert s_abc1 != 123  # Should be True
 
 
 def test_constructor_with_optional_params():

@@ -1,7 +1,7 @@
 import click
 
-from xega.cli.configure import configure
 from xega.cli.analyze import analyze
+from xega.cli.configure import configure
 from xega.cli.run import run
 
 

@@ -138,7 +138,7 @@ def test_remove_player_cmd_success(tmp_path, simple_expanded_config):
     assert result.exit_code == 0
     assert "Successfully removed player: player-a" in result.output
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         updated_config = json.load(f)
     assert len(updated_config["games"]) == 1
 
@@ -200,6 +200,6 @@ def test_add_player_cmd_success(tmp_path, simple_expanded_config):
     assert result.exit_code == 0
     assert "Added player: player-c" in result.output
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         updated_config = json.load(f)
     assert len(updated_config["games"]) == 5

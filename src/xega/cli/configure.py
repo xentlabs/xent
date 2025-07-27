@@ -1,7 +1,6 @@
 import json
 import os
 from copy import deepcopy
-from typing import List, Optional
 
 import click
 
@@ -38,14 +37,14 @@ DEFAULT_XEGA_CONFIG = XegaMetadata(
 )
 
 
-def games_from_dir(game_dir: str) -> List[GameConfig]:
+def games_from_dir(game_dir: str) -> list[GameConfig]:
     files = os.listdir(game_dir)
     game_configs = []
     for file_name in files:
         if not file_name.endswith(".xega"):
             continue
         game_name = file_name[:-5]
-        with open(os.path.join(game_dir, file_name), "r") as f:
+        with open(os.path.join(game_dir, file_name)) as f:
             game_code = f.read()
             game_config = GameConfig(
                 name=game_name,
@@ -56,16 +55,15 @@ def games_from_dir(game_dir: str) -> List[GameConfig]:
 
 
 def build_benchmark_config(
-    models: List[str],
+    models: list[str],
     judge: str,
-    games: List[GameConfig],
+    games: list[GameConfig],
     benchmark_id: str,
     seed: str,
     num_steps: int,
     auto_replay: bool,
     num_maps_per_game: int,
 ):
-
     players = [
         [
             PlayerConfig(
@@ -109,7 +107,7 @@ def add_player_to_expanded_config(
 
     # Create new game configs for the new player
     new_game_configs = []
-    for (game, map_seed) in unique_games.values():
+    for game, map_seed in unique_games.values():
         new_game_config: XegaGameConfig = {
             # Copy metadata fields
             "judge_model": config["judge_model"],
@@ -219,7 +217,7 @@ def configure(
     ctx: click.Context,
     output: str,
     game_dir: str,
-    model: List[str],
+    model: list[str],
     judge: str,
     benchmark_id: str | None,
     num_steps: int,
@@ -286,13 +284,13 @@ def configure(
 )
 def add_player_cmd(
     config_path: str,
-    model: List[str],
-    output: Optional[str],
+    model: list[str],
+    output: str | None,
 ):
     """Add players to an existing expanded Xega benchmark configuration"""
 
     # Load the existing config
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = json.load(f)
 
     # Verify it's an expanded config
@@ -353,13 +351,13 @@ def add_player_cmd(
 )
 def remove_player_cmd(
     config_path: str,
-    model: List[str],
-    output: Optional[str],
+    model: list[str],
+    output: str | None,
 ):
     """Remove players from an existing expanded Xega benchmark configuration."""
 
     # Load the existing config
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = json.load(f)
 
     # Verify it's an expanded config

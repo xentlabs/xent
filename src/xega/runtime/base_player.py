@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Final, Optional, Tuple
+from typing import Final
 
 from xega.common.xega_types import (
     PlayerName,
@@ -28,13 +28,13 @@ class XGP(ABC):
         self,
         name: PlayerName,
         id: str,
-        options: Optional[PlayerOptions],
+        options: PlayerOptions | None,
         game_config: XegaGameConfig,
     ):
         self._score = 0.0
         self._name: Final[PlayerName] = name
         self._id: Final[str] = id
-        self._options: Final[Optional[PlayerOptions]] = options
+        self._options: Final[PlayerOptions | None] = options
         self._game_config: Final[XegaGameConfig] = game_config
 
     @property
@@ -50,7 +50,7 @@ class XGP(ABC):
         return self._id
 
     @property
-    def options(self) -> Optional[PlayerOptions]:
+    def options(self) -> PlayerOptions | None:
         return self._options
 
     @property
@@ -74,7 +74,7 @@ class XGP(ABC):
         pass
 
     @abstractmethod
-    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
+    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
         pass
 
     @abstractmethod

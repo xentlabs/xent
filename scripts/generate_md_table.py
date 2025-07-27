@@ -2,15 +2,14 @@ import argparse
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List
 
 from xega.common.xega_types import XegaBenchmarkResult, XegaGameResult
 
 PlayerId = str
 GameName = str
-PlayerScores = Dict[PlayerId, float]
+PlayerScores = dict[PlayerId, float]
 
-GroupedData = Dict[PlayerId, Dict[GameName, List[XegaGameResult]]]
+GroupedData = dict[PlayerId, dict[GameName, list[XegaGameResult]]]
 
 
 def group_game_results_by_player_and_game(
@@ -19,7 +18,7 @@ def group_game_results_by_player_and_game(
     """
     Groups game results first by player ID and then by game name.
     """
-    games_by_player: Dict[str, List[XegaGameResult]] = defaultdict(list)
+    games_by_player: dict[str, list[XegaGameResult]] = defaultdict(list)
 
     for game_result in benchmark_result.get("game_results", []):
         players = game_result.get("game", {}).get("players", [])
@@ -30,7 +29,7 @@ def group_game_results_by_player_and_game(
 
     result: GroupedData = {}
     for player_id, game_results in games_by_player.items():
-        games_by_name: Dict[str, List[XegaGameResult]] = defaultdict(list)
+        games_by_name: dict[str, list[XegaGameResult]] = defaultdict(list)
         for game_result in game_results:
             game_name = game_result.get("game", {}).get("game", {}).get("name")
             if game_name:
@@ -118,5 +117,5 @@ if __name__ == "__main__":
         with args.output_file.open("w", encoding="utf-8") as f:
             f.write(markdown_output)
         print(f"\nSuccessfully wrote leaderboard to '{args.output_file}'")
-    except IOError as e:
+    except OSError as e:
         print(f"\nError writing to output file: {e}")

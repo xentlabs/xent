@@ -29,7 +29,7 @@ DEFAULT_XEGA_CONFIG = XegaMetadata(
 def load_benchmark_config(
     benchmark_config_file_path: str,
 ) -> XegaBenchmarkConfig | ExpandedXegaBenchmarkConfig:
-    with open(benchmark_config_file_path, "r") as f:
+    with open(benchmark_config_file_path) as f:
         benchmark_config = json.load(f)
 
     return benchmark_config

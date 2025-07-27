@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import os
-from typing import Dict, List
 
 from xega.common.util import dumps
 from xega.common.xega_types import (
@@ -31,7 +30,7 @@ async def run_game(
     if judge is None:
         judge = Judge(game_config["judge_model"])
         judge.set_seed(game_config["seed"], "")
-    players: List[XGP] = []
+    players: list[XGP] = []
     for player_config in player_configs:
         players.append(make_player(player_config["name"], game_config))
 
@@ -70,9 +69,9 @@ async def run_game(
 
 
 def extract_token_usage(
-    game_results: List[XegaGameIterationResult],
-) -> Dict[PlayerName, TokenUsage]:
-    total_token_usage: Dict[PlayerName, TokenUsage] = {}
+    game_results: list[XegaGameIterationResult],
+) -> dict[PlayerName, TokenUsage]:
+    total_token_usage: dict[PlayerName, TokenUsage] = {}
     for game_result in game_results:
         token = game_result["token_usage"]
         for player, token_usage in token.items():
@@ -87,9 +86,9 @@ def extract_token_usage(
 
 
 def extract_scores(
-    game_results: List[XegaGameIterationResult],
-) -> Dict[PlayerName, float]:
-    max_scores: Dict[PlayerName, float] = {}
+    game_results: list[XegaGameIterationResult],
+) -> dict[PlayerName, float]:
+    max_scores: dict[PlayerName, float] = {}
     for game_result in game_results:
         score = game_result["scores"]
         for player, player_score in score.items():
@@ -122,7 +121,7 @@ def get_existing_game_results(
 ) -> XegaGameResult | None:
     results_path = os.path.join(results_dir, game_results_json_filename(game_config))
     if os.path.exists(results_path):
-        with open(results_path, "r") as f:
+        with open(results_path) as f:
             game_results = json.load(f)
             if (
                 game_results["game"]["game"]["name"] == game_config["game"]["name"]
@@ -144,7 +143,7 @@ def write_game_results(game_results: XegaGameResult, results_dir: str):
 
 
 def game_results_json_filename(game_config: XegaGameConfig) -> str:
-    return f"game_{game_config["game"]["name"]}_{game_config["players"][0]["id"]}_{game_config["map_seed"]}.json"
+    return f"game_{game_config['game']['name']}_{game_config['players'][0]['id']}_{game_config['map_seed']}.json"
 
 
 def print_game_history(game_results: XegaGameResult) -> None:

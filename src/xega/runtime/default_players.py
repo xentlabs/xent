@@ -1,6 +1,5 @@
 import logging
 import re
-from typing import List, Optional, Tuple
 
 from xega.common.errors import XegaInternalError
 from xega.common.token_xent_list import round_xent
@@ -21,14 +20,17 @@ class MockXGP(XGP):
         self,
         name: PlayerName,
         id: str,
-        options: Optional[PlayerOptions],
+        options: PlayerOptions | None,
         game_config: XegaGameConfig,
-        token_usage_per_move: Optional[TokenUsage] = None,
+        token_usage_per_move: TokenUsage | None = None,
     ):
         super().__init__(name, id, options, game_config)
-        self.history: List[str] = []
-        self.event_history: List[XegaEvent] = []
-        self.token_usage_per_move = token_usage_per_move or {"input_tokens": 1, "output_tokens": 1}
+        self.history: list[str] = []
+        self.event_history: list[XegaEvent] = []
+        self.token_usage_per_move = token_usage_per_move or {
+            "input_tokens": 1,
+            "output_tokens": 1,
+        }
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -39,7 +41,7 @@ class MockXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
+    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
         return ("mocked_move", self.token_usage_per_move.copy())
 
     async def post(self, event: XegaEvent) -> None:
@@ -53,15 +55,15 @@ class DefaultXGP(XGP):
         self,
         name: PlayerName,
         id: str,
-        options: Optional[PlayerOptions],
+        options: PlayerOptions | None,
         game_config: XegaGameConfig,
     ):
         super().__init__(name, id, options, game_config)
         self.client = make_client(options)
         self.game_code = game_config["game"]["code"]
-        self.event_history: List[XegaEvent] = []
-        self.history: List[str] = []
-        self.conversation: List[LLMMessage] = []
+        self.event_history: list[XegaEvent] = []
+        self.history: list[str] = []
+        self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
 
     def add_score(self, score: float | int) -> None:
@@ -73,7 +75,7 @@ class DefaultXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
+    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
         message = "The current game log lines are:\n" + "\n".join(self.history) + "\n"
         message += "What do you play? Answer your move within <move></move> tags"
         self.conversation = [
@@ -140,19 +142,19 @@ Remember, you must respond to the `elicit` request with your move within `<move>
 
 def event_to_message(event: XegaEvent) -> str:
     if event["type"] == "elicit_request":
-        return f"{event["line_num"]:02d}-<elicit>: {event["var_name"]} (max {event["max_len"]} tokens)"
+        return f"{event['line_num']:02d}-<elicit>: {event['var_name']} (max {event['max_len']} tokens)"
     elif event["type"] == "elicit_response":
-        return f"{event["line_num"]:02d}-<elicit response>: {event["response"]}"
+        return f"{event['line_num']:02d}-<elicit response>: {event['response']}"
     elif event["type"] == "reveal":
-        return f"{event["line_num"]:02d}-<reveal>: {str([f'{arg}: "{str(event['values'][arg])}' for arg in event['values']])}"
+        return f"{event['line_num']:02d}-<reveal>: {str([f'{arg}: "{str(event["values"][arg])}' for arg in event['values']])}"
     elif event["type"] == "reward":
-        return f"{event["line_num"]:02d}-<reward>: Total reward: {round_xent(event['value'].total_xent())}, per-token rewards: {str(event['value'])}"
+        return f"{event['line_num']:02d}-<reward>: Total reward: {round_xent(event['value'].total_xent())}, per-token rewards: {str(event['value'])}"
     elif event["type"] == "failed_ensure":
         results = [
             f"Argument {i} result: {arg}"
             for i, arg in enumerate(event["ensure_results"])
         ]
         results_string = ", ".join(results)
-        return f"{event["line_num"]:02d}-<ensure>: Failed ensure. {results_string}. Moving code execution to beacon: {event["beacon"]}"
+        return f"{event['line_num']:02d}-<ensure>: Failed ensure. {results_string}. Moving code execution to beacon: {event['beacon']}"
     else:
-        raise XegaInternalError(f"Unknown event type: {event["type"]}")
+        raise XegaInternalError(f"Unknown event type: {event['type']}")

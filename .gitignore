@@ -10,3 +10,7 @@ __pycache__/
 *$py.class
 .DS_Store
 *.lyx~
+
+# Linting and formatting cache
+.mypy_cache/
+.ruff_cache/

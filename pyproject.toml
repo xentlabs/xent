@@ -30,8 +30,11 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.17.0",
+    "pre-commit>=4.2.0",
     "pytest>=8.3.5,<9",
     "pytest-asyncio>=0.24.0,<0.25",
+    "ruff>=0.12.5",
 ]
 
 [tool.pytest.ini_options]
@@ -43,3 +46,22 @@ markers = [
 ]
 log_cli = true
 log_cli_level = "INFO"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "SIM", "I"]
+ignore = ["E501"]  # Line too long (handled by formatter)
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["xega"]
+strict = true
+show_error_codes = true

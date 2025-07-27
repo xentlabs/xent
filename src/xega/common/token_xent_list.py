@@ -1,12 +1,9 @@
-from typing import List, Tuple
-
-
 def round_xent(value: float) -> float:
     return round(value)
 
 
 class TokenXentList:
-    def __init__(self, token_xent_pairs: List[Tuple[str, float]], scale=1.0):
+    def __init__(self, token_xent_pairs: list[tuple[str, float]], scale=1.0):
         self.pairs = token_xent_pairs
         self.scale = scale
 
@@ -23,7 +20,7 @@ class TokenXentList:
         if len(self.pairs) != len(other.pairs):
             return False
 
-        for (token1, _), (token2, _) in zip(self.pairs, other.pairs):
+        for (token1, _), (token2, _) in zip(self.pairs, other.pairs, strict=False):
             if token1 != token2:
                 return False
         return True
@@ -52,7 +49,7 @@ class TokenXentList:
         result = [
             (token1, xent1 + xent2)
             for (token1, xent1), (token2, xent2) in zip(
-                self_normalized.pairs, other_normalized.pairs
+                self_normalized.pairs, other_normalized.pairs, strict=False
             )
         ]
         return TokenXentList(result)
@@ -74,7 +71,7 @@ class TokenXentList:
         result = [
             (token1, xent1 - xent2)
             for (token1, xent1), (token2, xent2) in zip(
-                self_normalized.pairs, other_normalized.pairs
+                self_normalized.pairs, other_normalized.pairs, strict=False
             )
         ]
         return TokenXentList(result)

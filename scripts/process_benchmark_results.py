@@ -1,12 +1,12 @@
 import argparse
 import json
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 
 def process_benchmark_results(
-    benchmark_result: Dict[str, Any], summary_only: bool = False
-) -> Dict[str, Dict[str, List[Tuple[str, float]]]]:
-    processed_data: Dict[str, Dict[str, List[Tuple[str, float]]]] = {}
+    benchmark_result: dict[str, Any], summary_only: bool = False
+) -> dict[str, dict[str, list[tuple[str, float]]]]:
+    processed_data: dict[str, dict[str, list[tuple[str, float]]]] = {}
 
     for game_result in benchmark_result["game_results"]:
         game_name = game_result["game"]["game"]["name"]
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     summary_only = args.summary
 
     try:
-        with open(file_path, "r") as f:
+        with open(file_path) as f:
             example_benchmark_result = json.load(f)
 
         output = process_benchmark_results(example_benchmark_result, summary_only)

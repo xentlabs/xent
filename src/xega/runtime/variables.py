@@ -1,6 +1,6 @@
 import re
 import string
-from typing import Any, Dict, List
+from typing import Any
 
 from xega.common.constants import (
     ALL_PLAYERS,
@@ -16,8 +16,8 @@ from xega.runtime.default_players import MockXGP
 from xega.runtime.judge import Judge
 
 
-def build_locals(players: List[XGP], game_config: XegaGameConfig):
-    local_vars: Dict[str, Any] = dict()
+def build_locals(players: list[XGP], game_config: XegaGameConfig):
+    local_vars: dict[str, Any] = dict()
 
     for i in range(game_config["num_variables_per_register"]):
         for t in ALL_REGISTERS:

@@ -1,7 +1,7 @@
 import logging
 import re
 from copy import deepcopy
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any
 
 from xega.common.constants import ZERO_SUM_PLAYER_PAIRS
 from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
@@ -30,19 +30,19 @@ MAX_ENSURE_FAILURES = 10
 
 class XegaRuntime:
     def __init__(
-        self, players: List[XGP], locals: Dict[str, Any], globals: Dict[str, Any]
+        self, players: list[XGP], locals: dict[str, Any], globals: dict[str, Any]
     ):
         self.local_vars = locals
         self.players = players
-        self.scores: Dict[PlayerName, float] = {player.name: 0.0 for player in players}
-        self.token_usage: Dict[PlayerName, TokenUsage] = {
+        self.scores: dict[PlayerName, float] = {player.name: 0.0 for player in players}
+        self.token_usage: dict[PlayerName, TokenUsage] = {
             player.name: {"input_tokens": 0, "output_tokens": 0} for player in players
         }
         self.globals = globals
-        self.beacons: Dict[str, XFlag] = {}
-        self.history: List[XegaEvent] = []
+        self.beacons: dict[str, XFlag] = {}
+        self.history: list[XegaEvent] = []
         # Map from line number to the number of times the replay has been called since reset
-        self.replay_counters: Dict[int, int] = {}
+        self.replay_counters: dict[int, int] = {}
         self.last_elicit_player: XGP | None = None
 
     def add_token_usage(self, player_name: PlayerName, token_usage: TokenUsage) -> None:
@@ -51,7 +51,7 @@ class XegaRuntime:
         self.token_usage[player_name]["input_tokens"] += token_usage["input_tokens"]
         self.token_usage[player_name]["output_tokens"] += token_usage["output_tokens"]
 
-    def instruction_names(self) -> Set[str]:
+    def instruction_names(self) -> set[str]:
         return {"assign", "elicit", "reveal", "reward", "ensure", "beacon", "replay"}
 
     def get_results_and_reset(self) -> XegaGameIterationResult:
@@ -75,8 +75,8 @@ class XegaRuntime:
     async def execute(
         self,
         instruction_name: str,
-        args: List[Any],
-        kwargs: Dict[str, Any],
+        args: list[Any],
+        kwargs: dict[str, Any],
         line: str,
         line_num: int,
     ) -> None | XFlag:
@@ -107,13 +107,13 @@ class XegaRuntime:
     def _first_n_tokens(self, text: str, n: int) -> str | XString:
         return self.globals["first_n_tokens"](text, n)
 
-    def assert_no_args(self, args: List[Any], instruction_name: str) -> None:
+    def assert_no_args(self, args: list[Any], instruction_name: str) -> None:
         if len(args) > 0:
             raise XegaSyntaxError(
                 f"Positional arguments are not allowed for {instruction_name}"
             )
 
-    def assert_no_kwargs(self, kwargs: Dict[str, Any], instruction_name: str) -> None:
+    def assert_no_kwargs(self, kwargs: dict[str, Any], instruction_name: str) -> None:
         if len(kwargs) > 0:
             raise XegaSyntaxError(
                 f"Keyword arguments are not allowed for {instruction_name}"
@@ -147,7 +147,7 @@ class XegaRuntime:
             )
         return var_value
 
-    def assign(self, args: List[Any], kwargs: Dict[str, Any]) -> None:
+    def assign(self, args: list[Any], kwargs: dict[str, Any]) -> None:
         self.assert_no_args(args, "assign")
         for var_name, var_value in kwargs.items():
             logging.info(f"Assigning {var_value} to {var_name}")
@@ -157,8 +157,8 @@ class XegaRuntime:
             cur.prefix = validated_value.prefix
 
     def _validate_elicit_args(
-        self, args: List[Any], line_num: int
-    ) -> Tuple[int, int, XGP, int]:
+        self, args: list[Any], line_num: int
+    ) -> tuple[int, int, XGP, int]:
         if len(args) < 2:
             raise XegaSyntaxError("Elicit requires at least two positional arguments")
         if len(args) < 2:
@@ -186,23 +186,21 @@ class XegaRuntime:
 
     def _validate_elicit_arg(self, var: Any) -> None:
         if not isinstance(var, XString):
-            raise XegaSyntaxError(f"Elicit requires a String register target")
+            raise XegaSyntaxError("Elicit requires a String register target")
         if var.name is None:
-            raise XegaSyntaxError(f"Elicit requires a String register target")
+            raise XegaSyntaxError("Elicit requires a String register target")
         if var.static:
             raise XegaSyntaxError(
-                f"Elicit target is static. Elicit requires a non-static register target"
+                "Elicit target is static. Elicit requires a non-static register target"
             )
 
-    def _gather_register_states(self, player_name: str) -> Dict[str, XString]:
+    def _gather_register_states(self, player_name: str) -> dict[str, XString]:
         register_states = {}
         for var_name, var in self.local_vars.items():
             if not isinstance(var, XString):
                 continue
 
-            if var.public:
-                register_states[var_name] = var
-            elif is_omniscient_player_name(player_name):
+            if var.public or is_omniscient_player_name(player_name):
                 register_states[var_name] = var
 
         logging.debug(
@@ -220,7 +218,7 @@ class XegaRuntime:
         self.local_vars["main"] = self.beacons["main"]
 
     async def elicit(
-        self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
+        self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
     ) -> None:
         self.assert_no_kwargs(kwargs, "elicit")
         var_arg_start, var_arg_end, player, max_len = self._validate_elicit_args(
@@ -269,7 +267,7 @@ class XegaRuntime:
         self.last_elicit_player = player
 
     async def reveal(
-        self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
+        self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
     ) -> None:
         self.assert_no_kwargs(kwargs, "reveal")
         if len(args) == 0:
@@ -296,7 +294,7 @@ class XegaRuntime:
         self._set_main_flag(line_num, is_reveal=True)
 
     async def reward(
-        self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
+        self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
     ) -> None:
         self.assert_no_kwargs(kwargs, "reward")
         if len(args) == 0:
@@ -357,7 +355,7 @@ class XegaRuntime:
                         f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
                     )
 
-    def _validate_ensure_args(self, args: List[Any]) -> None:
+    def _validate_ensure_args(self, args: list[Any]) -> None:
         if len(args) == 0:
             raise XegaSyntaxError(
                 "Ensure requires at least one positional argument, got none"
@@ -383,7 +381,7 @@ class XegaRuntime:
         return self.last_elicit_player
 
     async def ensure(
-        self, args: List[Any], kwargs: Dict[str, Any], line_num: int, line: str
+        self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
     ) -> None | XFlag:
         self.assert_no_kwargs(kwargs, "ensure")
         self._validate_ensure_args(args)
@@ -412,7 +410,7 @@ class XegaRuntime:
         self.replay_counters[line_num] = fail_count + 1
         return previous_elicit
 
-    def beacon(self, args: List[Any], kwargs: Dict[str, Any], line_num: int) -> None:
+    def beacon(self, args: list[Any], kwargs: dict[str, Any], line_num: int) -> None:
         self.assert_no_kwargs(kwargs, "beacon")
         if len(args) != 1:
             raise XegaSyntaxError(
@@ -427,7 +425,7 @@ class XegaRuntime:
         self.beacons[flag.name] = flag
 
     def replay(
-        self, args: List[Any], kwargs: Dict[str, Any], line_num: int
+        self, args: list[Any], kwargs: dict[str, Any], line_num: int
     ) -> XFlag | None:
         self.assert_no_kwargs(kwargs, "replay")
 

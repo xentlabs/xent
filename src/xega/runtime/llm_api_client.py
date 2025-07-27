@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Literal, Optional, Tuple, TypedDict
+from typing import Any, Literal, TypedDict
 
 import google.genai as genai
 import google.genai.types as genai_types
@@ -85,8 +85,8 @@ class LLMClient(ABC):
 
     @abstractmethod
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         pass
 
@@ -97,8 +97,8 @@ class OllamaClient(LLMClient):
         self.client = AsyncClient()
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         response = await self.client.chat(model=self.model, messages=messages)
         response_message = response["message"]["content"]
@@ -115,10 +115,10 @@ class OpenAIClient(LLMClient):
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
-        openai_api_messages: List[ChatCompletionMessageParam] = []
+        openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
             role = msg.get("role")
             content = msg.get("content")
@@ -167,14 +167,14 @@ class AnthropicClient(LLMClient):
         self.client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         system_message: str | NotGiven = NotGiven()
         if messages and messages[0].get("role") == "system":
             system_message = str(messages[0].get("content", ""))
             messages = messages[1:]
 
-        anthropic_api_messages: List[MessageParam] = []
+        anthropic_api_messages: list[MessageParam] = []
         for msg in messages:
             role = msg.get("role")
             content = msg.get("content")
@@ -224,8 +224,8 @@ class GeminiClient(LLMClient):
         self.client = genai.Client(api_key=google_api_key)
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         gemini_contents = []
         system_instruction_content: str | None = None
@@ -326,10 +326,10 @@ class GrokClient(LLMClient):
         )
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to the Grok LLM and return the response."""
-        openai_api_messages: List[ChatCompletionMessageParam] = []
+        openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
             role = msg.get("role")
             content = msg.get("content")
@@ -381,10 +381,10 @@ class DeepSeekClient(LLMClient):
         )
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         """Send a request to Deepseek LLM and return the response."""
-        openai_api_messages: List[ChatCompletionMessageParam] = []
+        openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
             role = msg.get("role")
             content = msg.get("content")
@@ -431,10 +431,10 @@ class HuggingFaceClient(LLMClient):
     def __init__(
         self,
         model_name_or_path: str,
-        device: Optional[str] = None,
+        device: str | None = None,
         load_in_8bit: bool = False,
         load_in_4bit: bool = False,
-        torch_dtype: Optional[torch.dtype] = None,
+        torch_dtype: torch.dtype | None = None,
         trust_remote_code: bool = False,
         max_length: int = 4096,
         temperature: float = 0.7,
@@ -503,7 +503,7 @@ class HuggingFaceClient(LLMClient):
         constructor_args = {k: v for k, v in constructor_args.items() if v is not None}
         return cls(**constructor_args)
 
-    def _format_messages_to_prompt(self, messages: List[LLMMessage]) -> str:
+    def _format_messages_to_prompt(self, messages: list[LLMMessage]) -> str:
         """
         Format messages into a prompt string.
         Uses chat template if available, otherwise falls back to simple formatting.
@@ -556,8 +556,8 @@ class HuggingFaceClient(LLMClient):
         return prompt
 
     async def request(
-        self, messages: List[LLMMessage]
-    ) -> Tuple[str | None, TokenUsage]:
+        self, messages: list[LLMMessage]
+    ) -> tuple[str | None, TokenUsage]:
         try:
             # Format messages into prompt
             prompt = self._format_messages_to_prompt(messages)
@@ -596,7 +596,7 @@ class HuggingFaceClient(LLMClient):
             return None, TokenUsage(input_tokens=0, output_tokens=0)
 
     def _generate(
-        self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None
+        self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         """
         Synchronous generation method to be run in executor.
@@ -626,7 +626,7 @@ class HuggingFaceClient(LLMClient):
         return len(self.tokenizer.encode(text, add_special_tokens=True))
 
 
-def make_client(unchecked_options: Optional[PlayerOptions]) -> LLMClient:
+def make_client(unchecked_options: PlayerOptions | None) -> LLMClient:
     options = check_default_xgp_options(unchecked_options)
     provider = options["provider"]
     if provider == "openai":

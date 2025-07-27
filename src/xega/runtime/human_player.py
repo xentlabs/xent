@@ -1,6 +1,5 @@
 import logging
 import pprint
-from typing import List, Optional, Tuple
 
 from xega.common.xega_types import (
     PlayerName,
@@ -17,11 +16,11 @@ class HumanXGP(XGP):
         self,
         name: PlayerName,
         id: str,
-        options: Optional[PlayerOptions],
+        options: PlayerOptions | None,
         game_config: XegaGameConfig,
     ):
         super().__init__(name, id, options, game_config)
-        self.event_history: List[XegaEvent] = []
+        self.event_history: list[XegaEvent] = []
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -32,8 +31,8 @@ class HumanXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
-        print(f"************************************************")
+    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
+        print("************************************************")
         print(f"The game name: {self.game_config['game']['name']}")
         print("Game code:")
         print("```")

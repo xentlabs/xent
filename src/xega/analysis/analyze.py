@@ -23,7 +23,7 @@ def extract_results_from_dir(results_dir: str) -> XegaBenchmarkResult:
 
     benchmark_file = benchmark_files[0]  # Take the first one if multiple exist
 
-    with open(os.path.join(results_dir, benchmark_file), "r") as f:
+    with open(os.path.join(results_dir, benchmark_file)) as f:
         benchmark_result: XegaBenchmarkResult = json.load(f)
 
     return benchmark_result

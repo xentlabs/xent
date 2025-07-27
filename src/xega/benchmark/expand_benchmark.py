@@ -1,7 +1,6 @@
 import ast
 import io
 import tokenize
-from typing import List, Tuple
 
 from xega.common.xega_types import (
     ExpandedGameConfig,
@@ -64,8 +63,8 @@ def build_game_configs_from_benchmark_config(
     game: GameConfig,
     benchmark_config: XegaBenchmarkConfig,
     judge: Judge,
-) -> List[ExpandedGameConfig]:
-    game_configs: List[ExpandedGameConfig] = []
+) -> list[ExpandedGameConfig]:
+    game_configs: list[ExpandedGameConfig] = []
     for map_num in range(benchmark_config["num_maps_per_game"]):
         map_seed = f"{map_num}"
         judge.set_seed(benchmark_config["seed"], map_seed)
@@ -101,7 +100,7 @@ class StoryRewriter(ast.NodeTransformer):
         return node
 
 
-def extract_comment_and_code(line: str) -> Tuple[str, str]:
+def extract_comment_and_code(line: str) -> tuple[str, str]:
     """Extract code and comment parts from a line.
     Returns (code_part, comment_part)
     """
@@ -121,7 +120,7 @@ def extract_comment_and_code(line: str) -> Tuple[str, str]:
 
 def preprocess_dsl_code(code: str, judge: Judge) -> str:
     lines = code.splitlines()
-    new_lines: List[str] = []
+    new_lines: list[str] = []
 
     for line in lines:
         stripped_line = line.strip()

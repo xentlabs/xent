@@ -1,6 +1,6 @@
 import ast
 import logging
-from typing import Any, List, Set, Tuple
+from typing import Any
 
 from xega.common.errors import (
     XegaConfigurationError,
@@ -27,14 +27,14 @@ class StringLiteralToXStringTransformer(ast.NodeTransformer):
 
 async def play_game(
     code: str, xrt: XegaRuntime, auto_replay=False, max_steps=100
-) -> List[XegaGameIterationResult]:
+) -> list[XegaGameIterationResult]:
     lines = [line.strip() for line in code.split("\n")]
     if len(lines) > 64:
         raise XegaConfigurationError("Code too long. Max 64 lines.")
     steps_taken = 0
     line_index = 0
 
-    game_results: List[XegaGameIterationResult] = []
+    game_results: list[XegaGameIterationResult] = []
     while steps_taken < max_steps:
         line = lines[line_index]
         logging.info(f"Executing line {line_index}: {line}. Steps taken: {steps_taken}")
@@ -128,8 +128,8 @@ async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
 
 
 def get_validated_call_info(
-    tree: ast.Expression, instruction_names: Set[str], line: str, line_num: int
-) -> Tuple[str, ast.Call]:
+    tree: ast.Expression, instruction_names: set[str], line: str, line_num: int
+) -> tuple[str, ast.Call]:
     if not isinstance(tree.body, ast.Call):
         raise XegaSyntaxError(
             f"The expression does not start with an instruction (not ast.Call). Line: {line}, Line number: {line_num}"
@@ -153,12 +153,12 @@ def get_validated_call_info(
 
 # Returns a tuple of (resolved_args, resolved_kwargs)
 def gather_params(
-    args: List[ast.expr],
-    kwargs: List[ast.keyword],
+    args: list[ast.expr],
+    kwargs: list[ast.keyword],
     xrt: XegaRuntime,
     line: str,
     line_num: int,
-) -> Tuple[List[Any], dict[str, Any]]:
+) -> tuple[list[Any], dict[str, Any]]:
     resolved_args = []
     for arg in args:
         resolved_args.append(resolve_arg(arg, xrt, line, line_num))

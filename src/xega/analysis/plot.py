@@ -3,7 +3,6 @@ import logging
 import os
 import re
 from collections import defaultdict
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,12 +21,12 @@ def sanitize_filename(filename: str) -> str:
 
 def group_results_by_game_and_seed(
     benchmark_result: XegaBenchmarkResult,
-) -> Dict[str, Dict[str, List[XegaGameResult]]]:
+) -> dict[str, dict[str, list[XegaGameResult]]]:
     """
     Group game results by game name and map seed.
     Returns: {game_name: {map_seed: [results]}}
     """
-    grouped: Dict[str, Dict[str, List[XegaGameResult]]] = defaultdict(
+    grouped: dict[str, dict[str, list[XegaGameResult]]] = defaultdict(
         lambda: defaultdict(list)
     )
 
@@ -40,8 +39,8 @@ def group_results_by_game_and_seed(
 
 
 def calculate_arms_values(
-    results_by_seed: Dict[str, List[XegaGameResult]], player_id: str
-) -> List[float]:
+    results_by_seed: dict[str, list[XegaGameResult]], player_id: str
+) -> list[float]:
     """
     Calculate Average Running Max Score (ARMS) for a specific player across all map seeds.
     Returns a list of ARMS values, one for each iteration.
@@ -320,7 +319,7 @@ def generate_normalized_score_summary_chart(
     os.makedirs(output_dir, exist_ok=True)
 
     grouped_results = group_results_by_game_and_seed(benchmark_result)
-    scores_by_game_player: Dict[str, Dict[str, List[float]]] = defaultdict(
+    scores_by_game_player: dict[str, dict[str, list[float]]] = defaultdict(
         lambda: defaultdict(list)
     )
     all_game_names = set()
@@ -414,7 +413,7 @@ def generate_score_iteration_plots(
 
 def load_benchmark_result_from_json(file_path: str) -> XegaBenchmarkResult:
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             data = json.load(f)
         return data
     except FileNotFoundError:

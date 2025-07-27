@@ -1,7 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Final, Optional
+from typing import Final, Optional, Tuple
 
-from xega.common.xega_types import PlayerName, PlayerOptions, XegaEvent, XegaGameConfig
+from xega.common.xega_types import (
+    PlayerName,
+    PlayerOptions,
+    TokenUsage,
+    XegaEvent,
+    XegaGameConfig,
+)
 
 """
 Xega Game Player (XGP) base class
@@ -68,7 +74,7 @@ class XGP(ABC):
         pass
 
     @abstractmethod
-    async def make_move(self, var_name: str) -> str:
+    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
         pass
 
     @abstractmethod

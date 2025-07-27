@@ -1,5 +1,6 @@
 import logging
 import re
+from copy import deepcopy
 from typing import Any, Dict, List, Set, Tuple
 
 from xega.common.constants import ZERO_SUM_PLAYER_PAIRS
@@ -14,6 +15,7 @@ from xega.common.xega_types import (
     PlayerName,
     RevealEvent,
     RewardEvent,
+    TokenUsage,
     XegaEvent,
     XegaGameIterationResult,
     is_omniscient_player_name,
@@ -33,6 +35,9 @@ class XegaRuntime:
         self.local_vars = locals
         self.players = players
         self.scores: Dict[PlayerName, float] = {player.name: 0.0 for player in players}
+        self.token_usage: Dict[PlayerName, TokenUsage] = {
+            player.name: {"input_tokens": 0, "output_tokens": 0} for player in players
+        }
         self.globals = globals
         self.beacons: Dict[str, XFlag] = {}
         self.history: List[XegaEvent] = []
@@ -40,15 +45,25 @@ class XegaRuntime:
         self.replay_counters: Dict[int, int] = {}
         self.last_elicit_player: XGP | None = None
 
+    def add_token_usage(self, player_name: PlayerName, token_usage: TokenUsage) -> None:
+        if player_name not in self.token_usage:
+            self.token_usage[player_name] = {"input_tokens": 0, "output_tokens": 0}
+        self.token_usage[player_name]["input_tokens"] += token_usage["input_tokens"]
+        self.token_usage[player_name]["output_tokens"] += token_usage["output_tokens"]
+
     def instruction_names(self) -> Set[str]:
         return {"assign", "elicit", "reveal", "reward", "ensure", "beacon", "replay"}
 
     def get_results_and_reset(self) -> XegaGameIterationResult:
         scores = self.scores.copy()
+        token_usage = deepcopy(self.token_usage)
         for player in self.players:
             self.scores[player.name] = 0.0
+            self.token_usage[player.name] = {"input_tokens": 0, "output_tokens": 0}
             player.reset_score()
-        game_result = XegaGameIterationResult(scores=scores, xrt_history=self.history)
+        game_result = XegaGameIterationResult(
+            scores=scores, xrt_history=self.history, token_usage=token_usage
+        )
         self.history = []
         self.replay_counters = {}
         self.last_elicit_player = None
@@ -227,7 +242,7 @@ class XegaRuntime:
             )
             await self.send_event(player, request_event)
 
-            player_move = await player.make_move(var.name)
+            player_move, token_usage = await player.make_move(var.name)
             print(f"Player {player.name} move: {player_move}")
             trimmed_move = self._first_n_tokens(player_move, max_len)
             if player_move != trimmed_move:
@@ -241,8 +256,10 @@ class XegaRuntime:
                 line_num=line_num,
                 player=player.name,
                 response=str(trimmed_move),
+                token_usage=token_usage,
             )
             await self.send_event(player, response_event)
+            self.add_token_usage(player.name, token_usage)
 
             logging.info(f'Setting {var.name} to "{trimmed_move}"')
             var.primary_string = trimmed_move

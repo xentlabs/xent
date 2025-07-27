@@ -8,6 +8,7 @@ from xega.common.util import dumps
 from xega.common.xega_types import (
     ExpandedXegaBenchmarkConfig,
     PlayerName,
+    TokenUsage,
     XegaBenchmarkResult,
     XegaGameConfig,
     XegaGameIterationResult,
@@ -52,10 +53,12 @@ async def run_game(
         logging.info(f"Game {game_name} completed successfully")
 
         scores = extract_scores(game_results)
+        token_usage = extract_token_usage(game_results)
         return XegaGameResult(
             game=game_config,
             game_results=game_results,
             scores=scores,
+            token_usage=token_usage,
         )
     except Exception as e:
         logging.exception(
@@ -64,6 +67,23 @@ async def run_game(
         if raise_on_error:
             raise e
         return None
+
+
+def extract_token_usage(
+    game_results: List[XegaGameIterationResult],
+) -> Dict[PlayerName, TokenUsage]:
+    total_token_usage: Dict[PlayerName, TokenUsage] = {}
+    for game_result in game_results:
+        token = game_result["token_usage"]
+        for player, token_usage in token.items():
+            if player not in total_token_usage:
+                total_token_usage[player] = token_usage
+            else:
+                total_token_usage[player]["input_tokens"] += token_usage["input_tokens"]
+                total_token_usage[player]["output_tokens"] += token_usage[
+                    "output_tokens"
+                ]
+    return total_token_usage
 
 
 def extract_scores(

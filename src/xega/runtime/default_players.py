@@ -1,11 +1,17 @@
 import logging
 import re
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from xega.common.errors import XegaInternalError
 from xega.common.token_xent_list import round_xent
 from xega.common.util import dumps
-from xega.common.xega_types import PlayerName, PlayerOptions, XegaEvent, XegaGameConfig
+from xega.common.xega_types import (
+    PlayerName,
+    PlayerOptions,
+    TokenUsage,
+    XegaEvent,
+    XegaGameConfig,
+)
 from xega.runtime.base_player import XGP
 from xega.runtime.llm_api_client import LLMMessage, make_client
 
@@ -31,8 +37,8 @@ class MockXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> str:
-        return "mocked_move"
+    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
+        return ("mocked_move", {"input_tokens": 1, "output_tokens": 1})
 
     async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")
@@ -65,7 +71,7 @@ class DefaultXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> str:
+    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
         message = "The current game log lines are:\n" + "\n".join(self.history) + "\n"
         message += "What do you play? Answer your move within <move></move> tags"
         self.conversation = [
@@ -77,7 +83,7 @@ class DefaultXGP(XGP):
 
         logging.info("Sending message to LLM")
         logging.debug(f"conversation: {dumps(self.conversation)}")
-        reply = await self.client.request(self.conversation)
+        reply, token_usage = await self.client.request(self.conversation)
         logging.info(f"Received response from LLM: {dumps(reply)}")
         reply = re.sub(r"<think>.*?</think>", "", reply or "", flags=re.DOTALL)
 
@@ -91,7 +97,7 @@ class DefaultXGP(XGP):
             )
             result = reply
         logging.info(f"Parsed LLM move: {result}")
-        return result
+        return result, token_usage
 
     async def post(self, event: XegaEvent) -> None:
         self.event_history.append(event)

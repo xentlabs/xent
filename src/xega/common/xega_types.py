@@ -4,6 +4,11 @@ from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
 
 
+class TokenUsage(TypedDict):
+    input_tokens: int
+    output_tokens: int
+
+
 # Event types
 class BaseEvent(TypedDict):
     line: str
@@ -21,6 +26,7 @@ class ElicitRequestEvent(BaseEvent):
 class ElicitResponseEvent(BaseEvent):
     type: Literal["elicit_response"]
     response: str
+    token_usage: TokenUsage
 
 
 class RevealEvent(BaseEvent):
@@ -117,6 +123,7 @@ class ExpandedXegaBenchmarkConfig(XegaMetadata):
 
 class XegaGameIterationResult(TypedDict):
     scores: Dict[PlayerName, float]
+    token_usage: Dict[PlayerName, TokenUsage]
     xrt_history: List[XegaEvent]
 
 
@@ -124,6 +131,7 @@ class XegaGameResult(TypedDict):
     game: XegaGameConfig
     game_results: List[XegaGameIterationResult]
     scores: Dict[PlayerName, float]
+    token_usage: Dict[PlayerName, TokenUsage]
 
 
 class XegaBenchmarkResult(TypedDict):

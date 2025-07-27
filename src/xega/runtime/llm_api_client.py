@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, List, Literal, Optional, TypedDict
+from typing import Any, List, Literal, Optional, Tuple, TypedDict
 
 import google.genai as genai
 import google.genai.types as genai_types
@@ -20,7 +20,7 @@ from openai.types.chat import (
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from xega.common.errors import XegaConfigurationError
-from xega.common.xega_types import PlayerOptions
+from xega.common.xega_types import PlayerOptions, TokenUsage
 from xega.runtime.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,
@@ -84,7 +84,9 @@ class LLMClient(ABC):
         )
 
     @abstractmethod
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         pass
 
@@ -92,12 +94,19 @@ class LLMClient(ABC):
 class OllamaClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
+        self.client = AsyncClient()
 
-    async def request(self, messages: List[LLMMessage]):
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
-        response = await AsyncClient().chat(model=self.model, messages=messages)
+        response = await self.client.chat(model=self.model, messages=messages)
         response_message = response["message"]["content"]
-        return response_message
+        token_usage = TokenUsage(
+            input_tokens=response.get("prompt_eval_count", 0),
+            output_tokens=response.get("eval_count", 0),
+        )
+        return response_message, token_usage
 
 
 class OpenAIClient(LLMClient):
@@ -105,7 +114,9 @@ class OpenAIClient(LLMClient):
         super().__init__(model)
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         openai_api_messages: List[ChatCompletionMessageParam] = []
         for msg in messages:
@@ -144,7 +155,10 @@ class OpenAIClient(LLMClient):
         )
         self.increment_token_counts(input_token_count, output_token_count)
         response_message = response.choices[0].message.content
-        return response_message
+        token_usage = TokenUsage(
+            input_tokens=input_token_count, output_tokens=output_token_count
+        )
+        return response_message, token_usage
 
 
 class AnthropicClient(LLMClient):
@@ -152,7 +166,9 @@ class AnthropicClient(LLMClient):
         super().__init__(model)
         self.client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         system_message: str | NotGiven = NotGiven()
         if messages and messages[0].get("role") == "system":
             system_message = str(messages[0].get("content", ""))
@@ -187,10 +203,13 @@ class AnthropicClient(LLMClient):
         input_token_count = message.usage.input_tokens
         output_token_count = message.usage.output_tokens
         self.increment_token_counts(input_token_count, output_token_count)
+        token_usage = TokenUsage(
+            input_tokens=input_token_count, output_tokens=output_token_count
+        )
         if message.content and hasattr(message.content[0], "text"):
-            return getattr(message.content[0], "text", "")
+            return getattr(message.content[0], "text", ""), token_usage
         else:
-            return None
+            return None, token_usage
 
 
 class GeminiClient(LLMClient):
@@ -204,7 +223,9 @@ class GeminiClient(LLMClient):
             raise ValueError("GOOGLE_API_KEY environment variable not set.")
         self.client = genai.Client(api_key=google_api_key)
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to the LLM and return the response."""
         gemini_contents = []
         system_instruction_content: str | None = None
@@ -250,7 +271,7 @@ class GeminiClient(LLMClient):
             logging.warning(
                 "Gemini request has no user/assistant messages and no system instruction."
             )
-            return None
+            return None, TokenUsage(input_tokens=0, output_tokens=0)
 
         if (
             system_instruction_content
@@ -279,18 +300,21 @@ class GeminiClient(LLMClient):
             else:
                 logging.debug("Gemini response did not contain usage_metadata.")
             self.increment_token_counts(input_token_count, output_token_count)
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
 
             if hasattr(response, "text") and response.text:
-                return response.text
+                return response.text, token_usage
             else:
                 logging.warning(
                     f"Gemini response is empty or was possibly blocked. Prompt feedback: {getattr(response, 'prompt_feedback', 'N/A')}"
                 )
-                return None
+                return None, token_usage
 
         except Exception as e:
             logging.error(f"Error during Gemini API request: {e}")
-            return None
+            return None, TokenUsage(input_tokens=0, output_tokens=0)
 
 
 class GrokClient(LLMClient):
@@ -301,7 +325,9 @@ class GrokClient(LLMClient):
             base_url="https://api.x.ai/v1",
         )
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to the Grok LLM and return the response."""
         openai_api_messages: List[ChatCompletionMessageParam] = []
         for msg in messages:
@@ -340,7 +366,10 @@ class GrokClient(LLMClient):
         )
         self.increment_token_counts(input_token_count, output_token_count)
         response_message = response.choices[0].message.content
-        return response_message
+        token_usage = TokenUsage(
+            input_tokens=input_token_count, output_tokens=output_token_count
+        )
+        return response_message, token_usage
 
 
 class DeepSeekClient(LLMClient):
@@ -351,7 +380,9 @@ class DeepSeekClient(LLMClient):
             base_url="https://api.deepseek.com",
         )
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         """Send a request to Deepseek LLM and return the response."""
         openai_api_messages: List[ChatCompletionMessageParam] = []
         for msg in messages:
@@ -390,7 +421,10 @@ class DeepSeekClient(LLMClient):
         )
         self.increment_token_counts(input_token_count, output_token_count)
         response_message = response.choices[0].message.content
-        return response_message
+        token_usage = TokenUsage(
+            input_tokens=input_token_count, output_tokens=output_token_count
+        )
+        return response_message, token_usage
 
 
 class HuggingFaceClient(LLMClient):
@@ -521,7 +555,9 @@ class HuggingFaceClient(LLMClient):
 
         return prompt
 
-    async def request(self, messages: List[LLMMessage]) -> str | None:
+    async def request(
+        self, messages: List[LLMMessage]
+    ) -> Tuple[str | None, TokenUsage]:
         try:
             # Format messages into prompt
             prompt = self._format_messages_to_prompt(messages)
@@ -551,11 +587,13 @@ class HuggingFaceClient(LLMClient):
             output_length = len(generated_ids)
             self.increment_token_counts(input_length, output_length)
 
-            return response.strip()
+            return response.strip(), TokenUsage(
+                input_tokens=input_length, output_tokens=output_length
+            )
 
         except Exception as e:
             logging.error(f"Error during generation: {e}")
-            return None
+            return None, TokenUsage(input_tokens=0, output_tokens=0)
 
     def _generate(
         self, input_ids: torch.Tensor, attention_mask: Optional[torch.Tensor] = None

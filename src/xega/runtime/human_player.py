@@ -1,8 +1,14 @@
 import logging
 import pprint
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from xega.common.xega_types import PlayerName, PlayerOptions, XegaEvent, XegaGameConfig
+from xega.common.xega_types import (
+    PlayerName,
+    PlayerOptions,
+    TokenUsage,
+    XegaEvent,
+    XegaGameConfig,
+)
 from xega.runtime.base_player import XGP
 
 
@@ -26,7 +32,7 @@ class HumanXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> str:
+    async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
         print(f"************************************************")
         print(f"The game name: {self.game_config['game']['name']}")
         print("Game code:")
@@ -58,7 +64,7 @@ class HumanXGP(XGP):
             f"You are now asked to make a move which will be stored in the variable: {var_name}"
         )
         move = input("Enter your move: ")
-        return move
+        return move, TokenUsage(input_tokens=0, output_tokens=0)
 
     async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")

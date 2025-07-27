@@ -23,10 +23,12 @@ class MockXGP(XGP):
         id: str,
         options: Optional[PlayerOptions],
         game_config: XegaGameConfig,
+        token_usage_per_move: Optional[TokenUsage] = None,
     ):
         super().__init__(name, id, options, game_config)
         self.history: List[str] = []
         self.event_history: List[XegaEvent] = []
+        self.token_usage_per_move = token_usage_per_move or {"input_tokens": 1, "output_tokens": 1}
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -38,7 +40,7 @@ class MockXGP(XGP):
         self.score = 0.0
 
     async def make_move(self, var_name: str) -> Tuple[str, TokenUsage]:
-        return ("mocked_move", {"input_tokens": 1, "output_tokens": 1})
+        return ("mocked_move", self.token_usage_per_move.copy())
 
     async def post(self, event: XegaEvent) -> None:
         logging.info(f"Player received: {event}")

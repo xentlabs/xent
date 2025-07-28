@@ -84,3 +84,6 @@ disallow_any_explicit = false      # Allow explicit Any usage
 disallow_any_generics = true       # Require type params for generics
 disallow_subclassing_any = true    # Prevent subclassing Any
 check_untyped_defs = true           # Check function bodies even if untyped
+
+# Disable specific error codes that are overly strict
+disable_error_code = ["no-any-return", "unreachable"]

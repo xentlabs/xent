@@ -130,6 +130,7 @@ def get_existing_game_results(
                 and game_results["game"]["map_seed"] == game_config["map_seed"]
             ):
                 return game_results
+    return None
 
 
 def write_game_results(game_results: XegaGameResult, results_dir: str):

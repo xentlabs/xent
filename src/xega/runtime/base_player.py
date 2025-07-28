@@ -41,6 +41,10 @@ class XGP(ABC):
     def score(self) -> float:
         return self._score
 
+    @score.setter
+    def score(self, value: float) -> None:
+        self._score = value
+
     @property
     def name(self) -> PlayerName:
         return self._name
@@ -56,10 +60,6 @@ class XGP(ABC):
     @property
     def game_config(self) -> XegaGameConfig:
         return self._game_config
-
-    @score.setter
-    def score(self, value: float) -> None:
-        self._score = value
 
     @abstractmethod
     def add_score(self, score: float) -> None:

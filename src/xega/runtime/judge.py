@@ -55,7 +55,7 @@ class Judge:
             ).to(self.device)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-            self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
+            self.model = AutoModelForCausalLM.from_pretrained(
                 model_name, device_map="auto"
             )
 

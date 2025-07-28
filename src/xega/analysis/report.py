@@ -76,7 +76,9 @@ def calculate_average_scores_across_seeds(
     Calculate average scores across all map seeds for each player.
     Returns: {map_seed: {player_name: score}}
     """
-    all_scores = defaultdict(lambda: defaultdict(list))
+    all_scores: dict[str, dict[PlayerName, list[float]]] = defaultdict(
+        lambda: defaultdict(list)
+    )
 
     for _map_seed, results in results_by_seed.items():
         for result in results:

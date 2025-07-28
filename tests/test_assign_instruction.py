@@ -1,5 +1,6 @@
 import pytest
 
+from xega.common.errors import XegaSyntaxError
 from xega.common.x_string import XString
 from xega.runtime.execution import eval_line, play_game
 
@@ -41,13 +42,13 @@ async def test_assign_numbered_registers(xrt):
 async def test_assign_static_registers(xrt):
     """Test that assignment to static registers is not allowed."""
     # Static register types are: ["a", "b", "c"]
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(a='should_fail')", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(b1='should_fail')", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(c='should_fail')", 1, xrt)
 
 
@@ -126,10 +127,10 @@ async def test_assign_overwrite(xrt):
 @pytest.mark.asyncio
 async def test_assign_with_positional_args(xrt):
     """Test that assign only accepts keyword arguments."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign('should_fail')", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign('s', 'value')", 1, xrt)
 
 
@@ -137,11 +138,11 @@ async def test_assign_with_positional_args(xrt):
 async def test_assign_invalid_register_names(xrt):
     """Test assignment to invalid register names."""
     # Test invalid register type
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(z='invalid')", 1, xrt)
 
     # Test register number out of bounds (assuming num_registers_per_type is 4)
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(s10='too_high')", 1, xrt)
 
 

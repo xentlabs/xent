@@ -84,7 +84,9 @@ async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
         tree = ast.parse(line, mode="eval")
     except SyntaxError as e:
         logging.exception(f"Syntax error in expression: {e}")
-        raise XegaSyntaxError(f"Syntax error in expression: {line} (line {line_num})")
+        raise XegaSyntaxError(
+            f"Syntax error in expression: {line} (line {line_num})"
+        ) from None
 
     if not isinstance(tree, ast.Expression):
         raise XegaSyntaxError(

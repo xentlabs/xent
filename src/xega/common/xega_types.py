@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, TypeGuard, Union
+from typing import Literal, TypedDict, TypeGuard
 
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
@@ -46,9 +46,13 @@ class FailedEnsureEvent(BaseEvent):
     beacon: str
 
 
-XegaEvent = Union[
-    ElicitRequestEvent, ElicitResponseEvent, RevealEvent, RewardEvent, FailedEnsureEvent
-]
+XegaEvent = (
+    ElicitRequestEvent
+    | ElicitResponseEvent
+    | RevealEvent
+    | RewardEvent
+    | FailedEnsureEvent
+)
 
 # Configuration types. These are input to the Xega system to define benchmarks.
 

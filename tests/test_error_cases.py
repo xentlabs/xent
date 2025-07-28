@@ -1,6 +1,7 @@
 # pyright: reportUnusedExpression=false
 import pytest
 
+from xega.common.errors import XegaConfigurationError, XegaGameError, XegaSyntaxError
 from xega.runtime.execution import eval_line, play_game
 
 # SYNTAX AND PARSING ERRORS
@@ -9,10 +10,10 @@ from xega.runtime.execution import eval_line, play_game
 @pytest.mark.asyncio
 async def test_unknown_instruction(xrt):
     """Test that unknown instructions raise exceptions."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("unknown_instruction(x='test')", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("this_does_not_exist()", 1, xrt)
 
 
@@ -20,15 +21,15 @@ async def test_unknown_instruction(xrt):
 async def test_malformed_syntax(xrt):
     """Test various malformed syntax errors."""
     # Missing closing parenthesis
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(s='test'", 1, xrt)
 
     # Missing quotes
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=test)", 1, xrt)
 
     # Invalid Python syntax
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign s='test'", 1, xrt)
 
 
@@ -55,15 +56,15 @@ async def test_empty_instruction(xrt):
 async def test_wrong_argument_types(xrt):
     """Test instructions with wrong argument types."""
     # assign with positional args
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign('s', 'value')", 1, xrt)
 
     # reveal with keyword args
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("reveal(player=black, value='test')", 1, xrt)
 
     # ensure with keyword args
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("ensure(condition=True)", 1, xrt)
 
 
@@ -71,15 +72,15 @@ async def test_wrong_argument_types(xrt):
 async def test_missing_required_args(xrt):
     """Test instructions with missing required arguments."""
     # elicit without token limit
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("elicit(s)", 1, xrt)
 
     # beacon without flag
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("beacon()", 1, xrt)
 
     # replay without arguments
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("replay()", 1, xrt)
 
 
@@ -87,7 +88,7 @@ async def test_missing_required_args(xrt):
 async def test_too_many_args(xrt):
     """Test instructions with too many arguments."""
     # beacon with multiple flags
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("beacon(flag_1, flag_2)", 1, xrt)
 
 
@@ -98,15 +99,15 @@ async def test_too_many_args(xrt):
 async def test_invalid_register_names(xrt):
     """Test operations with invalid register names."""
     # Invalid register type
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(z='invalid')", 1, xrt)
 
     # Register number too high
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(s99='too_high')", 1, xrt)
 
     # Invalid format
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("assign(1s='invalid')", 1, xrt)
 
 
@@ -114,11 +115,11 @@ async def test_invalid_register_names(xrt):
 async def test_undefined_register_access(xrt):
     """Test accessing undefined registers."""
     # Accessing undefined register in expression
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=undefined_var)", 1, xrt)
 
     # Using undefined register in reveal
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("reveal(black, undefined_var)", 1, xrt)
 
 
@@ -129,15 +130,15 @@ async def test_undefined_register_access(xrt):
 async def test_invalid_player_names(xrt):
     """Test operations with invalid player names."""
     # Invalid player in reveal
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("reveal(invalid_player, 'test')", 1, xrt)
 
     # Invalid player in elicit
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("elicit(invalid_player, s, 10)", 1, xrt)
 
     # Invalid player in reward
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("reward(invalid_player, 10)", 1, xrt)
 
 
@@ -147,10 +148,10 @@ async def test_invalid_player_names(xrt):
 @pytest.mark.asyncio
 async def test_undefined_functions(xrt):
     """Test calling undefined functions."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=undefined_function())", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=random_func('arg'))", 1, xrt)
 
 
@@ -158,15 +159,15 @@ async def test_undefined_functions(xrt):
 async def test_wrong_function_args(xrt):
     """Test functions with wrong number of arguments."""
     # xent with no args
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=xent())", 1, xrt)
 
     # get_story with args (should take none)
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=get_story('arg'))", 1, xrt)
 
     # first_n_tokens with wrong number of args
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(s=first_n_tokens('string'))", 1, xrt)
 
 
@@ -179,7 +180,7 @@ async def test_code_too_long(xrt):
     # Create code with more than 64 lines
     long_code = "\n".join([f"assign(s{i}='test')" for i in range(65)])
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(XegaConfigurationError) as exc_info:
         await play_game(long_code, xrt)
 
     assert "64 lines" in str(exc_info.value)
@@ -195,7 +196,7 @@ async def test_max_steps_exceeded(xrt):
     replay(flag_1, 1000)
     """
 
-    game_results = await play_game(game_code, xrt, auto_replay=False, max_steps=10)
+    _ = await play_game(game_code, xrt, auto_replay=False, max_steps=10)
 
     # Should have stopped after max_steps
     # Check that we didn't actually do 1000 iterations
@@ -210,11 +211,11 @@ async def test_type_mismatches(xrt):
     """Test various type mismatches."""
     # Numeric operations on strings
     await eval_line("assign(s='hello')", 1, xrt)
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("assign(t=s + 5)", 2, xrt)
 
     # String operations on numbers
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("ensure(len(5) > 0)", 1, xrt)
 
 

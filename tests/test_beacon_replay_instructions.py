@@ -2,6 +2,7 @@ import logging
 
 import pytest
 
+from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
 from xega.common.x_flag import XFlag
 from xega.runtime.execution import eval_line, play_game
 
@@ -45,14 +46,14 @@ async def test_beacon_overwrite(xrt):
 @pytest.mark.asyncio
 async def test_beacon_only_one_arg(xrt):
     """Test that beacon only accepts a single argument."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("beacon(flag_1, flag_2)", 1, xrt)
 
 
 @pytest.mark.asyncio
 async def test_beacon_only_positional_arg(xrt):
     """Test that beacon only accepts positional arguments."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("beacon(flag=flag_1)", 1, xrt)
 
 
@@ -60,10 +61,10 @@ async def test_beacon_only_positional_arg(xrt):
 async def test_beacon_invalid_flag(xrt):
     """Test beacon with invalid flag name."""
     # Only flag_1 and flag_2 are valid
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("beacon(flag_3)", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaGameError):
         await eval_line("beacon(invalid_flag)", 1, xrt)
 
 
@@ -103,7 +104,7 @@ async def test_replay_counter(xrt):
 @pytest.mark.asyncio
 async def test_replay_without_beacon(xrt):
     """Test replay without setting beacon first."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaInternalError):
         await eval_line("replay(flag_1, 1)", 1, xrt)
 
 

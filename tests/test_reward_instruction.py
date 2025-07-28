@@ -1,5 +1,6 @@
 import pytest
 
+from xega.common.errors import XegaSyntaxError
 from xega.runtime.execution import eval_line, play_game
 
 
@@ -128,7 +129,7 @@ async def test_reward_non_zero_sum_players(xrt_multi_player):
 @pytest.mark.asyncio
 async def test_reward_only_positional_args(xrt):
     """Test that reward only accepts positional arguments."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("reward(player=black, amount=10)", 1, xrt)
 
 

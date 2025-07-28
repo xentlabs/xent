@@ -89,14 +89,14 @@ async def test_ensure_with_string_operations(xrt):
 @pytest.mark.asyncio
 async def test_ensure_only_positional_args(xrt):
     """Test that ensure only accepts positional arguments."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("ensure(condition=True)", 1, xrt)
 
 
 @pytest.mark.asyncio
 async def test_ensure_non_boolean_condition(xrt):
     """Test that ensure requires boolean conditions."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("ensure('not a boolean')", 1, xrt)
 
 

@@ -15,7 +15,7 @@ def extract_results_from_dir(results_dir: str) -> XegaBenchmarkResult:
         for f in os.listdir(results_dir)
         if f.startswith("benchmark_")
         and f.endswith(".json")
-        and not f == "benchmark_config.json"
+        and f != "benchmark_config.json"
     ]
 
     if not benchmark_files:

@@ -99,10 +99,14 @@ class XegaRuntime:
                 raise XegaSyntaxError(f"Unknown instruction: {instruction_name}")
         except XegaSyntaxError as e:
             logging.exception(f"Syntax error in instruction: {e}")
-            raise XegaSyntaxError(f"{e}. Line: {line}, Line number: {line_num}")
+            raise XegaSyntaxError(
+                f"{e}. Line: {line}, Line number: {line_num}"
+            ) from None
         except XegaInternalError as e:
             logging.exception(f"Internal error in instruction: {e}")
-            raise XegaInternalError(f"{e}. Line: {line}, Line number: {line_num}")
+            raise XegaInternalError(
+                f"{e}. Line: {line}, Line number: {line_num}"
+            ) from e
 
     def _first_n_tokens(self, text: str, n: int) -> str | XString:
         return self.globals["first_n_tokens"](text, n)

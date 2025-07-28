@@ -49,7 +49,7 @@ def calculate_arms_values(
     seed_running_maxes = []
     max_iterations = 0
 
-    for map_seed, seed_results in results_by_seed.items():
+    for _map_seed, seed_results in results_by_seed.items():
         # Find results for this player
         player_results = None
         for result in seed_results:
@@ -186,7 +186,7 @@ def generate_aggregated_plots(benchmark_result: XegaBenchmarkResult, output_dir:
             all_iteration_scores = []
             max_iterations = 0
 
-            for map_seed, seed_data in seed_results.items():
+            for seed_data in seed_results.values():
                 for result in seed_data:
                     if result["game"]["players"][0]["id"] == player_id:
                         iteration_scores = [
@@ -318,7 +318,6 @@ def generate_normalized_score_summary_chart(
     logging.info(f"Generating summary chart in directory: {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
 
-    grouped_results = group_results_by_game_and_seed(benchmark_result)
     scores_by_game_player: dict[str, dict[str, list[float]]] = defaultdict(
         lambda: defaultdict(list)
     )

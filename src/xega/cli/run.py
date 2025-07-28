@@ -99,14 +99,13 @@ def run(
         benchmark_config = expand_benchmark_config(benchmark_config)
 
     results_dir = os.path.join(results_dir, benchmark_config["benchmark_id"])
-    if clean:
-        if os.path.exists(results_dir):
-            logging.info(f"Cleaning results directory: {results_dir}")
-            for root, dirs, files in os.walk(results_dir, topdown=False):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
+    if clean and os.path.exists(results_dir):
+        logging.info(f"Cleaning results directory: {results_dir}")
+        for root, dirs, files in os.walk(results_dir, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     os.makedirs(results_dir, exist_ok=True)
 

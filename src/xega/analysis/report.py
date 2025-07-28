@@ -37,7 +37,7 @@ def calculate_arms(game_results: list[XegaGameIterationResult]) -> list[float]:
     arms_values = []
     running_max = float("-inf")
 
-    for i, iteration_result in enumerate(game_results):
+    for _i, iteration_result in enumerate(game_results):
         # Get the score for the black player (or adjust as needed)
         score = iteration_result["scores"].get("black", 0)
         running_max = max(running_max, score)
@@ -78,7 +78,7 @@ def calculate_average_scores_across_seeds(
     """
     all_scores = defaultdict(lambda: defaultdict(list))
 
-    for map_seed, results in results_by_seed.items():
+    for _map_seed, results in results_by_seed.items():
         for result in results:
             for player_name, score in result["scores"].items():
                 player_id = None
@@ -95,7 +95,7 @@ def calculate_average_scores_across_seeds(
     for player_id, player_scores in all_scores.items():
         avg_score = 0
         count = 0
-        for player_name, scores in player_scores.items():
+        for scores in player_scores.values():
             if scores:
                 avg_score += sum(scores) / len(scores)
                 count += 1
@@ -159,7 +159,7 @@ def generate_markdown_report(
     for game_name, seed_results in grouped_results.items():
         map_seeds_per_game[game_name] = len(seed_results)
 
-        for map_seed, results in seed_results.items():
+        for results in seed_results.values():
             if results:
                 game_config = results[0]["game"]
                 game_configs[game_name] = game_config

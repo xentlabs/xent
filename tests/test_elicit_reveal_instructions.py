@@ -1,5 +1,6 @@
 import pytest
 
+from xega.common.errors import XegaSyntaxError
 from xega.runtime.execution import eval_line, play_game
 
 # REVEAL TESTS
@@ -9,7 +10,7 @@ from xega.runtime.execution import eval_line, play_game
 async def test_reveal_basic(xrt):
     """Test basic reveal operation to default player fails"""
     await eval_line("assign(s='test message')", 1, xrt)
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("reveal(s)", 2, xrt)
 
 
@@ -88,7 +89,7 @@ async def test_reveal_only_positional_args(xrt):
     await eval_line("assign(s='test')", 1, xrt)
 
     # This should fail because reveal doesn't accept keyword arguments
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("reveal(player=black, value=s)", 2, xrt)
 
 
@@ -160,17 +161,17 @@ async def test_elicit_token_limit(xrt):
 @pytest.mark.asyncio
 async def test_elicit_missing_token_limit(xrt):
     """Test that elicit requires a token limit."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("elicit(s)", 1, xrt)
 
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("elicit(black, s)", 1, xrt)
 
 
 @pytest.mark.asyncio
 async def test_elicit_only_positional_args(xrt):
     """Test that elicit only accepts positional arguments."""
-    with pytest.raises(Exception):
+    with pytest.raises(XegaSyntaxError):
         await eval_line("elicit(var=s, limit=10)", 1, xrt)
 
 

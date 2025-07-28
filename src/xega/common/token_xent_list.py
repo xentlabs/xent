@@ -80,7 +80,7 @@ class TokenXentList:
         return NotImplemented
 
     def __mul__(self, other):
-        if not isinstance(other, (int, float)):
+        if not isinstance(other, int | float):
             return NotImplemented
 
         # Check if value is either -1 or 1
@@ -90,7 +90,7 @@ class TokenXentList:
         return TokenXentList(self.pairs, scale=self.scale * other)
 
     def __rmul__(self, other):
-        if not isinstance(other, (int, float)):
+        if not isinstance(other, int | float):
             return NotImplemented
 
         # Check if value is either -1 or 1
@@ -124,28 +124,28 @@ class TokenXentList:
     def __lt__(self, other):
         if isinstance(other, TokenXentList):
             return ValidatedBool(self.total_xent() < other.total_xent())
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             return self.total_xent() < other
         return NotImplemented
 
     def __le__(self, other):
         if isinstance(other, TokenXentList):
             return ValidatedBool(self.total_xent() <= other.total_xent())
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             return self.total_xent() <= other
         return NotImplemented
 
     def __gt__(self, other):
         if isinstance(other, TokenXentList):
             return ValidatedBool(self.total_xent() > other.total_xent())
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             return self.total_xent() > other
         return NotImplemented
 
     def __ge__(self, other):
         if isinstance(other, TokenXentList):
             return ValidatedBool(self.total_xent() >= other.total_xent())
-        elif isinstance(other, (int, float)):
+        elif isinstance(other, int | float):
             return self.total_xent() >= other
         return NotImplemented
 

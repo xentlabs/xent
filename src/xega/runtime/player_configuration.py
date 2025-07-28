@@ -44,7 +44,7 @@ def check_default_xgp_options(
     except TypeError:
         raise XegaConfigurationError(
             f"Invalid options for default player type. Expected a dictionary with 'model' and 'provider' keys. Got: {dumps(options)}"
-        )
+        ) from None
 
 
 def check_default_hf_xgp_options(
@@ -58,4 +58,6 @@ def check_default_hf_xgp_options(
         check_type(options, DefaultHFXGPOptions)
         return cast(DefaultHFXGPOptions, options)
     except TypeError:
-        raise XegaConfigurationError("Invalid options for default HF player type.")
+        raise XegaConfigurationError(
+            "Invalid options for default HF player type."
+        ) from None

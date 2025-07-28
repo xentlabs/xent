@@ -188,7 +188,7 @@ def test_operator_cut_back():
     # but it would be better to avoid this situation by being more
     # careful wrapping all strings in XString.
     with pytest.raises(TypeError):
-        "hello world after" % xs
+        "hello world after" % xs  # noqa: UP031
 
     # Test with invalid types
     with pytest.raises(XegaTypeError):
@@ -203,20 +203,20 @@ def test_equality_and_inequality():
     s_def = XString("def")
 
     assert s_abc1 == s_abc2
-    assert not (s_abc1 == s_def)
+    assert s_abc1 != s_def
     assert s_abc1 == "abc"
     assert s_abc1 == "abc"  # Test reversed comparison
-    assert not (s_abc1 == "def")
-    assert not (s_abc1 == "def")  # Test reversed comparison
-    assert not (s_abc1 == 123)  # Should be False due to NotImplemented
-    assert not (s_abc1 == 123)  # Should be False
-
-    assert s_abc1 != s_def
-    assert not (s_abc1 != s_abc2)
     assert s_abc1 != "def"
     assert s_abc1 != "def"  # Test reversed comparison
-    assert not (s_abc1 != "abc")
-    assert not (s_abc1 != "abc")  # Test reversed comparison
+    assert s_abc1 != 123  # Should be False due to NotImplemented
+    assert s_abc1 != 123  # Should be False
+
+    assert s_abc1 != s_def
+    assert s_abc1 == s_abc2
+    assert s_abc1 != "def"
+    assert s_abc1 != "def"  # Test reversed comparison
+    assert s_abc1 == "abc"
+    assert s_abc1 == "abc"  # Test reversed comparison
     assert s_abc1 != 123  # Should be True due to NotImplemented
     assert s_abc1 != 123  # Should be True
 
@@ -283,5 +283,5 @@ def test_empty_string_operations():
     s_empty2 = XString("")
     assert s_empty == s_empty2
     assert s_empty == ""
-    assert not (s_empty == "hello")
-    assert not (s_empty == s_hello)
+    assert s_empty != "hello"
+    assert s_empty != s_hello

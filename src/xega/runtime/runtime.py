@@ -159,6 +159,7 @@ class XegaRuntime:
             validated_value = self._validate_assign_arg(var_name, var_value)
             cur.primary_string = validated_value.primary_string
             cur.prefix = validated_value.prefix
+        return None
 
     def _validate_elicit_args(
         self, args: list[Any], line_num: int
@@ -269,6 +270,7 @@ class XegaRuntime:
 
         self.beacons["previous_elicit"] = XFlag("previous_elicit", line_num)
         self.last_elicit_player = player
+        return None
 
     async def reveal(
         self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
@@ -296,6 +298,7 @@ class XegaRuntime:
 
         logging.info(f"Revealed {reveal_event} to player {player.name}")
         self._set_main_flag(line_num, is_reveal=True)
+        return None
 
     async def reward(
         self, args: list[Any], kwargs: dict[str, Any], line_num: int, line: str
@@ -358,6 +361,7 @@ class XegaRuntime:
                     logging.info(
                         f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
                     )
+        return None
 
     def _validate_ensure_args(self, args: list[Any]) -> None:
         if len(args) == 0:
@@ -427,6 +431,7 @@ class XegaRuntime:
 
         flag.line_num = line_num
         self.beacons[flag.name] = flag
+        return None
 
     def replay(
         self, args: list[Any], kwargs: dict[str, Any], line_num: int

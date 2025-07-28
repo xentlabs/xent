@@ -133,7 +133,9 @@ def generate_text(model, tokenizer, max_length: int | None = None):
         params.update(
             {
                 "temperature": random.uniform(*PARAM_RANGES["temperature"]),
-                "top_k": random.randint(*PARAM_RANGES["top_k"]),
+                "top_k": random.randint(
+                    int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
+                ),
                 "do_sample": True,
             }
         )
@@ -148,11 +150,16 @@ def generate_text(model, tokenizer, max_length: int | None = None):
         }
     )
 
-    min_tokens = random.randint(*PARAM_RANGES["min_new_tokens"])
+    min_tokens = random.randint(
+        int(PARAM_RANGES["min_new_tokens"][0]), int(PARAM_RANGES["min_new_tokens"][1])
+    )
     max_tokens = (
         max_length
         if max_length is not None
-        else random.randint(*PARAM_RANGES["max_new_tokens"])
+        else random.randint(
+            int(PARAM_RANGES["max_new_tokens"][0]),
+            int(PARAM_RANGES["max_new_tokens"][1]),
+        )
     )
     if min_tokens >= max_tokens:
         min_tokens = max_tokens - 1

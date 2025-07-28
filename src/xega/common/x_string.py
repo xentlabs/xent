@@ -4,6 +4,8 @@ from xega.common.errors import XegaTypeError
 
 
 class XString:
+    primary_string: str
+
     def __init__(
         self,
         primary_string: str | XString,

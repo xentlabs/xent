@@ -71,7 +71,7 @@ def group_results_by_game_and_seed(
 
 def calculate_average_scores_across_seeds(
     results_by_seed: dict[str, list[XegaGameResult]],
-) -> dict[str, dict[PlayerName, float]]:
+) -> dict[str, float]:
     """
     Calculate average scores across all map seeds for each player.
     Returns: {map_seed: {player_name: score}}
@@ -95,7 +95,7 @@ def calculate_average_scores_across_seeds(
     # Calculate averages
     average_scores = {}
     for player_id, player_scores in all_scores.items():
-        avg_score = 0
+        avg_score = 0.0
         count = 0
         for scores in player_scores.values():
             if scores:
@@ -316,11 +316,11 @@ def generate_markdown_report(
             markdown_content.append("| Player | Score (Player: black) |")
             markdown_content.append("|-------|-----------------------|")
 
-            seed_results = grouped_results[game_name][map_seed]
+            seed_result_list = grouped_results[game_name][map_seed]
 
             for player_id in sorted_player_ids:
                 found = False
-                for result in seed_results:
+                for result in seed_result_list:
                     for player in result["game"]["players"]:
                         if player["id"] == player_id:
                             score = result["scores"].get("black")

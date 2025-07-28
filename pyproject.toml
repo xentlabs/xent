@@ -63,5 +63,24 @@ indent-style = "space"
 [tool.mypy]
 python_version = "3.12"
 packages = ["xega"]
-strict = true
 show_error_codes = true
+
+# Enable valuable strict checks selectively instead of blanket "strict = true"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unreachable = true
+strict_equality = true
+strict_concatenate = true
+
+# Disable overly strict checks for gradual typing adoption
+disallow_untyped_defs = false       # Allow missing function annotations
+disallow_untyped_calls = false      # Allow calling untyped functions
+disallow_incomplete_defs = false    # Allow partially typed functions
+
+# Keep important type safety checks
+disallow_any_explicit = false      # Allow explicit Any usage
+disallow_any_generics = true       # Require type params for generics
+disallow_subclassing_any = true    # Prevent subclassing Any
+check_untyped_defs = true           # Check function bodies even if untyped

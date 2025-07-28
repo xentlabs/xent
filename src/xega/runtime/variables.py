@@ -52,6 +52,8 @@ def build_globals(judge: Judge):
         xed=judge.xed,
         nex=judge.nex,
         dex=judge.dex,
+        is_true=judge.is_true,
+        is_false=judge.is_false,
         first_n_tokens=judge.first_n_tokens,
         num_words=num_words,
         XString=XString,

@@ -136,6 +136,34 @@ class Judge:
     def generate_text(self, max_length: int = 50) -> str:
         return generate_text(self.model, self.tokenizer, max_length)
 
+    def is_true(self, condition: str) -> bool:
+        evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".
+
+---
+Statement: "2 plus 2 equals 4"
+Evaluation: true
+###
+Statement: "2 plus 2 equals 5"
+Evaluation: false
+###
+Statement: "The sky is blue"
+Evaluation: true
+###
+Statement: "Pigs can fly"
+Evaluation: false
+###
+Statement: "A triangle has three sides"
+Evaluation: true
+###
+Statement: "{condition}"
+Evaluation: """)
+        true_score = self.xent(evaluation_str + "true").total_xent()
+        false_score = self.xent(evaluation_str + "false").total_xent()
+        return true_score < false_score
+
+    def is_false(self, condition: str) -> bool:
+        return not self.is_true(condition)
+
     def set_seed(self, global_seed: str, map_seed: str) -> None:
         seed = self.full_seed(global_seed, map_seed)
         int_seed = int(hashlib.sha256(seed.encode()).hexdigest()[:8], 16)

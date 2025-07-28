@@ -23,9 +23,7 @@ Welcome to the Xega (XentGame) Benchmark Github 🥳
 Some quick notes:
 - Check out our website: [Xent.Tech](https://xent.tech)
 - View our paper: [arXiv](https://arxiv.org/abs/2506.06832)
-- Verified Leaderboard Coming Soon!
-- CLI Published to PyPI Coming Soon!
-- Better support for library usage of Xega coming soon
+- Improved support for library usage of Xega coming soon
 
 ## Leaderboard
 
@@ -34,19 +32,21 @@ See more in depth results at [xent.tech](https://xent.tech/leaderboard)
 | Rank | Player ID | Score |
 |:----:|:----------|------:|
 | 1 | o3 | 2224.82 |
-| 2 | deepseek-reasoner | 1785.18 |
-| 3 | claude-sonnet-4-20250514 | 1621.19 |
-| 4 | gemini-2.5-flash | 1608.86 |
-| 5 | claude-opus-4-20250514 | 1599.26 |
-| 6 | claude-3-7-sonnet-20250219 | 1574.04 |
-| 7 | o4-mini | 1470.44 |
-| 8 | claude-3-5-sonnet-20241022 | 1359.36 |
-| 9 | gpt-4.1 | 1308.66 |
-| 10 | gemini-2.5-pro | 1304.17 |
-| 11 | grok-3 | 1234.02 |
-| 12 | deepseek-chat | 1204.86 |
-| 13 | gpt-4o | 1178.54 |
-| 14 | grok-3-mini | 1072.38 |
+| 2 | grok-4-0709 | 2020.63 |
+| 3 | deepseek-reasoner | 1785.18 |
+| 4 | claude-sonnet-4-20250514 | 1621.19 |
+| 5 | gemini-2.5-flash | 1608.86 |
+| 6 | claude-opus-4-20250514 | 1599.26 |
+| 7 | claude-3-7-sonnet-20250219 | 1574.04 |
+| 8 | o4-mini | 1470.44 |
+| 9 | claude-3-5-sonnet-20241022 | 1359.36 |
+| 10 | gpt-4.1 | 1308.66 |
+| 11 | gemini-2.5-pro | 1304.17 |
+| 12 | grok-3 | 1234.02 |
+| 13 | deepseek-chat | 1204.86 |
+| 14 | gpt-4o | 1178.54 |
+| 15 | grok-3-mini | 1072.38 |
+
 
 
 ## Run

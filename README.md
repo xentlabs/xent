@@ -171,6 +171,46 @@ uv run pytest -m "not integration"
 uv run pytest -m integration
 ```
 
+### Code Quality Tools
+
+The project uses modern Python tooling for consistent code quality:
+
+#### Quick Commands
+
+```bash
+# Format code
+uv run ruff format .
+
+# Lint and auto-fix issues  
+uv run ruff check --fix .
+
+# Type check (source only)
+uv run mypy src/
+
+# Run all quality checks
+uv run ruff format . && uv run ruff check --fix . && uv run mypy src/
+```
+
+#### Pre-commit Hooks
+
+Pre-commit hooks are installed and will automatically:
+- Format code with Ruff
+- Fix auto-fixable linting issues  
+- Run type checking on staged files
+
+To run pre-commit manually:
+```bash
+uv run pre-commit run --all-files
+```
+
+#### VSCode Integration
+
+Project-specific VSCode settings are configured to:
+- Use Ruff for formatting and linting
+- Format on save
+- Organize imports automatically
+- Integrate with the project's Python interpreter
+
 ### Future Work
 
 A short list of features and changes that we are contemplating making.

@@ -7,10 +7,21 @@ from typing import Any, Literal, TypedDict
 import google.genai as genai
 import google.genai.types as genai_types
 import torch
+from anthropic import APIError as AnthropicAPIError
 from anthropic import AsyncAnthropic, NotGiven
+from anthropic import AuthenticationError as AnthropicAuthenticationError
+from anthropic import BadRequestError as AnthropicBadRequestError
+from anthropic import InternalServerError as AnthropicInternalServerError
+from anthropic import RateLimitError as AnthropicRateLimitError
 from anthropic.types import MessageParam
 from ollama import AsyncClient
+from ollama import ResponseError as OllamaResponseError
+from openai import APIError as OpenAIAPIError
 from openai import AsyncOpenAI
+from openai import AuthenticationError as OpenAIAuthenticationError
+from openai import BadRequestError as OpenAIBadRequestError
+from openai import InternalServerError as OpenAIInternalServerError
+from openai import RateLimitError as OpenAIRateLimitError
 from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionMessageParam,
@@ -19,7 +30,15 @@ from openai.types.chat import (
 )
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
-from xega.common.errors import XegaConfigurationError
+from xega.common.errors import (
+    XegaApiError,
+    XegaAuthenticationError,
+    XegaConfigurationError,
+    XegaGameError,
+    XegaInternalServerError,
+    XegaInvalidRequestError,
+    XegaRateLimitError,
+)
 from xega.common.xega_types import PlayerOptions, TokenUsage
 from xega.runtime.player_configuration import (
     DefaultHFXGPOptions,
@@ -84,10 +103,8 @@ class LLMClient(ABC):
         )
 
     @abstractmethod
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
-        """Send a request to the LLM and return the response."""
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
+        """Send a request to the LLM and return the response and token usage."""
         pass
 
 
@@ -96,27 +113,54 @@ class OllamaClient(LLMClient):
         super().__init__(model)
         self.client = AsyncClient()
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
-        """Send a request to the LLM and return the response."""
-        response = await self.client.chat(model=self.model, messages=messages)
-        response_message = response["message"]["content"]
-        token_usage = TokenUsage(
-            input_tokens=response.get("prompt_eval_count", 0),
-            output_tokens=response.get("eval_count", 0),
-        )
-        return response_message, token_usage
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
+        try:
+            response = await self.client.chat(model=self.model, messages=messages)
+            response_message = response["message"]["content"]
+            input_tokens = response.get("prompt_eval_count", 0)
+            output_tokens = response.get("eval_count", 0)
+            token_usage = TokenUsage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
+            self.increment_token_counts(input_tokens, output_tokens)
+            return response_message, token_usage
+        except OllamaResponseError as e:
+            if e.status_code == 429:
+                raise XegaRateLimitError(
+                    str(e), provider="ollama", status_code=e.status_code
+                ) from e
+            elif e.status_code in [401, 403]:
+                raise XegaAuthenticationError(
+                    str(e), provider="ollama", status_code=e.status_code
+                ) from e
+            elif e.status_code == 400:
+                raise XegaInvalidRequestError(
+                    str(e), provider="ollama", status_code=e.status_code
+                ) from e
+            elif e.status_code >= 500:
+                raise XegaInternalServerError(
+                    str(e), provider="ollama", status_code=e.status_code
+                ) from e
+            else:
+                raise XegaApiError(
+                    str(e), provider="ollama", status_code=e.status_code
+                ) from e
+        except Exception as e:
+            raise XegaGameError(
+                f"An unexpected error occurred with Ollama client: {e}"
+            ) from e
 
 
 class OpenAIClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
-        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise XegaConfigurationError("OPENAI_API_KEY environment variable not set.")
+        self.client = AsyncOpenAI(api_key=api_key)
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         """Send a request to the LLM and return the response."""
         openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
@@ -145,30 +189,60 @@ class OpenAIClient(LLMClient):
                     f"Warning: Skipping invalid message format for OpenAI API: {msg}"
                 )
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=openai_api_messages,
-        )
-        input_token_count = getattr(getattr(response, "usage", {}), "prompt_tokens", 0)
-        output_token_count = getattr(
-            getattr(response, "usage", {}), "completion_tokens", 0
-        )
-        self.increment_token_counts(input_token_count, output_token_count)
-        response_message = response.choices[0].message.content
-        token_usage = TokenUsage(
-            input_tokens=input_token_count, output_tokens=output_token_count
-        )
-        return response_message, token_usage
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=openai_api_messages,
+            )
+            input_token_count = getattr(
+                getattr(response, "usage", {}), "prompt_tokens", 0
+            )
+            output_token_count = getattr(
+                getattr(response, "usage", {}), "completion_tokens", 0
+            )
+            self.increment_token_counts(input_token_count, output_token_count)
+            response_message = response.choices[0].message.content
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
+            if response_message is None:
+                raise XegaApiError(
+                    "The API returned an empty message.", provider="openai"
+                )
+            return response_message, token_usage
+        except OpenAIRateLimitError as e:
+            raise XegaRateLimitError(
+                str(e), provider="openai", status_code=e.status_code
+            ) from e
+        except OpenAIAuthenticationError as e:
+            raise XegaAuthenticationError(
+                str(e), provider="openai", status_code=e.status_code
+            ) from e
+        except OpenAIBadRequestError as e:
+            raise XegaInvalidRequestError(
+                str(e), provider="openai", status_code=e.status_code
+            ) from e
+        except OpenAIInternalServerError as e:
+            raise XegaInternalServerError(
+                str(e), provider="openai", status_code=e.status_code
+            ) from e
+        except OpenAIAPIError as e:
+            raise XegaApiError(
+                str(e), provider="openai", status_code=e.status_code
+            ) from e
 
 
 class AnthropicClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
-        self.client = AsyncAnthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise XegaConfigurationError(
+                "ANTHROPIC_API_KEY environment variable not set."
+            )
+        self.client = AsyncAnthropic(api_key=api_key)
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         system_message: str | NotGiven = NotGiven()
         if messages and messages[0].get("role") == "system":
             system_message = str(messages[0].get("content", ""))
@@ -192,24 +266,55 @@ class AnthropicClient(LLMClient):
                 )
 
         if not anthropic_api_messages:
-            raise ValueError("No valid user/assistant messages to send.")
+            raise XegaInvalidRequestError(
+                "Cannot send a request with no user/assistant messages.",
+                provider="anthropic",
+            )
 
-        message = await self.client.messages.create(
-            max_tokens=4096,
-            messages=anthropic_api_messages,
-            model=self.model,
-            system=system_message,
-        )
-        input_token_count = message.usage.input_tokens
-        output_token_count = message.usage.output_tokens
-        self.increment_token_counts(input_token_count, output_token_count)
-        token_usage = TokenUsage(
-            input_tokens=input_token_count, output_tokens=output_token_count
-        )
-        if message.content and hasattr(message.content[0], "text"):
-            return getattr(message.content[0], "text", ""), token_usage
-        else:
-            return None, token_usage
+        try:
+            message = await self.client.messages.create(
+                max_tokens=4096,
+                messages=anthropic_api_messages,
+                model=self.model,
+                system=system_message,
+            )
+            input_token_count = message.usage.input_tokens
+            output_token_count = message.usage.output_tokens
+            self.increment_token_counts(input_token_count, output_token_count)
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
+            if (
+                message.content
+                and hasattr(message.content[0], "text")
+                and message.content[0].text
+            ):
+                return message.content[0].text, token_usage
+            else:
+                raise XegaApiError(
+                    "The API returned an empty or blocked message.",
+                    provider="anthropic",
+                )
+        except AnthropicRateLimitError as e:
+            raise XegaRateLimitError(
+                str(e), provider="anthropic", status_code=e.status_code
+            ) from e
+        except AnthropicAuthenticationError as e:
+            raise XegaAuthenticationError(
+                str(e), provider="anthropic", status_code=e.status_code
+            ) from e
+        except AnthropicBadRequestError as e:
+            raise XegaInvalidRequestError(
+                str(e), provider="anthropic", status_code=e.status_code
+            ) from e
+        except AnthropicInternalServerError as e:
+            raise XegaInternalServerError(
+                str(e), provider="anthropic", status_code=e.status_code
+            ) from e
+        except AnthropicAPIError as e:
+            raise XegaApiError(
+                str(e), provider="anthropic", status_code=e.status_code
+            ) from e
 
 
 class GeminiClient(LLMClient):
@@ -217,19 +322,12 @@ class GeminiClient(LLMClient):
         super().__init__(model)
         google_api_key = os.getenv("GEMINI_API_KEY")
         if not google_api_key:
-            logging.error(
-                "GOOGLE_API_KEY environment variable not set for GeminiClient."
-            )
-            raise ValueError("GOOGLE_API_KEY environment variable not set.")
+            raise XegaConfigurationError("GEMINI_API_KEY environment variable not set.")
         self.client = genai.Client(api_key=google_api_key)
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
-        """Send a request to the LLM and return the response."""
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         gemini_contents = []
         system_instruction_content: str | None = None
-
         processed_messages = list(messages)
 
         if processed_messages and processed_messages[0].get("role") == "system":
@@ -241,7 +339,6 @@ class GeminiClient(LLMClient):
         for msg in processed_messages:
             role = msg.get("role")
             content = msg.get("content")
-
             if not content:
                 logging.warning(f"Warning: Skipping empty message for Gemini: {msg}")
                 continue
@@ -268,19 +365,9 @@ class GeminiClient(LLMClient):
                 )
 
         if not gemini_contents and not system_instruction_content:
-            logging.warning(
-                "Gemini request has no user/assistant messages and no system instruction."
-            )
-            return None, TokenUsage(input_tokens=0, output_tokens=0)
-
-        if (
-            system_instruction_content
-            and gemini_contents
-            and gemini_contents[0]["role"] != "user"
-        ):
-            logging.warning(
-                "Gemini API may require the first message in 'contents' to be 'user' "
-                f"when 'system_instruction' is present. Current first message role: {gemini_contents[0]['role']}"
+            raise XegaInvalidRequestError(
+                "Cannot send a request with no user/assistant messages and no system instruction.",
+                provider="gemini",
             )
 
         try:
@@ -299,6 +386,7 @@ class GeminiClient(LLMClient):
                 output_token_count = response.usage_metadata.candidates_token_count or 0
             else:
                 logging.debug("Gemini response did not contain usage_metadata.")
+
             self.increment_token_counts(input_token_count, output_token_count)
             token_usage = TokenUsage(
                 input_tokens=input_token_count, output_tokens=output_token_count
@@ -307,28 +395,33 @@ class GeminiClient(LLMClient):
             if hasattr(response, "text") and response.text:
                 return response.text, token_usage
             else:
-                logging.warning(
-                    f"Gemini response is empty or was possibly blocked. Prompt feedback: {getattr(response, 'prompt_feedback', 'N/A')}"
+                feedback = getattr(response, "prompt_feedback", "N/A")
+                raise XegaApiError(
+                    f"Gemini response is empty or was blocked. Feedback: {feedback}",
+                    provider="gemini",
                 )
-                return None, token_usage
 
+        except genai.types.ResourceExhaustedError as e:
+            raise XegaRateLimitError(str(e), provider="gemini") from e
+        except genai.types.InternalServerError as e:
+            raise XegaInternalServerError(str(e), provider="gemini") from e
+        except genai.types.PermissionDeniedError as e:
+            raise XegaAuthenticationError(str(e), provider="gemini") from e
         except Exception as e:
-            logging.error(f"Error during Gemini API request: {e}")
-            return None, TokenUsage(input_tokens=0, output_tokens=0)
+            raise XegaApiError(
+                f"An unexpected error occurred: {e}", provider="gemini"
+            ) from e
 
 
 class GrokClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
-        self.client = AsyncOpenAI(
-            api_key=os.getenv("GROK_API_KEY"),
-            base_url="https://api.x.ai/v1",
-        )
+        api_key = os.getenv("GROK_API_KEY")
+        if not api_key:
+            raise XegaConfigurationError("GROK_API_KEY environment variable not set.")
+        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
-        """Send a request to the Grok LLM and return the response."""
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
             role = msg.get("role")
@@ -356,34 +449,60 @@ class GrokClient(LLMClient):
                     f"Warning: Skipping invalid message format for Grok API: {msg}"
                 )
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=openai_api_messages,
-        )
-        input_token_count = getattr(getattr(response, "usage", {}), "prompt_tokens", 0)
-        output_token_count = getattr(
-            getattr(response, "usage", {}), "completion_tokens", 0
-        )
-        self.increment_token_counts(input_token_count, output_token_count)
-        response_message = response.choices[0].message.content
-        token_usage = TokenUsage(
-            input_tokens=input_token_count, output_tokens=output_token_count
-        )
-        return response_message, token_usage
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=openai_api_messages,
+            )
+            input_token_count = getattr(
+                getattr(response, "usage", {}), "prompt_tokens", 0
+            )
+            output_token_count = getattr(
+                getattr(response, "usage", {}), "completion_tokens", 0
+            )
+            self.increment_token_counts(input_token_count, output_token_count)
+            response_message = response.choices[0].message.content
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
+            if response_message is None:
+                raise XegaApiError(
+                    "The API returned an empty message.", provider="grok"
+                )
+            return response_message, token_usage
+        except OpenAIRateLimitError as e:
+            raise XegaRateLimitError(
+                str(e), provider="grok", status_code=e.status_code
+            ) from e
+        except OpenAIAuthenticationError as e:
+            raise XegaAuthenticationError(
+                str(e), provider="grok", status_code=e.status_code
+            ) from e
+        except OpenAIBadRequestError as e:
+            raise XegaInvalidRequestError(
+                str(e), provider="grok", status_code=e.status_code
+            ) from e
+        except OpenAIInternalServerError as e:
+            raise XegaInternalServerError(
+                str(e), provider="grok", status_code=e.status_code
+            ) from e
+        except OpenAIAPIError as e:
+            raise XegaApiError(
+                str(e), provider="grok", status_code=e.status_code
+            ) from e
 
 
 class DeepSeekClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
-        self.client = AsyncOpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url="https://api.deepseek.com",
-        )
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise XegaConfigurationError(
+                "DEEPSEEK_API_KEY environment variable not set."
+            )
+        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
-        """Send a request to Deepseek LLM and return the response."""
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []
         for msg in messages:
             role = msg.get("role")
@@ -411,20 +530,47 @@ class DeepSeekClient(LLMClient):
                     f"Warning: Skipping invalid message format for Deepseek API: {msg}"
                 )
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=openai_api_messages,
-        )
-        input_token_count = getattr(getattr(response, "usage", {}), "prompt_tokens", 0)
-        output_token_count = getattr(
-            getattr(response, "usage", {}), "completion_tokens", 0
-        )
-        self.increment_token_counts(input_token_count, output_token_count)
-        response_message = response.choices[0].message.content
-        token_usage = TokenUsage(
-            input_tokens=input_token_count, output_tokens=output_token_count
-        )
-        return response_message, token_usage
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=openai_api_messages,
+            )
+            input_token_count = getattr(
+                getattr(response, "usage", {}), "prompt_tokens", 0
+            )
+            output_token_count = getattr(
+                getattr(response, "usage", {}), "completion_tokens", 0
+            )
+            self.increment_token_counts(input_token_count, output_token_count)
+            response_message = response.choices[0].message.content
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
+            if response_message is None:
+                raise XegaApiError(
+                    "The API returned an empty message.", provider="deepseek"
+                )
+            return response_message, token_usage
+        except OpenAIRateLimitError as e:
+            raise XegaRateLimitError(
+                str(e), provider="deepseek", status_code=e.status_code
+            ) from e
+        except OpenAIAuthenticationError as e:
+            raise XegaAuthenticationError(
+                str(e), provider="deepseek", status_code=e.status_code
+            ) from e
+        except OpenAIBadRequestError as e:
+            raise XegaInvalidRequestError(
+                str(e), provider="deepseek", status_code=e.status_code
+            ) from e
+        except OpenAIInternalServerError as e:
+            raise XegaInternalServerError(
+                str(e), provider="deepseek", status_code=e.status_code
+            ) from e
+        except OpenAIAPIError as e:
+            raise XegaApiError(
+                str(e), provider="deepseek", status_code=e.status_code
+            ) from e
 
 
 class HuggingFaceClient(LLMClient):
@@ -442,61 +588,54 @@ class HuggingFaceClient(LLMClient):
         do_sample: bool = True,
     ):
         super().__init__(model_name_or_path)
+        try:
+            if device is None:
+                self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            else:
+                self.device = device
 
-        # Set device
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        else:
-            self.device = device
+            self.max_length = max_length
+            self.temperature = temperature
+            self.top_p = top_p
+            self.do_sample = do_sample
 
-        # Store generation parameters
-        self.max_length = max_length
-        self.temperature = temperature
-        self.top_p = top_p
-        self.do_sample = do_sample
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name_or_path,
+                trust_remote_code=trust_remote_code,
+                padding_side="left",
+            )
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Load tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            model_name_or_path,
-            trust_remote_code=trust_remote_code,
-            padding_side="left",  # Important for batch generation
-        )
+            if torch_dtype is None:
+                torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
 
-        # Set padding token if not set
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
+            model_kwargs = {
+                "pretrained_model_name_or_path": model_name_or_path,
+                "trust_remote_code": trust_remote_code,
+                "torch_dtype": torch_dtype,
+            }
+            if load_in_8bit:
+                model_kwargs["load_in_8bit"] = True
+            elif load_in_4bit:
+                model_kwargs["load_in_4bit"] = True
+            elif self.device == "cuda":
+                model_kwargs["device_map"] = "auto"
 
-        # Determine dtype
-        if torch_dtype is None:
-            torch_dtype = torch.float16 if self.device == "cuda" else torch.float32
+            self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)
 
-        # Load model with appropriate configuration
-        model_kwargs = {
-            "pretrained_model_name_or_path": model_name_or_path,
-            "trust_remote_code": trust_remote_code,
-            "torch_dtype": torch_dtype,
-        }
+            if not (load_in_8bit or load_in_4bit) and self.device != "cuda":
+                self.model_instance = self.model_instance.to(self.device)
 
-        if load_in_8bit:
-            model_kwargs["load_in_8bit"] = True
-        elif load_in_4bit:
-            model_kwargs["load_in_4bit"] = True
-        elif self.device == "cuda":
-            model_kwargs["device_map"] = "auto"
-
-        self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)
-
-        # Move to device if not using device_map
-        if not (load_in_8bit or load_in_4bit) and self.device != "cuda":
-            self.model_instance = self.model_instance.to(self.device)
-
-        self.model_instance.eval()
-
-        logging.info(f"Loaded model {model_name_or_path} on {self.device}")
+            self.model_instance.eval()
+            logging.info(f"Loaded model {model_name_or_path} on {self.device}")
+        except Exception as e:
+            raise XegaConfigurationError(
+                f"Failed to load Hugging Face model '{model_name_or_path}': {e}"
+            ) from e
 
     @classmethod
     def from_options(cls, options: DefaultHFXGPOptions) -> "HuggingFaceClient":
-        """Create a HuggingFaceClient from configuration options."""
         constructor_args: Any = options.copy()
         constructor_args["model_name_or_path"] = constructor_args.pop("model")
         constructor_args.pop("provider", None)
@@ -504,41 +643,26 @@ class HuggingFaceClient(LLMClient):
         return cls(**constructor_args)
 
     def _format_messages_to_prompt(self, messages: list[LLMMessage]) -> str:
-        """
-        Format messages into a prompt string.
-        Uses chat template if available, otherwise falls back to simple formatting.
-        """
-        # Check if the tokenizer has a chat template
         if hasattr(self.tokenizer, "apply_chat_template"):
             try:
-                # Filter out empty messages
-                filtered_messages = []
-                for msg in messages:
-                    if msg.get("content"):
-                        filtered_messages.append(
-                            {"role": msg["role"], "content": msg["content"]}
-                        )
-
-                # Apply chat template
-                prompt = self.tokenizer.apply_chat_template(
+                filtered_messages = [
+                    {"role": msg["role"], "content": msg["content"]}
+                    for msg in messages
+                    if msg.get("content")
+                ]
+                return self.tokenizer.apply_chat_template(
                     filtered_messages, tokenize=False, add_generation_prompt=True
                 )
-                return prompt
             except Exception as e:
                 logging.warning(
                     f"Chat template failed: {e}. Falling back to simple formatting."
                 )
 
-        # Fallback: Simple formatting
         formatted_parts = []
-
         for msg in messages:
-            role = msg.get("role", "")
-            content = msg.get("content", "")
-
+            role, content = msg.get("role", ""), msg.get("content", "")
             if not content:
                 continue
-
             if role == "system":
                 formatted_parts.append(f"System: {content}")
             elif role == "user":
@@ -548,59 +672,43 @@ class HuggingFaceClient(LLMClient):
             else:
                 formatted_parts.append(content)
 
-        # Join with double newlines and add prompt for assistant
         prompt = "\n\n".join(formatted_parts)
         if messages and messages[-1].get("role") == "user":
             prompt += "\n\nAssistant:"
-
         return prompt
 
-    async def request(
-        self, messages: list[LLMMessage]
-    ) -> tuple[str | None, TokenUsage]:
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         try:
-            # Format messages into prompt
             prompt = self._format_messages_to_prompt(messages)
-
-            # Tokenize input
             inputs = self.tokenizer(
                 prompt, return_tensors="pt", truncation=True, max_length=self.max_length
             ).to(self.device)
-
             input_length = inputs["input_ids"].shape[1]
 
-            # Run generation in executor to avoid blocking
             loop = asyncio.get_event_loop()
             output_ids = await loop.run_in_executor(
                 None, self._generate, inputs["input_ids"], inputs.get("attention_mask")
             )
 
-            # Decode output
-            generated_ids = output_ids[0][input_length:]  # Remove input tokens
+            generated_ids = output_ids[0][input_length:]
             response = self.tokenizer.decode(
                 generated_ids,
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=True,
             )
 
-            # Count tokens
             output_length = len(generated_ids)
             self.increment_token_counts(input_length, output_length)
-
-            return response.strip(), TokenUsage(
+            token_usage = TokenUsage(
                 input_tokens=input_length, output_tokens=output_length
             )
-
+            return response.strip(), token_usage
         except Exception as e:
-            logging.error(f"Error during generation: {e}")
-            return None, TokenUsage(input_tokens=0, output_tokens=0)
+            raise XegaGameError(f"Hugging Face model generation failed: {e}") from e
 
     def _generate(
         self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
-        """
-        Synchronous generation method to be run in executor.
-        """
         with torch.no_grad():
             generation_config = GenerationConfig(
                 max_new_tokens=self.max_length - input_ids.shape[1],
@@ -610,19 +718,13 @@ class HuggingFaceClient(LLMClient):
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
             )
-
-            output_ids = self.model_instance.generate(
+            return self.model_instance.generate(
                 input_ids,
                 attention_mask=attention_mask,
                 generation_config=generation_config,
             )
 
-        return output_ids
-
     def count_tokens(self, text: str) -> int:
-        """
-        Utility method to count tokens in a text string.
-        """
         return len(self.tokenizer.encode(text, add_special_tokens=True))
 
 
@@ -646,7 +748,4 @@ def make_client(unchecked_options: PlayerOptions | None) -> LLMClient:
             check_default_hf_xgp_options(unchecked_options)
         )
     else:
-        logging.error(
-            f"Unsupported provider: {provider}. Please use a supported provider."
-        )
         raise XegaConfigurationError(f"Unsupported provider: {provider}")

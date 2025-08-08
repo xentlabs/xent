@@ -9,6 +9,7 @@ from xega.analysis import analyze
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.cli_util import generate_benchmark_id
+from xega.common.util import log_git_snapshot
 from xega.common.xega_types import (
     ExpandedXegaBenchmarkConfig,
     XegaBenchmarkConfig,
@@ -115,6 +116,8 @@ def run(
     formatter = logging.Formatter(logging_format)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+
+    log_git_snapshot()
 
     benchmark_result = asyncio.run(
         run_benchmark(benchmark_config, results_dir, parallel_games)

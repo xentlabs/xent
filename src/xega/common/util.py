@@ -1,4 +1,7 @@
 import json
+import logging
+import os
+import subprocess
 
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
@@ -30,3 +33,48 @@ def dumps(obj, **kwargs):
 
 def loads(s, **kwargs):
     return json.loads(s, object_hook=x_decoder, **kwargs)
+
+
+# Used to place git commit hash and diff in logs, which is useful for ensuring reproducibility of benchmark results
+def log_git_snapshot(repo_path="."):
+    if not os.path.isdir(repo_path):
+        logging.warning(f"Git snapshot failed: Directory not found at '{repo_path}'")
+        return
+
+    try:
+        commit_hash = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=repo_path,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).strip()
+        logging.info(f"Git Commit: {commit_hash}")
+
+        git_diff = subprocess.check_output(
+            ["git", "diff", "HEAD"], cwd=repo_path, stderr=subprocess.PIPE, text=True
+        ).strip()
+
+        if git_diff:
+            logging.info(
+                "Git Diff (staged/unstaged changes against HEAD):\n%s", git_diff
+            )
+        else:
+            logging.info("Git Diff: No local changes detected against HEAD.")
+
+        untracked_files = subprocess.check_output(
+            ["git", "ls-files", "--others", "--exclude-standard"],
+            cwd=repo_path,
+            stderr=subprocess.PIPE,
+            text=True,
+        ).strip()
+
+        if untracked_files:
+            logging.info("Untracked files:\n%s", untracked_files)
+
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        logging.warning(
+            "Could not retrieve Git snapshot. This might be because 'git' is not installed, "
+            f"the path '{repo_path}' is not a Git repository, or it has no commits. Error: {e}"
+        )
+    except Exception as e:
+        logging.error(f"An unexpected error occurred while logging git snapshot: {e}")

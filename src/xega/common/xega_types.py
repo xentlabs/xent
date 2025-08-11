@@ -77,6 +77,7 @@ class PlayerConfig(TypedDict):
 class GameConfig(TypedDict):
     name: str
     code: str
+    presentation_function: str | None
 
 
 class XegaMetadata(TypedDict):
@@ -106,6 +107,7 @@ class ExpandedGameConfig(TypedDict):
     name: str
     code: str
     map_seed: str
+    presentation_function: str
 
 
 class XegaGameConfig(XegaMetadata):

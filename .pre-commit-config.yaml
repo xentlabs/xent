@@ -9,5 +9,4 @@ repos:
     rev: v1.17.0
     hooks:
       - id: mypy
-        files: ^src/
         additional_dependencies: [types-requests, types-click]

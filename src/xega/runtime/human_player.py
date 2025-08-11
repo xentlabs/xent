@@ -1,6 +1,7 @@
 import logging
 import pprint
 
+from xega.common.x_string import XString
 from xega.common.xega_types import (
     PlayerName,
     PlayerOptions,
@@ -31,7 +32,9 @@ class HumanXGP(XGP):
     def reset_score(self) -> None:
         self.score = 0.0
 
-    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
+    async def make_move(
+        self, var_name: str, register_state: dict[str, XString]
+    ) -> tuple[str, TokenUsage]:
         print("************************************************")
         print(f"The game name: {self.game_config['game']['name']}")
         print("Game code:")

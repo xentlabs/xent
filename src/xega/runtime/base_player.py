@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Final
 
+from xega.common.x_string import XString
 from xega.common.xega_types import (
     PlayerName,
     PlayerOptions,
@@ -74,7 +75,9 @@ class XGP(ABC):
         pass
 
     @abstractmethod
-    async def make_move(self, var_name: str) -> tuple[str, TokenUsage]:
+    async def make_move(
+        self, var_name: str, register_state: dict[str, XString]
+    ) -> tuple[str, TokenUsage]:
         pass
 
     @abstractmethod

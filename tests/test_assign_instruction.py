@@ -172,5 +172,5 @@ async def test_assign_in_game_context(xrt):
     assert len(game_results) == 1
 
     # Check that the assignments worked by looking at the reveal
-    player_history = xrt.players[0].history
+    player_history = xrt.players[0].event_history
     assert any("hello world" in str(h) for h in player_history)

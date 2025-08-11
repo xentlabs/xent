@@ -1,8 +1,5 @@
-# Game overview: your goal is to provide `x` such that when the story `s1` is prefixed with `x`, the cross entropy of the story is minimized. But when the story `s2` is prefixed with `x`, the cross entropy of the story is maximized.
-# You will be able to see the per-token cross entropy values after each reward. Use these to find a better `x` for your next try.
-# So try to think hard of what you can say in 10 tokens that will make `s1` more likely, while also making `s2` less likely. You can't use any words that are in either story.
 assign(s1=story(), s2=story())
 elicit(x, 10)
-assign(x1=remove_common_words(x, s1 + s2)) # You cant use any overlapping words from the story
+assign(x1=remove_common_words(x, s1 + s2))
 reward(black, xed(s1 | x1))
 reward(black, dex(s2 | x1))

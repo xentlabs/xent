@@ -1,5 +1,3 @@
-import logging
-
 import pytest
 
 from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
@@ -134,12 +132,8 @@ async def test_replay_tracks_per_line(xrt):
 
     # Check history to see execution pattern
     player = xrt.players[0]
-    # Should see multiple 'loop' and 'inner' reveals
-    logging.info(
-        f"&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&Player history: {player.history}"
-    )
-    loop_count = sum(1 for h in player.history if "loop" in h)
-    inner_count = sum(1 for h in player.history if "inner" in h)
+    loop_count = sum(1 for h in player.event_history if "loop" in str(h))
+    inner_count = sum(1 for h in player.event_history if "inner" in str(h))
 
     assert loop_count > 0
     assert inner_count > 0
@@ -198,7 +192,7 @@ async def test_main_flag(xrt):
 
     player = xrt.players[0]
     # Should have executed the replay 3 times, but it doesn't create a new history entry
-    assert len(player.history) == 1
+    assert len(player.event_history) == 1
 
 
 @pytest.mark.asyncio
@@ -213,5 +207,4 @@ async def test_main_flag_no_reveal(xrt):
     await play_game(game_code, xrt, auto_replay=False)
 
     player = xrt.players[0]
-    logging.info(f"Player history: {player.history}")
-    assert len(player.history) == 8  # 4x elicit request + response
+    assert len(player.event_history) == 8  # 4x elicit request + response

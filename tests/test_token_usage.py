@@ -1,6 +1,7 @@
 import pytest
 
 from xega.common.xega_types import XegaGameConfig
+from xega.presentation.executor import get_default_presentation
 from xega.runtime.default_players import MockXGP
 from xega.runtime.execution import eval_line
 from xega.runtime.judge import Judge
@@ -12,6 +13,7 @@ FAKE_GAME_CONFIG: XegaGameConfig = {
         "name": "Token Usage Test",
         "code": "test_code",
         "map_seed": "test_seed_0",
+        "presentation_function": get_default_presentation(),
     },
     "auto_replay": True,
     "max_steps": 100,

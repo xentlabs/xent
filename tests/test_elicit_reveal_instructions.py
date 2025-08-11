@@ -21,8 +21,8 @@ async def test_reveal_explicit_player(xrt):
     await eval_line("reveal(black, s)", 2, xrt)
 
     player = xrt.players[0]
-    assert len(player.history) == 1
-    assert "message for black" in player.history[0]
+    assert len(player.event_history) == 1
+    assert "message for black" in str(player.event_history[0])
 
 
 @pytest.mark.asyncio
@@ -32,11 +32,11 @@ async def test_reveal_multiple_values(xrt):
     await eval_line("reveal(black, s1, s2, s3)", 2, xrt)
 
     player = xrt.players[0]
-    assert len(player.history) == 1
+    assert len(player.event_history) == 1
     # All values should be in the reveal
-    assert "first" in player.history[0]
-    assert "second" in player.history[0]
-    assert "third" in player.history[0]
+    assert "first" in str(player.event_history[0])
+    assert "second" in str(player.event_history[0])
+    assert "third" in str(player.event_history[0])
 
 
 @pytest.mark.asyncio
@@ -48,17 +48,17 @@ async def test_reveal_to_different_players(xrt_multi_player):
     # Reveal to alice
     await eval_line("reveal(alice, s)", 2, xrt)
     alice = xrt.players[0]
-    assert len(alice.history) == 1
-    assert "shared message" in alice.history[0]
+    assert len(alice.event_history) == 1
+    assert "shared message" in str(alice.event_history[0])
 
     # Bob should not have received it
     bob = xrt.players[1]
-    assert len(bob.history) == 0
+    assert len(bob.event_history) == 0
 
     # Now reveal to bob
     await eval_line("reveal(bob, s)", 3, xrt)
-    assert len(bob.history) == 1
-    assert "shared message" in bob.history[0]
+    assert len(bob.event_history) == 1
+    assert "shared message" in str(bob.event_history[0])
 
 
 @pytest.mark.asyncio
@@ -68,7 +68,7 @@ async def test_reveal_empty_string(xrt):
     await eval_line("reveal(black, s)", 2, xrt)
 
     player = xrt.players[0]
-    assert len(player.history) == 1
+    assert len(player.event_history) == 1
     # The reveal should still happen even with empty string
 
 
@@ -79,8 +79,8 @@ async def test_reveal_computed_values(xrt):
     await eval_line("reveal(black, s1 + ' ' + s2)", 2, xrt)
 
     player = xrt.players[0]
-    assert len(player.history) == 1
-    assert "hello world" in player.history[0]
+    assert len(player.event_history) == 1
+    assert "hello world" in str(player.event_history[0])
 
 
 @pytest.mark.asyncio
@@ -223,9 +223,9 @@ async def test_reveal_elicit_interaction(xrt):
 
     player = xrt.players[0]
     # Should have received two reveals + elicit + elicit response
-    assert len(player.history) == 4
-    assert "Please enter a word" in player.history[0]
-    assert "mocked_move" in player.history[3]
+    assert len(player.event_history) == 4
+    assert "Please enter a word" in str(player.event_history[0])
+    assert "mocked_move" in str(player.event_history[3])
 
 
 @pytest.mark.asyncio
@@ -245,13 +245,13 @@ async def test_multi_player_reveal_elicit(xrt_multi_player):
     bob = xrt.players[1]
 
     # Alice should have received the secret
-    assert any("secret for alice" in h for h in alice.history)
+    assert any("secret for alice" in str(h) for h in alice.event_history)
 
     # Bob should have received alice's response
-    assert any("mocked_move" in h for h in bob.history)
+    assert any("mocked_move" in str(h) for h in bob.event_history)
 
     # Bob should NOT have received the original secret
-    assert not any("secret for alice" in h for h in bob.history)
+    assert not any("secret for alice" in str(h) for h in bob.event_history)
 
 
 @pytest.mark.asyncio

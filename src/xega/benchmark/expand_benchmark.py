@@ -9,6 +9,7 @@ from xega.common.xega_types import (
     XegaBenchmarkConfig,
     XegaGameConfig,
 )
+from xega.presentation.executor import get_default_presentation
 from xega.runtime.judge import Judge
 
 
@@ -78,11 +79,15 @@ def expand_game_config(
     game_config: GameConfig, map_seed: str, judge: Judge
 ) -> ExpandedGameConfig:
     expanded_code = preprocess_dsl_code(game_config["code"], judge)
+    presentation_function = game_config.get("presentation_function")
+    if presentation_function is None:
+        presentation_function = get_default_presentation()
 
     return ExpandedGameConfig(
         name=game_config["name"],
         code=expanded_code,
         map_seed=map_seed,
+        presentation_function=presentation_function,
     )
 
 

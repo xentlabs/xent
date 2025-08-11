@@ -73,6 +73,7 @@ warn_return_any = true
 warn_unreachable = true
 strict_equality = true
 strict_concatenate = true
+no_implicit_optional = true
 
 # Disable overly strict checks for gradual typing adoption
 disallow_untyped_defs = false       # Allow missing function annotations

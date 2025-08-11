@@ -15,6 +15,7 @@ from xega.common.xega_types import (
     XegaGameConfig,
     XegaMetadata,
 )
+from xega.presentation.executor import get_default_presentation
 from xega.runtime.llm_api_client import guess_provider_from_model
 
 SIMPLE_GAME_CODE = """
@@ -44,13 +45,25 @@ def games_from_dir(game_dir: str) -> list[GameConfig]:
         if not file_name.endswith(".xega"):
             continue
         game_name = file_name[:-5]
-        with open(os.path.join(game_dir, file_name)) as f:
+
+        game_path = os.path.join(game_dir, file_name)
+        with open(game_path) as f:
             game_code = f.read()
-            game_config = GameConfig(
-                name=game_name,
-                code=game_code,
-            )
-            game_configs.append(game_config)
+
+        presentation_function = None
+        presentation_path = os.path.join(game_dir, f"{game_name}_presentation.py")
+        if os.path.exists(presentation_path):
+            with open(presentation_path) as f:
+                presentation_function = f.read()
+
+            click.echo(f"Found presentation function for game '{game_name}'")
+
+        game_config = GameConfig(
+            name=game_name,
+            code=game_code,
+            presentation_function=presentation_function,
+        )
+        game_configs.append(game_config)
     return game_configs
 
 
@@ -237,7 +250,13 @@ def configure(
         benchmark_id = generate_benchmark_id()
 
     if not game_dir:
-        games = [GameConfig(name="simple_game", code=SIMPLE_GAME_CODE)]
+        games = [
+            GameConfig(
+                name="simple_game",
+                code=SIMPLE_GAME_CODE,
+                presentation_function=get_default_presentation(),
+            )
+        ]
     else:
         games = games_from_dir(game_dir)
 

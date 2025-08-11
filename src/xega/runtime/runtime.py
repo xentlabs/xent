@@ -245,7 +245,7 @@ class XegaRuntime:
             )
             await self.send_event(player, request_event)
 
-            player_move, token_usage = await player.make_move(var.name)
+            player_move, token_usage = await player.make_move(var.name, register_states)
             print(f"Player {player.name} move: {player_move}")
             trimmed_move = self._first_n_tokens(player_move, max_len)
             if player_move != trimmed_move:

@@ -1,6 +1,7 @@
 import pytest
 
 from xega.common.xega_types import XegaGameConfig
+from xega.presentation.executor import get_default_presentation
 from xega.runtime.default_players import MockXGP
 from xega.runtime.judge import Judge
 from xega.runtime.runtime import XegaRuntime
@@ -11,6 +12,7 @@ FAKE_GAME_CONFIG: XegaGameConfig = {
         "name": "Fake Game",
         "code": "fake_code",
         "map_seed": "test_seed_0",
+        "presentation_function": get_default_presentation(),
     },
     "auto_replay": True,
     "max_steps": 100,

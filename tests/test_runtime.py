@@ -1,0 +1,1652 @@
+# pyright: reportUnusedExpression=false
+from unittest.mock import Mock
+
+import pytest
+
+from xega.benchmark.expand_benchmark import expand_game_config, preprocess_dsl_code
+from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
+from xega.common.token_xent_list import TokenXentList, ValidatedBool
+from xega.common.x_string import XString
+from xega.common.xega_types import (
+    ElicitRequestEvent,
+    ElicitResponseEvent,
+    ExpandedGameConfig,
+    FailedEnsureEvent,
+    GameConfig,
+    RevealEvent,
+    RewardEvent,
+    XegaEvent,
+    XegaGameConfig,
+)
+from xega.presentation.executor import PresentationFunction, get_default_presentation
+from xega.presentation.sdk import (
+    format_elicit_request,
+    format_elicit_response,
+    format_failed_ensure,
+    format_registers_display,
+    format_reveal,
+    format_reward,
+    get_current_registers,
+    get_event_summary,
+)
+from xega.runtime.default_players import DefaultXGP, MockXGP
+from xega.runtime.execution import eval_line
+from xega.runtime.judge import Judge
+from xega.runtime.runtime import XegaRuntime
+from xega.runtime.variables import build_globals, build_locals
+
+
+class TestXString:
+    """Tests for XString class functionality."""
+
+    def test_constructor_comprehensive(self):
+        """Test XString constructor with various parameters and representations."""
+        # Basic constructor
+        s1 = XString("test")
+        assert s1.primary_string == "test"
+        assert s1.prefix == ""
+        assert str(s1) == "test"
+        assert "XString('test'" in repr(s1)
+
+        # Constructor with XString input
+        s2 = XString(s1)
+        assert s2.primary_string == s1
+
+        # Constructor with optional parameters
+        s3 = XString("test", static=True, public=True, name="test_name")
+        assert s3.primary_string == "test"
+        assert s3.static is True
+        assert s3.public is True
+        assert s3.name == "test_name"
+        assert s3.prefix == ""
+
+        s4 = XString("hello", static=False, public=True)
+        assert s4.primary_string == "hello"
+        assert s4.static is False
+        assert s4.public is True
+        assert s4.name is None
+
+        s5 = XString("default")
+        assert s5.primary_string == "default"
+        assert s5.static is False
+        assert s5.public is False
+        assert s5.name is None
+
+        # Invalid type
+        with pytest.raises(XegaTypeError):
+            XString(123)
+
+    def test_prefix_decorator(self):
+        s1 = XString("LeftOperand")
+        s2 = XString("RightPrefix")
+        original_s1_primary = s1.primary_string
+        original_s1_prefix = s1.prefix
+        original_s2_primary = s2.primary_string
+        original_s2_prefix = s2.prefix
+
+        result = s1 | s2
+
+        assert isinstance(result, XString)
+        assert result.primary_string == "LeftOperand"
+        assert result.prefix == "RightPrefix"
+        assert "'LeftOperand'" in repr(result)
+        assert "prefix='RightPrefix'" in repr(result)
+
+        assert s1.primary_string == original_s1_primary
+        assert s1.prefix == original_s1_prefix
+        assert s2.primary_string == original_s2_primary
+        assert s2.prefix == original_s2_prefix
+
+        # Test with raw strings
+        xs = XString("test")
+        raw_string = "raw_string"
+
+        result = xs | raw_string
+        assert isinstance(result, XString)
+        assert result.primary_string == "test"
+        assert result.prefix == "raw_string"
+
+        result = raw_string | xs
+        assert isinstance(result, XString)
+        assert result.primary_string == "raw_string"
+        assert result.prefix == "test"
+        # Test with invalid types
+        with pytest.raises(XegaTypeError):
+            s1 | 123
+        with pytest.raises(XegaTypeError):
+            123 | s1
+
+    def test_operator_cat(self):
+        s1 = XString("Hello")
+        s2 = XString("World")
+        s_empty = XString("")
+
+        result1 = s1 + s2
+        assert isinstance(result1, XString)
+        assert result1.primary_string == "HelloWorld"
+
+        result2 = s1 + s_empty
+        assert isinstance(result2, XString)
+        assert result2.primary_string == "Hello"
+
+        # Test cat with raw strings
+        assert s1 + "World" == XString("HelloWorld")
+        assert s1 + "" == XString("Hello")
+        assert "Hello" + s2 == XString("HelloWorld")
+        assert "" + s2 == XString("World")
+        assert s_empty + s1 == XString("Hello")
+        assert "Hello" + s_empty + "World" == XString("HelloWorld")
+        assert "Hello" + s2 + "Hello" == XString("HelloWorldHello")
+
+        # Test with invalid types
+        with pytest.raises(XegaTypeError):
+            s1 + 123
+        with pytest.raises(XegaTypeError):
+            123 + s1
+
+    def test_operator_cut_front(self):
+        """Tests the '//' operator."""
+        s_main = XString("HelloWorldAgain")
+        s_world = XString("World")
+        s_hello = XString("Hello")
+        s_again = XString("Again")
+        s_notfound = XString("XYZ")
+        s_empty = XString("")
+        s_double = XString("abcabc")
+        s_b = XString("b")
+
+        res1 = s_main // s_world
+        assert isinstance(res1, XString)
+        assert res1.primary_string == "Hello"
+
+        res2 = s_main // s_hello
+        assert isinstance(res2, XString)
+        assert res2.primary_string == ""
+
+        res3 = s_main // s_notfound
+        assert isinstance(res3, XString)
+        assert res3.primary_string == "HelloWorldAgain"
+
+        res4 = s_main // s_empty
+        assert isinstance(res4, XString)
+        assert res4.primary_string == "HelloWorldAgain"
+
+        res5 = s_double // s_b
+        assert isinstance(res5, XString)
+        assert res5.primary_string == "a"
+
+        res6 = s_main // s_again
+        assert isinstance(res6, XString)
+        assert res6.primary_string == "HelloWorld"
+
+        # Test with raw strings
+        xs = XString("hello world")
+
+        result = xs // "world"
+        assert isinstance(result, XString)
+        assert result.primary_string == "hello "
+
+        result = "before hello world" // xs
+        assert isinstance(result, XString)
+        assert result.primary_string == "before "
+
+        # Test with invalid types
+        with pytest.raises(XegaTypeError):
+            xs // 123
+        with pytest.raises(XegaTypeError):
+            123 // xs
+
+    def test_operator_cut_back(self):
+        s_main = XString("HelloWorldAgain")
+        s_world = XString("World")
+        s_hello = XString("Hello")
+        s_again = XString("Again")
+        s_notfound = XString("XYZ")
+        s_empty = XString("")
+        s_double = XString("abcabc")
+        s_b = XString("b")
+
+        res1 = s_main % s_hello
+        assert isinstance(res1, XString)
+        assert res1.primary_string == "WorldAgain"
+
+        res2 = s_main % s_again
+        assert isinstance(res2, XString)
+        assert res2.primary_string == ""
+
+        res3 = s_main % s_notfound
+        assert isinstance(res3, XString)
+        assert res3.primary_string == ""
+
+        res4 = s_main % s_empty
+        assert isinstance(res4, XString)
+        assert res4.primary_string == ""
+
+        res5 = s_double % s_b
+        assert isinstance(res5, XString)
+        assert res5.primary_string == "cabc"
+
+        res6 = s_main % s_world
+        assert isinstance(res6, XString)
+        assert res6.primary_string == "Again"
+
+        # Test with raw strings
+        xs = XString("hello world")
+
+        result = xs % "hello"
+        assert isinstance(result, XString)
+        assert result.primary_string == " world"
+
+        # NB: this is because strings already have a % operator defined.
+        # Its possible to handle this by monkey patching the string class,
+        # but it would be better to avoid this situation by being more
+        # careful wrapping all strings in XString.
+        with pytest.raises(TypeError):
+            "hello world after" % xs  # noqa: UP031
+
+        # Test with invalid types
+        with pytest.raises(XegaTypeError):
+            xs % 123
+        with pytest.raises(XegaTypeError):
+            123 % xs
+
+    def test_equality_and_inequality(self):
+        s_abc1 = XString("abc")
+        s_abc2 = XString("abc")
+        s_def = XString("def")
+
+        assert s_abc1 == s_abc2
+        assert s_abc1 != s_def
+        assert s_abc1 == "abc"
+        assert s_abc1 == "abc"  # Test reversed comparison
+        assert s_abc1 != "def"
+        assert s_abc1 != "def"  # Test reversed comparison
+        assert s_abc1 != 123  # Should be False due to NotImplemented
+        assert s_abc1 != 123  # Should be False
+
+        assert s_abc1 != s_def
+        assert s_abc1 == s_abc2
+        assert s_abc1 != "def"
+        assert s_abc1 != "def"  # Test reversed comparison
+        assert s_abc1 == "abc"
+        assert s_abc1 == "abc"  # Test reversed comparison
+        assert s_abc1 != 123  # Should be True due to NotImplemented
+        assert s_abc1 != 123  # Should be True
+
+    def test_len_method(self):
+        s1 = XString("hello")
+        assert len(s1) == 5
+
+        s2 = XString("")
+        assert len(s2) == 0
+
+        s3 = XString("hello world!")
+        assert len(s3) == 12
+
+        s4 = XString("test") | XString("prefix")
+        assert len(s4) == 4  # Should return length of primary_string, not prefix
+
+    def test_empty_string(self):
+        s_empty = XString("")
+        s_hello = XString("hello")
+
+        assert len(s_empty) == 0
+
+        result1 = s_empty + s_empty
+        assert result1.primary_string == ""
+
+        result2 = s_empty + s_hello
+        assert result2.primary_string == "hello"
+
+        result3 = s_hello + s_empty
+        assert result3.primary_string == "hello"
+
+        result4 = s_empty | s_hello
+        assert result4.primary_string == ""
+        assert result4.prefix == "hello"
+
+        result5 = s_hello | s_empty
+        assert result5.primary_string == "hello"
+        assert result5.prefix == ""
+
+        s_empty2 = XString("")
+        assert s_empty == s_empty2
+        assert s_empty == ""
+        assert s_empty != "hello"
+        assert s_empty != s_hello
+
+
+class TestTokenXentList:
+    """Tests for TokenXentList class functionality."""
+
+    def test_basic_arithmetic(self):
+        """Test basic arithmetic operations with compatible TokenXentList objects."""
+        # Create test instances
+        list0 = TokenXentList([("a", 1.0), ("b", 2.0), ("c", 3.0)])
+        list1 = TokenXentList([("a", 2.0), ("b", 3.0), ("c", 4.0)])
+
+        # Test addition
+        result = list0 + list1
+        expected = 15.0  # (1+2) + (2+3) + (3+4) = 3 + 5 + 7 = 15
+        assert result.total_xent() == expected
+
+        # Test subtraction
+        result = list1 - list0
+        expected = 3.0  # (2-1) + (3-2) + (4-3) = 1 + 1 + 1 = 3
+        assert result.total_xent() == expected
+
+        # Test multiplication (should raise TypeError)
+        with pytest.raises(TypeError):
+            result = list0 * list1
+
+        # Test division (should raise TypeError)
+        with pytest.raises(TypeError):
+            result = list0 / list1
+
+        # Test negation
+        result = -list0
+        expected = -6.0  # -(1 + 2 + 3) = -6
+        assert result.total_xent() == expected
+
+    def test_no_scalar_operations(self):
+        """Test operations between TokenXentList and scalar values."""
+        # Create test instance
+        list0 = TokenXentList([("a", 1.0), ("b", 2.0), ("c", 3.0)])
+
+        # Test scalar addition
+        with pytest.raises(TypeError):
+            list0 + 5
+
+        # Test scalar subtraction
+        with pytest.raises(TypeError):
+            list0 - 2
+
+        # Test scalar multiplication
+        with pytest.raises(TypeError):
+            list0 * 2
+
+        # Test scalar division
+        with pytest.raises(TypeError):
+            list0 / 2
+
+        # Test right-hand scalar operations
+        with pytest.raises(TypeError):
+            10 + list0
+
+        with pytest.raises(TypeError):
+            10 - list0
+
+        # Test right-hand scalar multiplication
+        with pytest.raises(TypeError):
+            10 * list0
+
+        # Test left-hand scalar division
+        with pytest.raises(TypeError):
+            list0 / 10
+
+    def test_type_preservation(self):
+        """Test that all operations preserve the TokenXentList type."""
+        # Create test instances
+        list0 = TokenXentList([("a", 1.0), ("b", 2.0), ("c", 3.0)])
+        list1 = TokenXentList([("a", 2.0), ("b", 3.0), ("c", 4.0)])
+
+        # Operations that should return TokenXentList
+        operations = [
+            list0 + list1,
+            list0 - list1,
+            -list0,
+            +list0,
+        ]
+
+        for i, op_result in enumerate(operations):
+            assert isinstance(op_result, TokenXentList), (
+                f"Operation {i} returned {type(op_result)} instead of TokenXentList"
+            )
+
+    def test_comparison_comprehensive(self):
+        """Test all comparison operations for TokenXentList with both objects and scalars."""
+        list1 = TokenXentList([("a", 1.0), ("b", 2.0)])  # total = 3.0
+        list2 = TokenXentList([("x", 0.5), ("y", 2.5)])  # total = 3.0
+        list3 = TokenXentList([("p", 2.0), ("q", 3.0)])  # total = 5.0
+
+        # Part 1: Test comparisons between TokenXentList objects
+        # Test equality
+        result = list1 == list2
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = list1 == list3
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is False
+
+        # Test inequality
+        result = list1 != list3
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        # Test less than
+        result = list1 < list3
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = list3 < list1
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is False
+
+        # Test less than or equal
+        result = list1 <= list2
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = list1 <= list3
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        # Test greater than
+        result = list3 > list1
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        # Test greater than or equal
+        result = list3 >= list1
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = list1 >= list2
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        # Part 2: Test comparisons with scalar values
+        # list1 has total = 3.0
+        assert (list1 < 5) is True
+        assert (list1 < 2) is False
+        assert (list1 <= 3) is True
+        assert (list1 > 2) is True
+        assert (list1 > 4) is False
+        assert (list1 >= 3) is True
+        # Note: == and != with scalars return NotImplemented
+
+    def test_validated_bool(self):
+        """Test ValidatedBool class functionality."""
+        vb_true = ValidatedBool(True)
+        vb_false = ValidatedBool(False)
+
+        # Test bool conversion
+        assert bool(vb_true) is True
+        assert bool(vb_false) is False
+
+        # Test AND operations
+        result = vb_true & vb_true
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = vb_true & vb_false
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is False
+
+        # Test OR operations
+        result = vb_true | vb_false
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        result = vb_false | vb_false
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is False
+
+        # Test NOT operation
+        result = ~vb_true
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is False
+
+        result = ~vb_false
+        assert isinstance(result, ValidatedBool)
+        assert bool(result) is True
+
+        # Test with regular bool
+        assert (vb_true & True) is True
+        assert (vb_false | True) is True
+
+        # Test repr
+        assert repr(vb_true) == "ValidatedBool(value=True)"
+        assert repr(vb_false) == "ValidatedBool(value=False)"
+
+    def test_incompatible_operations(self):
+        """Test operations between incompatible TokenXentList objects."""
+        list1 = TokenXentList([("a", 1.0), ("b", 2.0)])
+        list2 = TokenXentList([("x", 3.0), ("y", 4.0)])  # different tokens
+        list3 = TokenXentList([("a", 1.0)])  # different length
+
+        # Addition of incompatible lists fails
+        with pytest.raises(TypeError):
+            list1 + list2
+
+        # Subtraction of incompatible lists
+        with pytest.raises(TypeError):
+            list1 - list2
+
+        # Test with different lengths
+        with pytest.raises(TypeError):
+            list1 + list3
+
+    def test_special_multiplication_rules(self):
+        """Test that multiplication only works with -1 and 1."""
+        list1 = TokenXentList([("a", 2.0), ("b", 3.0)])
+
+        # Test allowed multiplications
+        result = list1 * 1
+        assert result.total_xent() == list1.total_xent()
+
+        result = list1 * -1
+        assert result.total_xent() == -list1.total_xent()
+
+        result = 1 * list1
+        assert result.total_xent() == list1.total_xent()
+
+        result = -1 * list1
+        assert result.total_xent() == -list1.total_xent()
+
+        # Test disallowed multiplications
+        with pytest.raises(TypeError):
+            list1 * 2
+
+        with pytest.raises(TypeError):
+            list1 * 0.5
+
+        with pytest.raises(TypeError):
+            2 * list1
+
+        with pytest.raises(TypeError):
+            list1 * 1.1  # Close to 1 but not exactly
+
+    def test_repr_and_str(self):
+        """Test __repr__ and __str__ methods."""
+        list1 = TokenXentList([("hello", 1.234567), ("world", 2.987654)])
+
+        # Test __str__ - should round to integer values
+        str_rep = str(list1)
+        assert str_rep == "hello|1 world|3"
+
+        # Test __repr__
+        repr_str = repr(list1)
+        assert "TokenXentList" in repr_str
+        assert "scale=1.0" in repr_str
+        assert "hello" in repr_str
+        assert "world" in repr_str
+
+    def test_edge_cases(self):
+        """Test edge cases like empty lists and single elements."""
+        # Empty list
+        empty = TokenXentList([])
+        assert empty.total_xent() == 0.0
+        assert str(empty) == ""
+
+        # Single element
+        single = TokenXentList([("only", 5.0)])
+        assert single.total_xent() == 5.0
+
+        # Operations on empty lists
+        with pytest.raises(TypeError):
+            empty + 10
+
+        result = empty + empty
+        assert result.total_xent() == 0.0
+
+        # Test _apply_scale with empty list
+        scaled_empty = TokenXentList([], scale=2.0)
+        assert scaled_empty.total_xent() == 0.0
+
+    def test_unary_pos(self):
+        """Test unary positive operator."""
+        list1 = TokenXentList([("a", 1.0), ("b", 2.0)])
+
+        # Unary positive should return the same object
+        result = +list1
+        assert result is list1
+        assert result.total_xent() == list1.total_xent()
+
+    def test_scale_behavior(self):
+        """Test behavior of scale parameter."""
+        # Create with scale
+        list1 = TokenXentList([("a", 1.0), ("b", 2.0)], scale=-1.0)
+        assert list1.total_xent() == -1.0 * (1.0 + 2.0)
+
+        # Test that operations preserve scale correctly
+        list2 = TokenXentList([("a", 0.5), ("b", 1.5)])
+
+        # Adding compatible lists applies scale
+        result = list1 + list2
+        normalized1 = list1._apply_scale()
+        normalized2 = list2._apply_scale()
+        expected = normalized1.total_xent() + normalized2.total_xent()
+        assert abs(result.total_xent() - expected) < 0.01
+
+
+class TestJudge:
+    """Tests for Judge class functionality."""
+
+    @pytest.fixture
+    def judge(self):
+        """Create a test Judge instance."""
+        judge = Judge("Qwen/Qwen3-0.6B-Base")
+        return judge
+
+    def test_first_n_tokens(self, judge):
+        string = XString("This is a test string for the Xega framework.")
+
+        assert judge.first_n_tokens(string, 5) == "This is a test string"
+        assert judge.first_n_tokens(str(string), 5) == "This is a test string"
+        assert judge.first_n_tokens("", 5) == ""
+        assert judge.first_n_tokens("   ", 5) == "   "
+        assert judge.first_n_tokens("\n", 5) == "\n"
+
+    @pytest.mark.parametrize(
+        "statement, expected_truthfulness",
+        [
+            # Cases that should be True
+            ("Water boils at 100 degrees Celsius at sea level", True),
+            ("Grass is green", True),
+            # Cases that should be False
+            ("The sun is smaller than the earth", False),
+            (
+                "There are no emoji in the following string: 'hello 🌎'",
+                False,
+            ),
+        ],
+    )
+    def test_truthfulness(self, judge, statement, expected_truthfulness):
+        """Tests the is_true method with various statements."""
+        assert judge.is_true(statement) == expected_truthfulness
+
+
+class TestTokenUsage:
+    """Tests for token usage tracking functionality."""
+
+    FAKE_GAME_CONFIG: XegaGameConfig = {
+        "game": {
+            "name": "Token Usage Test",
+            "code": "test_code",
+            "map_seed": "test_seed_0",
+            "presentation_function": get_default_presentation(),
+        },
+        "auto_replay": True,
+        "max_steps": 100,
+        "players": [
+            {
+                "name": "alice",
+                "id": "test_alice",
+                "player_type": "default",
+                "options": {"model": "test", "provider": "test"},
+            },
+            {
+                "name": "bob",
+                "id": "test_bob",
+                "player_type": "default",
+                "options": {"model": "test", "provider": "test"},
+            },
+        ],
+        "num_variables_per_register": 4,
+        "num_maps_per_game": 1,
+        "judge_model": "gpt2",
+        "npc_players": [],
+        "seed": "test_seed",
+        "map_seed": "test_seed_0",
+    }
+
+    @pytest.mark.asyncio
+    async def test_token_accumulation_comprehensive(self):
+        """Comprehensive test for token accumulation with single and multiple players."""
+        game_config = self.FAKE_GAME_CONFIG.copy()
+
+        # Part 1: Test single player accumulation
+        player_single = MockXGP(
+            "alice",
+            "test_alice",
+            {},
+            game_config,
+            token_usage_per_move={"input_tokens": 10, "output_tokens": 5},
+        )
+        locals_single = build_locals([player_single], game_config)
+        judge_single = Judge("gpt2")
+        globals_single = build_globals(judge_single)
+        xrt_single = XegaRuntime([player_single], locals_single, globals_single)
+
+        # Make 3 elicit calls for single player
+        await eval_line("elicit(alice, s1, 20)", 1, xrt_single)
+        await eval_line("elicit(alice, s2, 20)", 2, xrt_single)
+        await eval_line("elicit(alice, s3, 20)", 3, xrt_single)
+
+        # Check accumulated token usage for single player
+        assert xrt_single.token_usage["alice"]["input_tokens"] == 30  # 10 * 3
+        assert xrt_single.token_usage["alice"]["output_tokens"] == 15  # 5 * 3
+
+        # Part 2: Test multiple players with separate tracking
+        alice = MockXGP(
+            "alice",
+            "test_alice",
+            {},
+            game_config,
+            token_usage_per_move={"input_tokens": 10, "output_tokens": 5},
+        )
+        bob = MockXGP(
+            "bob",
+            "test_bob",
+            {},
+            game_config,
+            token_usage_per_move={"input_tokens": 20, "output_tokens": 8},
+        )
+        locals_multi = build_locals([alice, bob], game_config)
+        judge_multi = Judge("gpt2")
+        globals_multi = build_globals(judge_multi)
+        xrt_multi = XegaRuntime([alice, bob], locals_multi, globals_multi)
+
+        # Make elicit calls for both players
+        await eval_line("elicit(alice, s1, 20)", 1, xrt_multi)
+        await eval_line("elicit(bob, s2, 20)", 2, xrt_multi)
+        await eval_line("elicit(alice, s3, 20)", 3, xrt_multi)
+
+        # Check that token usage is tracked separately
+        assert xrt_multi.token_usage["alice"]["input_tokens"] == 20  # 10 * 2
+        assert xrt_multi.token_usage["alice"]["output_tokens"] == 10  # 5 * 2
+        assert xrt_multi.token_usage["bob"]["input_tokens"] == 20  # 20 * 1
+        assert xrt_multi.token_usage["bob"]["output_tokens"] == 8  # 8 * 1
+
+    @pytest.mark.asyncio
+    async def test_game_iteration_reset(self):
+        """Test that token usage resets between iterations but accumulates in final results."""
+        game_config = self.FAKE_GAME_CONFIG.copy()
+        player = MockXGP(
+            "alice",
+            "test_alice",
+            {},
+            game_config,
+            token_usage_per_move={"input_tokens": 15, "output_tokens": 10},
+        )
+        locals = build_locals([player], game_config)
+        judge = Judge("gpt2")
+        globals = build_globals(judge)
+        xrt = XegaRuntime([player], locals, globals)
+
+        # First iteration: make some moves
+        await eval_line("elicit(alice, s1, 20)", 1, xrt)
+        await eval_line("elicit(alice, s2, 20)", 2, xrt)
+
+        # Check token usage after first iteration
+        assert xrt.token_usage["alice"]["input_tokens"] == 30  # 15 * 2
+        assert xrt.token_usage["alice"]["output_tokens"] == 20  # 10 * 2
+
+        # Get results and reset (simulates end of game iteration)
+        iteration1_result = xrt.get_results_and_reset()
+
+        # Verify iteration result contains token usage
+        assert iteration1_result["token_usage"]["alice"]["input_tokens"] == 30
+        assert iteration1_result["token_usage"]["alice"]["output_tokens"] == 20
+
+        # Verify runtime token usage was reset
+        assert xrt.token_usage["alice"]["input_tokens"] == 0
+        assert xrt.token_usage["alice"]["output_tokens"] == 0
+
+        # Second iteration: make more moves
+        await eval_line("elicit(alice, s3, 20)", 1, xrt)
+
+        # Check token usage in second iteration
+        assert xrt.token_usage["alice"]["input_tokens"] == 15  # 15 * 1
+        assert xrt.token_usage["alice"]["output_tokens"] == 10  # 10 * 1
+
+        # Get second iteration results
+        iteration2_result = xrt.get_results_and_reset()
+        assert iteration2_result["token_usage"]["alice"]["input_tokens"] == 15
+        assert iteration2_result["token_usage"]["alice"]["output_tokens"] == 10
+
+        # Simulate what extract_token_usage() function does
+        from xega.benchmark.run_benchmark import extract_token_usage
+
+        total_usage = extract_token_usage([iteration1_result, iteration2_result])
+
+        # Verify total accumulation across iterations
+        assert total_usage["alice"]["input_tokens"] == 45  # 30 + 15
+        assert total_usage["alice"]["output_tokens"] == 30  # 20 + 10
+
+    @pytest.mark.asyncio
+    async def test_zero_token_usage(self):
+        """Test handling of zero token usage scenarios."""
+        game_config = self.FAKE_GAME_CONFIG.copy()
+        player = MockXGP(
+            "alice",
+            "test_alice",
+            {},
+            game_config,
+            token_usage_per_move={"input_tokens": 0, "output_tokens": 0},
+        )
+        locals = build_locals([player], game_config)
+        judge = Judge("gpt2")
+        globals = build_globals(judge)
+        xrt = XegaRuntime([player], locals, globals)
+
+        # Make elicit call with zero token usage
+        await eval_line("elicit(alice, s1, 20)", 1, xrt)
+
+        # Verify zero accumulation works correctly
+        assert xrt.token_usage["alice"]["input_tokens"] == 0
+        assert xrt.token_usage["alice"]["output_tokens"] == 0
+
+        # Test reset with zero values
+        result = xrt.get_results_and_reset()
+        assert result["token_usage"]["alice"]["input_tokens"] == 0
+        assert result["token_usage"]["alice"]["output_tokens"] == 0
+
+
+class TestExpandConfig:
+    """Tests for expand_game_config and related functionality."""
+
+    @pytest.fixture
+    def mock_judge(self):
+        """Create a mock Judge that returns predictable story content"""
+        judge = Mock()
+        # Use side_effect to return different values on subsequent calls
+        judge.generate_text.side_effect = [
+            "Once upon a time in a distant galaxy...",
+            "The mysterious stranger arrived at midnight...",
+            "In the depths of the ancient forest...",
+            "A brilliant scientist made a discovery...",
+            "The dragon soared above the clouds...",
+        ]
+        judge.set_seed = Mock()
+        return judge
+
+    @pytest.fixture
+    def simple_game_config(self):
+        """Create a simple game config with a single story() call"""
+        return GameConfig(
+            name="test_simple_story",
+            code="""
+                assign(s=story())
+                reveal(black, s)
+                elicit(black, x, 10)
+                reward(xent(x | s))
+            """,
+        )
+
+    @pytest.fixture
+    def multi_story_game_config(self):
+        """Create a game config with multiple story() calls"""
+        return GameConfig(
+            name="test_multi_story",
+            code="""
+                assign(s1=story(), s2=story())
+                reveal(black, s1, s2)
+                elicit(black, x, 20)
+                reward(xent(x | s1))
+                assign(s3=story())
+                reward(-xent(s3 | x))
+            """,
+        )
+
+    @pytest.fixture
+    def no_story_game_config(self):
+        """Create a game config without any story() calls"""
+        return GameConfig(
+            name="test_no_story",
+            code="""
+                assign(s="This is a hardcoded string")
+                reveal(black, s)
+                elicit(black, x, 15)
+                reward(xent(x | s))
+            """,
+        )
+
+    @pytest.fixture
+    def complex_story_game_config(self):
+        """Create a game config with story() in complex expressions"""
+        return GameConfig(
+            name="test_complex_story",
+            code="""
+                assign(s1="Introduction: ")
+                assign(s=s1 + story())
+                reveal(black, s)
+                assign(s2=(story() + " " + story()))
+                elicit(black, response, 25)
+                reward(xent(response | s2))
+            """,
+        )
+
+    def test_expand_game_config_simple_story(self, simple_game_config, mock_judge):
+        """Test expansion of a simple game with one story() call"""
+        map_seed = "test_seed_0"
+
+        expanded = expand_game_config(simple_game_config, map_seed, mock_judge)
+
+        # Verify structure
+        assert isinstance(expanded, dict)
+        assert expanded["name"] == "test_simple_story"
+        assert expanded["map_seed"] == map_seed
+
+        # Verify story() was replaced
+        assert "story()" not in expanded["code"]
+        assert "Once upon a time in a distant galaxy..." in expanded["code"]
+
+        # Verify other code structure is preserved
+        assert "assign(s=" in expanded["code"]
+        assert "reveal(black, s)" in expanded["code"]
+        assert "elicit(black, x, 10)" in expanded["code"]
+        assert "reward(xent(x | s))" in expanded["code"]
+
+        # Verify judge methods were called
+        mock_judge.set_seed.assert_not_called()
+        mock_judge.generate_text.assert_called_once()
+
+    def test_expand_game_config_multiple_stories(
+        self, multi_story_game_config, mock_judge
+    ):
+        """Test expansion of a game with multiple story() calls"""
+        map_seed = "test_seed_1"
+
+        expanded = expand_game_config(multi_story_game_config, map_seed, mock_judge)
+
+        # Verify no story() calls remain
+        assert "story()" not in expanded["code"]
+
+        # Verify each story() was replaced with different content
+        assert "Once upon a time in a distant galaxy..." in expanded["code"]
+        assert "The mysterious stranger arrived at midnight..." in expanded["code"]
+        assert "In the depths of the ancient forest..." in expanded["code"]
+
+        # Verify structure is preserved
+        assert "assign(s1=" in expanded["code"]
+        assert "s2=" in expanded["code"]
+        assert "reveal(black, s1, s2)" in expanded["code"]
+        assert "assign(s3=" in expanded["code"]
+
+        # Verify judge was called 3 times (for 3 story() calls)
+        assert mock_judge.generate_text.call_count == 3
+
+    def test_expand_game_config_no_stories(self, no_story_game_config, mock_judge):
+        """Test expansion of a game with no story() calls"""
+        map_seed = "test_seed_2"
+
+        expanded = expand_game_config(no_story_game_config, map_seed, mock_judge)
+
+        # Verify structure
+        assert expanded["name"] == "test_no_story"
+        assert expanded["map_seed"] == map_seed
+
+        # Verify hardcoded string is preserved
+        assert "This is a hardcoded string" in expanded["code"]
+
+        # Verify no story generation was called
+        mock_judge.generate_text.assert_not_called()
+
+        # Verify code structure is preserved
+        assert "assign(s='This is a hardcoded string')" in expanded["code"]
+        assert "reveal(black, s)" in expanded["code"]
+
+    def test_expand_game_config_complex_expressions(
+        self, complex_story_game_config, mock_judge
+    ):
+        """Test expansion of story() calls within complex expressions"""
+        map_seed = "test_seed_3"
+
+        expanded = expand_game_config(complex_story_game_config, map_seed, mock_judge)
+
+        # Verify no story() calls remain
+        assert "story()" not in expanded["code"]
+
+        # Verify story calls were replaced in complex expressions
+        assert "s1 + 'Once upon a time in a distant galaxy...'" in expanded["code"]
+        assert "The mysterious stranger arrived at midnight..." in expanded["code"]
+        assert "In the depths of the ancient forest..." in expanded["code"]
+
+        # Verify expression structure is preserved
+        assert "assign(s1='Introduction: ')" in expanded["code"]
+        assert "assign(s2=" in expanded["code"]
+
+        # Verify correct number of story generations
+        assert mock_judge.generate_text.call_count == 3
+
+    def test_preprocess_dsl_code_preserves_formatting(self):
+        """Test that preprocessing preserves line structure"""
+        mock_judge = Mock()
+        mock_judge.generate_text.return_value = "Generated story content"
+
+        code = """assign(x=story())
+reveal(player, x)
+elicit(player, y, 10)"""
+
+        result = preprocess_dsl_code(code, mock_judge)
+
+        # Should have same number of lines
+        assert len(result.splitlines()) == 3
+
+        # Each line should be properly transformed
+        lines = result.splitlines()
+        assert lines[0] == "assign(x='Generated story content')"
+        assert lines[1] == "reveal(player, x)"
+        assert lines[2] == "elicit(player, y, 10)"
+
+    def test_story_rewriter_only_replaces_story_function(self):
+        """Test that StoryRewriter only replaces story() calls, not other functions"""
+        mock_judge = Mock()
+        mock_judge.generate_text.return_value = "Test story"
+
+        code_with_other_functions = """
+            assign(a=story(), b=other_function(), c=yet_another())
+            result = compute(story(), param)
+        """
+
+        result = preprocess_dsl_code(code_with_other_functions, mock_judge)
+
+        # story() should be replaced
+        assert "story()" not in result
+        assert "'Test story'" in result
+
+        # Other functions should remain unchanged
+        assert "other_function()" in result
+        assert "yet_another()" in result
+        assert "compute(" in result
+
+    def test_expand_game_config_empty_code(self):
+        """Test expansion of game with empty code"""
+        game_config = GameConfig(name="test_empty", code="")
+
+        mock_judge = Mock()
+        map_seed = "test_seed"
+
+        expanded = expand_game_config(game_config, map_seed, mock_judge)
+
+        assert expanded["name"] == "test_empty"
+        assert expanded["code"] == ""
+        assert expanded["map_seed"] == map_seed
+
+        # No story generation should occur
+        mock_judge.generate_text.assert_not_called()
+
+    def test_comments_and_formatting_comprehensive(self):
+        """Comprehensive test for comment preservation and formatting in all scenarios."""
+        # Test 1: Full-line comments
+        judge1 = Mock()
+        judge1.generate_text.return_value = "Once upon a time in a distant galaxy..."
+        code_full_line = """
+# This is a full-line comment.
+assign(s=story())
+# Another comment
+        """
+        processed_full = preprocess_dsl_code(code_full_line, judge1)
+        assert "# This is a full-line comment." in processed_full
+        assert "assign(s='Once upon a time in a distant galaxy...')" in processed_full
+        assert "# Another comment" in processed_full
+
+        # Test 2: Inline comments
+        judge2 = Mock()
+        judge2.generate_text.return_value = "Once upon a time in a distant galaxy..."
+        code_inline = "assign(s=story())  # This is an inline comment."
+        processed_inline = preprocess_dsl_code(code_inline, judge2)
+        assert "assign(s='Once upon a time in a distant galaxy...')" in processed_inline
+        assert "# This is an inline comment." in processed_inline
+
+        # Test 3: Comment-only lines
+        judge3 = Mock()
+        code_comment_only = "# Just a comment"
+        processed_comment_only = preprocess_dsl_code(code_comment_only, judge3)
+        assert code_comment_only in processed_comment_only
+        judge3.generate_text.assert_not_called()
+
+        # Test 4: Empty lines preserved
+        judge4 = Mock()
+        judge4.generate_text.return_value = "Once upon a time in a distant galaxy..."
+        code_empty_lines = """
+assign(s=story())
+
+reveal(black, s)
+        """
+        processed_empty = preprocess_dsl_code(code_empty_lines, judge4)
+        assert "assign(s='Once upon a time in a distant galaxy...')" in processed_empty
+        assert "\n\n" in processed_empty
+        assert "reveal(black, s)" in processed_empty
+
+        # Test 5: Mixed comments and code
+        judge5 = Mock()
+        judge5.generate_text.side_effect = [
+            "Once upon a time in a distant galaxy...",
+            "The mysterious stranger arrived at midnight...",
+        ]
+        code_mixed = """
+# Header comment
+assign(s1=story())  # First story
+assign(s2=story())  # Second story
+
+# Footer comment
+        """
+        processed_mixed = preprocess_dsl_code(code_mixed, judge5)
+        assert "# Header comment" in processed_mixed
+        assert "assign(s1='Once upon a time in a distant galaxy...')" in processed_mixed
+        assert (
+            "assign(s2='The mysterious stranger arrived at midnight...')"
+            in processed_mixed
+        )
+        assert "# Footer comment" in processed_mixed
+
+
+class TestSDKFunctions:
+    def test_format_elicit_request(self):
+        event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(player, var, 10)",
+            "line_num": 5,
+            "player": "alice",
+            "var_name": "move",
+            "max_len": 10,
+            "registers": {},
+        }
+        result = format_elicit_request(event)
+        assert result == "05-<elicit>: move (max 10 tokens)"
+
+    def test_format_elicit_response(self):
+        event: ElicitResponseEvent = {
+            "type": "elicit_response",
+            "line": "elicit(player, var, 10)",
+            "line_num": 5,
+            "player": "alice",
+            "response": "my move",
+            "token_usage": {"input_tokens": 10, "output_tokens": 5},
+        }
+        result = format_elicit_response(event)
+        assert result == "05-<elicit response>: my move"
+
+    def test_format_reveal(self):
+        values = {"var1": XString("value1"), "var2": XString("value2")}
+        event: RevealEvent = {
+            "type": "reveal",
+            "line": "reveal(player, var1, var2)",
+            "line_num": 3,
+            "player": "alice",
+            "values": values,
+        }
+        result = format_reveal(event)
+        expected = "03-<reveal>: ['var1: \"value1\"', 'var2: \"value2\"']"
+        assert result == expected
+
+    def test_format_reward(self):
+        reward_value = TokenXentList([("token1", 1.5), ("token2", 0.5)])
+        event: RewardEvent = {
+            "type": "reward",
+            "line": "reward(player, score)",
+            "line_num": 8,
+            "player": "alice",
+            "value": reward_value,
+        }
+        result = format_reward(event)
+        assert "08-<reward>:" in result
+        assert "Total reward:" in result
+
+    def test_format_failed_ensure(self):
+        event: FailedEnsureEvent = {
+            "type": "failed_ensure",
+            "line": "ensure(condition)",
+            "line_num": 10,
+            "player": "alice",
+            "ensure_results": [True, False, True],
+            "beacon": "previous_elicit",
+        }
+        result = format_failed_ensure(event)
+        expected = "10-<ensure>: Failed ensure. Argument 0 result: True, Argument 1 result: False, Argument 2 result: True. Moving code execution to beacon: previous_elicit"
+        assert result == expected
+
+    def test_get_event_summary(self):
+        events: list[XegaEvent] = [
+            {
+                "type": "elicit_request",
+                "line": "",
+                "line_num": 1,
+                "player": "alice",
+                "var_name": "move",
+                "max_len": 10,
+                "registers": {},
+            },
+            {
+                "type": "elicit_response",
+                "line": "",
+                "line_num": 1,
+                "player": "alice",
+                "response": "test",
+                "token_usage": {"input_tokens": 1, "output_tokens": 1},
+            },
+            {
+                "type": "elicit_request",
+                "line": "",
+                "line_num": 2,
+                "player": "alice",
+                "var_name": "move2",
+                "max_len": 5,
+                "registers": {},
+            },
+        ]
+        result = get_event_summary(events)
+        assert "Game history:" in result
+        assert "2 elicit_request" in result
+        assert "1 elicit_response" in result
+
+    def test_get_current_registers(self):
+        state = {
+            "var1": XString("value1"),
+            "var2": "string_value",
+            "var3": 42,
+            "var4": True,
+            "var5": {"not": "extractable"},
+        }
+
+        registers = get_current_registers(state)
+        assert registers["var1"] == "value1"
+        assert registers["var2"] == "string_value"
+        assert registers["var3"] == "42"
+        assert registers["var4"] == "True"
+        assert "var5" not in registers
+
+    def test_format_registers_display(self):
+        registers = {"var1": "value1", "var2": "value2"}
+        result = format_registers_display(registers)
+        assert "Current registers:" in result
+        assert "var1: value1" in result
+        assert "var2: value2" in result
+
+        empty_result = format_registers_display({})
+        assert empty_result == "No registers available"
+
+
+class TestPresentationFunction:
+    def test_simple_presentation_function(self):
+        code = """
+def present(state, history):
+    return "Simple presentation"
+"""
+        func = PresentationFunction(code)
+        result = func({}, [])
+        assert result == "Simple presentation"
+
+    def test_presentation_with_sdk_functions(self):
+        code = """
+def present(state, history):
+    if not history:
+        return "No events yet"
+
+    lines = []
+    for event in history:
+        if event['type'] == 'elicit_request':
+            lines.append(format_elicit_request(event))
+        elif event['type'] == 'reveal':
+            lines.append(format_reveal(event))
+
+    return "\\n".join(lines)
+"""
+        func = PresentationFunction(code)
+
+        events: list[XegaEvent] = [
+            {
+                "type": "elicit_request",
+                "line": "test",
+                "line_num": 1,
+                "player": "alice",
+                "var_name": "move",
+                "max_len": 10,
+                "registers": {},
+            }
+        ]
+
+        result = func({}, events)
+        assert "01-<elicit>: move (max 10 tokens)" in result
+
+    def test_presentation_function_validation(self):
+        valid_code = """
+def present(state, history):
+    return "Valid function"
+"""
+        func = PresentationFunction(valid_code)
+        assert func.validate()
+
+    def test_invalid_syntax(self):
+        with pytest.raises(XegaInternalError):
+            PresentationFunction("def present(state history):")  # Missing comma
+
+    def test_missing_present_function(self):
+        with pytest.raises(XegaConfigurationError):
+            PresentationFunction("def other_function(): pass")
+
+    def test_non_callable_present(self):
+        with pytest.raises(XegaInternalError):
+            PresentationFunction("present = 'not a function'")
+
+
+@pytest.fixture
+def game_config():
+    """Create a game config with a custom presentation function"""
+    presentation_code = """
+def present(state, history):
+    if not history:
+        return "No events yet"
+
+    lines = []
+    for event in history:
+        if event['type'] == 'elicit_request':
+            lines.append(f"CUSTOM: {event['var_name']} requested (max {event['max_len']})")
+        elif event['type'] == 'reveal':
+            var_names = list(event['values'].keys())
+            lines.append(f"CUSTOM: Revealed {', '.join(var_names)}")
+        else:
+            lines.append(f"CUSTOM: {event['type']}")
+
+    return "\\n".join(lines)
+"""
+
+    expanded_game: ExpandedGameConfig = {
+        "name": "test_game",
+        "code": 'assign(x="test")\nreveal(black, x)\nelicit(black, y, 10)',
+        "map_seed": "test_seed",
+        "presentation_function": presentation_code,
+    }
+
+    config: XegaGameConfig = {
+        "game": expanded_game,
+        "players": [],
+        "map_seed": "test_seed",
+        "judge_model": "test",
+        "npc_players": [],
+        "num_variables_per_register": 4,
+        "max_steps": 100,
+        "auto_replay": False,
+        "seed": "test",
+        "num_maps_per_game": 1,
+    }
+
+    return config
+
+
+class TestPresentationIntegration:
+    """Test presentation layer integration with the game system"""
+
+    def test_player_loads_custom_presentation_function(self, game_config):
+        """Test that players load custom presentation functions"""
+        options: dict[str, str | int | float | bool] = {
+            "provider": "ollama",
+            "model": "test",
+        }
+        player = DefaultXGP("black", "test_id", options, game_config)
+
+        assert player.presentation_function is not None
+        assert callable(player.presentation_function)
+
+    def test_custom_presentation_function_usage(self, game_config):
+        """Test that custom presentation function is used when making moves"""
+        options: dict[str, str | int | float | bool] = {
+            "provider": "ollama",
+            "model": "test",
+        }
+        player = DefaultXGP("black", "test_id", options, game_config)
+
+        # Simulate some events
+
+        reveal_event: RevealEvent = {
+            "type": "reveal",
+            "line": "reveal(black, x)",
+            "line_num": 1,
+            "player": "black",
+            "values": {"x": XString("test_value")},
+        }
+
+        elicit_event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(black, y, 10)",
+            "line_num": 2,
+            "player": "black",
+            "var_name": "y",
+            "max_len": 10,
+            "registers": {},
+        }
+
+        player.event_history = [reveal_event, elicit_event]
+
+        # Test the presentation function directly
+        result = player.presentation_function({}, player.event_history)
+
+        assert "CUSTOM: Revealed x" in result
+        assert "CUSTOM: y requested (max 10)" in result
+        assert result.startswith("CUSTOM:")
+
+    def test_presentation_function_throws_error(self, game_config):
+        # Create a game config with a broken presentation function
+        broken_code = """
+def present(state, history):
+    raise ValueError("Intentional error")
+"""
+        game_config["game"]["presentation_function"] = broken_code
+
+        options: dict[str, str | int | float | bool] = {
+            "provider": "ollama",
+            "model": "test",
+        }
+        player = DefaultXGP("black", "test_id", options, game_config)
+
+        assert player.presentation_function is not None
+
+        elicit_event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(black, y, 10)",
+            "line_num": 1,
+            "player": "black",
+            "var_name": "y",
+            "max_len": 10,
+            "registers": {},
+        }
+
+        player.event_history = [elicit_event]
+
+        with pytest.raises(XegaConfigurationError):
+            player.presentation_function({}, player.event_history)
+
+    def test_default_presentation_function(self):
+        """Test that the default presentation function produces expected output"""
+
+        default_code = get_default_presentation()
+        func = PresentationFunction(default_code)
+
+        # Test with sample events
+        reveal_event: RevealEvent = {
+            "type": "reveal",
+            "line": "reveal(black, x)",
+            "line_num": 1,
+            "player": "black",
+            "values": {"x": XString("test_value")},
+        }
+
+        elicit_event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(black, y, 10)",
+            "line_num": 2,
+            "player": "black",
+            "var_name": "y",
+            "max_len": 10,
+            "registers": {},
+        }
+
+        history: list[XegaEvent] = [reveal_event, elicit_event]
+        result = func({}, history)
+
+        # Should match the format produced by event_to_message
+        expected_lines = [
+            "01-<reveal>: ['x: \"test_value\"']",
+            "02-<elicit>: y (max 10 tokens)",
+        ]
+
+        for expected_line in expected_lines:
+            assert expected_line in result
+
+    @pytest.mark.asyncio
+    async def test_full_integration_with_mock_player(self):
+        """Test the full integration path with MockXGP player using presentation"""
+
+        # Create a presentation function that includes register state info
+        presentation_code = """
+def present(state, history):
+    lines = []
+
+    # Include register state to verify it's being passed
+    if state:
+        register_values = []
+        for name, value in state.items():
+            # Simply try to convert to string - no hasattr needed
+            try:
+                register_values.append(f"{name}={str(value)[:20]}")
+            except:
+                pass
+        if register_values:
+            lines.append(f"REGISTERS: {', '.join(register_values)}")
+
+    # Process history with custom formatting
+    for event in history:
+        if event['type'] == 'reveal':
+            lines.append("CUSTOM_REVEAL: Values shown")
+        elif event['type'] == 'elicit_request':
+            lines.append(f"CUSTOM_ELICIT: Need {event['var_name']}")
+        elif event['type'] == 'reward':
+            lines.append("CUSTOM_REWARD: Score updated")
+
+    if not lines:
+        lines.append("CUSTOM_START: Game beginning")
+
+    return "\\n".join(lines)
+"""
+
+        # Create game configuration
+        expanded_game: ExpandedGameConfig = {
+            "name": "test_integration",
+            "code": """assign(x="initial_value")
+reveal(black, x)
+elicit(black, z, 10)""",
+            "map_seed": "test_seed",
+            "presentation_function": presentation_code,
+        }
+
+        config: XegaGameConfig = {
+            "game": expanded_game,
+            "players": [
+                {
+                    "name": "black",
+                    "id": "mock_id",
+                    "player_type": "mock",
+                    "options": {},
+                }
+            ],
+            "map_seed": "test_seed",
+            "judge_model": "test",
+            "npc_players": [],
+            "num_variables_per_register": 4,
+            "max_steps": 100,
+            "auto_replay": False,
+            "seed": "test",
+            "num_maps_per_game": 1,
+        }
+
+        # Create MockXGP player with the game config
+        mock_player = MockXGP("black", "mock_id", None, config)
+
+        # Simulate reveal event
+        reveal_event: RevealEvent = {
+            "type": "reveal",
+            "line": "reveal(black, x)",
+            "line_num": 2,
+            "player": "black",
+            "values": {"x": XString("initial_value")},
+        }
+        await mock_player.post(reveal_event)
+
+        # Simulate elicit request event
+        elicit_event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(black, z, 10)",
+            "line_num": 3,
+            "player": "black",
+            "var_name": "z",
+            "max_len": 10,
+            "registers": {},
+        }
+        await mock_player.post(elicit_event)
+
+        # Create register states with actual values to verify they're passed
+        register_states = {
+            "x": XString("initial_value"),
+            "y": XString("another_value"),
+            "empty": XString(""),
+        }
+
+        # Call make_move - this is the crucial integration point
+        move, tokens = await mock_player.make_move("z", register_states)
+
+        # Verify the move was made
+        assert move == "mocked_move"
+
+        # Verify presentation function was used in make_move
+        assert mock_player.last_message_to_llm is not None
+        message = mock_player.last_message_to_llm
+
+        # Check for custom presentation markers
+        assert "CUSTOM_" in message, f"Custom presentation not found in: {message}"
+        assert "CUSTOM_REVEAL" in message
+        assert "CUSTOM_ELICIT" in message
+
+        # Verify registers were passed (non-empty state)
+        assert "REGISTERS:" in message, "Register state not passed to presentation"
+        assert "x=" in message, "Register x not in presentation output"
+        assert "y=" in message, "Register y not in presentation output"
+
+        # Verify default formatting is NOT present
+        assert "02-<reveal>" not in message, "Default formatting should not be present"
+        assert "03-<elicit>" not in message, "Default formatting should not be present"
+
+    @pytest.mark.asyncio
+    async def test_presentation_throws_with_mock_player(self):
+        """Test that MockXGP falls back to default formatting when presentation fails"""
+
+        # Create a broken presentation function
+        broken_presentation = """
+def present(state, history):
+    # Intentionally cause an error to test fallback
+    return 1 / 0  # Division by zero error
+"""
+
+        expanded_game: ExpandedGameConfig = {
+            "name": "test_fallback",
+            "code": """reveal(black, "test")
+elicit(black, x, 5)""",
+            "map_seed": "test_seed",
+            "presentation_function": broken_presentation,
+        }
+
+        config: XegaGameConfig = {
+            "game": expanded_game,
+            "players": [
+                {"name": "black", "id": "mock_id", "player_type": "mock", "options": {}}
+            ],
+            "map_seed": "test_seed",
+            "judge_model": "test",
+            "npc_players": [],
+            "num_variables_per_register": 4,
+            "max_steps": 100,
+            "auto_replay": False,
+            "seed": "test",
+            "num_maps_per_game": 1,
+        }
+
+        mock_player = MockXGP("black", "mock_id", None, config)
+
+        elicit_event: ElicitRequestEvent = {
+            "type": "elicit_request",
+            "line": "elicit(black, x, 5)",
+            "line_num": 2,
+            "player": "black",
+            "var_name": "x",
+            "max_len": 5,
+            "registers": {},
+        }
+
+        await mock_player.post(elicit_event)
+
+        register_states = {"test": XString("test_value")}
+        with pytest.raises(XegaConfigurationError):
+            move, tokens = await mock_player.make_move("x", register_states)

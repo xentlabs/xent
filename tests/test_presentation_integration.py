@@ -196,7 +196,7 @@ def present(state, history):
                 pass
         if register_values:
             lines.append(f"REGISTERS: {', '.join(register_values)}")
-    
+
     # Process history with custom formatting
     for event in history:
         if event['type'] == 'reveal':
@@ -205,10 +205,10 @@ def present(state, history):
             lines.append(f"CUSTOM_ELICIT: Need {event['var_name']}")
         elif event['type'] == 'reward':
             lines.append("CUSTOM_REWARD: Score updated")
-    
+
     if not lines:
         lines.append("CUSTOM_START: Game beginning")
-    
+
     return "\\n".join(lines)
 """
 

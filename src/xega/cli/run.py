@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 
 import click
 
@@ -80,15 +81,23 @@ def run(
     parallel_games: int,
 ):
     """Execute Xega benchmark"""
-    log_level = logging.WARNING
     logging_format = (
-        "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+        "%(asctime)s - %(levelname)-8s - %(filename)s:%(lineno)d - %(message)s"
     )
+    formatter = logging.Formatter(logging_format)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    console_handler = logging.StreamHandler(sys.stdout)
     if verbose == 1:
-        log_level = logging.INFO
+        console_handler.setLevel(logging.INFO)
     elif verbose >= 2:
-        log_level = logging.DEBUG
-    logging.basicConfig(level=log_level, format=logging_format)
+        console_handler.setLevel(logging.DEBUG)
+    else:
+        console_handler.setLevel(logging.WARNING)
+
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
     benchmark_config = load_benchmark_config(config)
     if regenerate_id:
@@ -110,10 +119,15 @@ def run(
 
     os.makedirs(results_dir, exist_ok=True)
 
-    logger = logging.getLogger()
-    file_handler = logging.FileHandler(os.path.join(results_dir, "log.txt"))
-    file_handler.setLevel(log_level)
-    formatter = logging.Formatter(logging_format)
+    log_file_path = os.path.join(results_dir, "log.txt")
+    file_handler = logging.FileHandler(log_file_path)
+
+    # File handler should always log INFO, or DEBUG if verbosity is high
+    if verbose >= 2:
+        file_handler.setLevel(logging.DEBUG)
+    else:
+        file_handler.setLevel(logging.INFO)
+
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

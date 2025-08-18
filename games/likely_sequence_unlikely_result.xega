@@ -1,0 +1,18 @@
+# s is the start
+# x1 is the new text
+# x2 is the previous text
+# s1 is the fully story (not currently used)
+assign(s=story())
+assign(x1=s)
+assign(t1="After the rain", t2=" comes the sun")
+
+beacon(flag_1)
+
+assign(s1=s1 + x1)
+assign(x2=x1)
+elicit(x1, 5)
+ensure(xed(x1 | x2) <= xed(t2 | t1))
+
+replay(flag_1, 10)
+
+reward(dex(x1 | s))

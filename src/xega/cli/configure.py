@@ -15,7 +15,7 @@ from xega.common.xega_types import (
     XegaGameConfig,
     XegaMetadata,
 )
-from xega.presentation.executor import get_default_presentation
+from xega.presentation.executor import get_single_presentation
 from xega.runtime.llm_api_client import guess_provider_from_model
 
 SIMPLE_GAME_CODE = """
@@ -69,6 +69,7 @@ def games_from_dir(game_dir: str) -> list[GameConfig]:
 
 def build_benchmark_config(
     models: list[str],
+    human: bool,
     judge: str,
     games: list[GameConfig],
     benchmark_id: str,
@@ -77,17 +78,34 @@ def build_benchmark_config(
     auto_replay: bool,
     num_maps_per_game: int,
 ):
-    players = [
-        [
-            PlayerConfig(
-                name="black",
-                id=model,
-                player_type="default",
-                options={"model": model, "provider": guess_provider_from_model(model)},
-            )
+    players = []
+    if not human:
+        players = [
+            [
+                PlayerConfig(
+                    name="black",
+                    id=model,
+                    player_type="default",
+                    options={
+                        "model": model,
+                        "provider": guess_provider_from_model(model),
+                    },
+                )
+            ]
+            for model in models
         ]
-        for model in models
-    ]
+    else:
+        players.append(
+            [
+                PlayerConfig(
+                    name="black",
+                    id="human",
+                    player_type="human",
+                    options={},
+                )
+            ]
+        )
+
     return XegaBenchmarkConfig(
         config_type="short_benchmark_config",
         games=games,
@@ -186,6 +204,11 @@ def remove_player_from_expanded_config(
     help="Add a model as a player (can be used multiple times)",
 )
 @click.option(
+    "--human",
+    is_flag=True,
+    help="Specify a human cli player. This overrides the --model flag and specifies only a single human player. This should be used for testing, in particular to play the game from the perspective of an agent",
+)
+@click.option(
     "--judge",
     default=DEFAULT_XEGA_CONFIG["judge_model"],
     help="Specify the judge model to use for the benchmark. Default is 'gpt2'",
@@ -231,6 +254,7 @@ def configure(
     output: str,
     game_dir: str,
     model: list[str],
+    human: bool,
     judge: str,
     benchmark_id: str | None,
     num_steps: int,
@@ -254,7 +278,7 @@ def configure(
             GameConfig(
                 name="simple_game",
                 code=SIMPLE_GAME_CODE,
-                presentation_function=get_default_presentation(),
+                presentation_function=get_single_presentation(),
             )
         ]
     else:
@@ -262,6 +286,7 @@ def configure(
 
     config = build_benchmark_config(
         model,
+        human,
         judge,
         games,
         benchmark_id,

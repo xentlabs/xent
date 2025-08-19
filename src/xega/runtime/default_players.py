@@ -69,7 +69,6 @@ class DefaultXGP(XGP):
         self.client = make_client(options)
         self.game_code = game_config["game"]["code"]
         self.event_history: list[XegaEvent] = []
-        self.history: list[str] = []
         self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
         self.presentation_function = get_presentation_function(game_config)

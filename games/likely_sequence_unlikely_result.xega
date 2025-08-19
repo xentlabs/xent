@@ -11,7 +11,7 @@ beacon(flag_1)
 assign(s1=s1 + x1)
 assign(x2=x1)
 elicit(x1, 5)
-ensure(xed(x1 | x2) <= xed(t2 | t1))
+ensure(xed(x1 | x2) >= xed(t2 | t1))
 
 replay(flag_1, 10)
 

@@ -22,10 +22,36 @@ def present(state, history):
     # --- Presentation building ---
 
     output_lines = []
-    if not history:
-        output_lines.append("You are starting a new game.")
-        output_lines.append(f'The initial text is: "{story}"')
-    else:
+    header = f"""You are playing a game. 
+
+<gameRules>
+You will be given a start text. You are going to construct a sequence of 10 short texts which follow that start text. Each of the texts must make sense and be likely to come after the previous text. Your score will be how unlikely the last text is given the first.
+
+So the idea is to make a series of texts which, in sequence, are likely and predictable. But the first and last text are extremely unlikely.
+
+The likelyhood is judged by an LLM. If we are looking at the likelyhook of a text `s` given a text `t`, we will compute that as -1 * cross-entropy(s | t). So the more that `t` helps predict `s`, the higher the score.
+
+
+The score is judged in the same way. So if you have a start text `s` and a final text `x`, then your score will be cross-entropy(x | s). The more unlikely x is given s, the higher your score.
+
+To determine whether each text is predictable in sequence, we will use a baseline comparison of cross-entropy(" comes the sun" | "After the rain"). So if you have `x1` and `x2` as two texts in your sequence, then those are valid if cross-entropy(x1 | x2) < cross-entropy(" comes the sun" | "After the rain").
+
+Each text you provide can be at most 5 tokens long, anything beyond that will be truncated. Provide your move in <move></move> tags. Any other text in your response will be ignored.
+</gameRules>
+
+Here is the start text for this game:
+<startText>
+{story}
+</startText>
+
+<objectiveReminder>
+Remember, you are trying to construct a series of texts that each connect to the previous such that it meets the critera of being more likely than " comes the sun" given "After the rain". The goal is to make the final text as unlikely as possible given the first text.
+</objectiveReminder>
+"""
+    output_lines.append(header)
+
+    # --- History display ---)
+    if len(successful_texts) > 1 or len(current_step_failures) > 0:
         output_lines.append("A history of your play so far:")
         output_lines.append("\n<fullHistory>")
 
@@ -66,7 +92,7 @@ def present(state, history):
 
     full_story_so_far = state.get("s1")
     if full_story_so_far is None:
-        full_story_so_far = " ".join(successful_texts)
+        full_story_so_far = "".join(successful_texts)
 
     last_successful_text = state.get("x2")
     if last_successful_text is None:

@@ -1,0 +1,8 @@
+assign(s1=story(), s2=story())
+assign(s="I have a fun story to tell you:")
+elicit(t, 10)
+reward(nex(s2 | s + s1 + t))
+reward(nex(s1 | s + s2 + t))
+reward(xent(s2 | s + s1))
+reward(xent(s1 | s + s2))
+# TODO consider doing min for the reward to make it the lesser of the two direction

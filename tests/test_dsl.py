@@ -868,6 +868,52 @@ class TestDSLFunctions:
         assert str(xrt.local_vars["s1"]) == ""
 
     @pytest.mark.asyncio
+    async def test_only_uses_chars(self, xrt):
+        await eval_line("elicit(s1, 10)", 1, xrt)
+
+        result = await eval_line("ensure(only_uses_chars('abck', 'back'))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('abc', 'back'))", 2, xrt)
+        assert result is not None
+
+        result = await eval_line("ensure(only_uses_chars('.,;:!? ', '!., '))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('.,;:!?', '!., '))", 2, xrt)
+        assert result is not None
+
+        result = await eval_line("ensure(only_uses_chars('😀😃😄', '😀'))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('🌟✨💫', '🌙'))", 2, xrt)
+        assert result is not None
+
+        result = await eval_line("ensure(only_uses_chars('👍🏽👍🏻', '👍🏽'))", 2, xrt)
+        assert result is None
+
+        # The skin tone thumbs up emoji decomposes into tone + thumbs up, so this is valid
+        result = await eval_line("ensure(only_uses_chars('👍🏽👍🏻', '👍'))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('👍', '👍🏽👍🏻'))", 2, xrt)
+        assert result is not None
+
+        result = await eval_line("ensure(only_uses_chars('🇺🇸🇬🇧', '🇺🇸'))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('🇺🇸', '🇺🇸🇬🇧'))", 2, xrt)
+        assert result is not None
+
+        result = await eval_line(
+            "ensure(only_uses_chars('你好世界', '你好世界'))", 2, xrt
+        )
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_chars('你好世界', '再见'))", 2, xrt)
+        assert result is not None
+
+    @pytest.mark.asyncio
     async def test_remove_common_words_function(self, xrt):
         """Test remove_common_words() function."""
         await eval_line(

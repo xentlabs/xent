@@ -48,6 +48,7 @@ def build_globals(judge: Judge):
         word_set=word_set,
         common_word_set=common_word_set,
         remove_common_words=remove_common_words,
+        only_uses_chars=only_uses_chars,
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -99,3 +100,13 @@ def remove_common_words(s1: str | XString, s2: str | XString):
         s1 = re.sub(word, "", str(s1), flags=re.IGNORECASE)
     result = re.sub(r"\s{2,}", " ", str(s1)).strip()
     return XString(result)
+
+
+def only_uses_chars(allowed_chars: str | XString, text: str | XString) -> bool:
+    if isinstance(allowed_chars, XString):
+        allowed_chars = str(allowed_chars)
+    if isinstance(text, XString):
+        text = str(text)
+
+    allowed_set = set(allowed_chars)
+    return all(char in allowed_set for char in text)

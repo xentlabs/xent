@@ -67,7 +67,7 @@ def build_game_configs_from_benchmark_config(
 ) -> list[ExpandedGameConfig]:
     game_configs: list[ExpandedGameConfig] = []
     for map_num in range(benchmark_config["num_maps_per_game"]):
-        map_seed = f"{map_num}"
+        map_seed = f"game{game['name']}_map{map_num}"
         judge.set_seed(benchmark_config["seed"], map_seed)
         expanded_game_config = expand_game_config(game, map_seed, judge)
         game_configs.append(expanded_game_config)

@@ -913,17 +913,29 @@ class TestDSLFunctions:
         result = await eval_line("ensure(only_uses_chars('你好世界', '再见'))", 2, xrt)
         assert result is not None
 
+    @pytest.mark.parametrize(
+        "s1,s2,expected",
+        [
+            ("the cat and the dog", "the dog and a bird", "cat"),
+            ("I eat pizza", "I like dogs", "eat pizza"),
+            ("Hello, world!", "world!", "Hello, !"),
+            ("foo_bar foo", "foo", "_bar"),
+            ("foo-bar foo", "foo", "-bar"),
+            ("The the THE", "the", ""),
+            ("yes, yes; yes.", "yes", ", ; ."),
+            ("(hello) world", "hello", "() world"),
+            ("version1 version", "version", "version1"),
+            ("café dog", "café", "dog"),
+            ("no common", "words on here", "no common"),
+            ("🍫💙 🍫🥳", "🍫 🍫💙", "🍫🥳"),
+        ],
+    )
     @pytest.mark.asyncio
-    async def test_remove_common_words_function(self, xrt):
-        """Test remove_common_words() function."""
-        await eval_line(
-            "assign(s1='the cat and the dog', s2='the dog and a bird')", 1, xrt
-        )
+    async def test_remove_common_words_function(self, xrt, s1, s2, expected):
+        await eval_line(f"assign(s1='{s1}', s2='{s2}')", 1, xrt)
         await eval_line("assign(s3=remove_common_words(s1, s2))", 2, xrt)
 
-        s1_cleaned = xrt.local_vars["s3"]
-        assert "cat" in str(s1_cleaned)
-        assert "dog" not in str(s1_cleaned)
+        assert str(xrt.local_vars["s3"]) == expected
 
     @pytest.mark.asyncio
     async def test_xent_comprehensive(self, xrt):

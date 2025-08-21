@@ -98,55 +98,81 @@ def present(state, history):
 
 ## Essential Presentation Components
 
-### 1. The Game Rules Block
+### 1. The Opening: Narrative Header with Embedded Structure
 
-**Always** start with a complete `<gameRules>` block that contains:
+Start with a flowing narrative that naturally incorporates all game information. This should read smoothly while including precise details:
 
-```xml
-<gameRules>
-- Complete explanation of the game objective
-- EXPLICIT OPTIMIZATION GOAL (e.g., "Your goal is to maximize/minimize your score")
-- Exact scoring formula in mathematical terms
-- All constraints and validation rules  
-- Token limits and truncation behavior
-- Any baseline comparisons or thresholds
-- How the optimization works across rounds/attempts
-</gameRules>
-```
-
-Example from `double_edge` (note the explicit optimization goal):
 ```python
-header = """You are playing a game. In this game you are given 2 short texts A and C. Your goal is to create a bridge text B such that the text ABC makes sense and CBA also makes sense.
+header = """You are playing a text prefix game. You will be given a short story, and your task is to provide a prefix that makes that story as predictable as possible. Think of it as providing context that helps predict what comes next.
 
-The scoring will be computed using the cross entropy of C given AB plus the cross entropy of A given CB. Specifically `-1 * (crossEntropy(C | AB) + crossEntropy(A | CB))`. So the more likely you can make the text in both directions, the higher your score will be.
+The scoring measures how much information your prefix provides about the story. Specifically, your score is the difference between the story's baseline cross-entropy and its cross-entropy given your prefix: `Score = crossEntropy(story) - crossEntropy(story | prefix)`. Your goal is to MAXIMIZE this score. So you want to find a prefix that will most help an LLM predict the story.
 
-Your goal is to optimize your score. So try to provide bridge text B (max 10 tokens) such that A→B→C flows naturally and C→B→A also flows naturally.
+After each attempt, you'll see your score and a per-token breakdown of the cross entropy difference. The game automatically restarts after each successful attempt, allowing you to continuously optimize your approach. Use the feedback from previous rounds to improve your score.
 
-You will have multiple attempts to improve your score. After each attempt, you will be given the per-token cross entropy of the scored text. Use this information to improve your score on the next round.
+You cannot use any words that appear in the story itself (regardless of case or punctuation). Your prefix is limited to 10 tokens maximum.
+
+Provide your prefix in <move></move> tags. Any other text in your response will be ignored.
 """
 ```
+
+Key principles:
+- **Natural flow**: Reads like a coherent explanation, not a list of rules
+- **Embedded precision**: Mathematical formulas and constraints are woven into the narrative
+- **Clear optimization goal**: Explicitly states what to maximize/minimize within the context
+- **Practical framing**: Explains scoring in terms players can understand ("help an LLM predict")
 
 **Critical**: Always explicitly state the optimization direction:
 - "Your goal is to **maximize** your score"
 - "Your goal is to **minimize** the cross-entropy"
 - "Try to achieve the **highest possible** score across rounds"
 
-### 2. Score Presentation
+### 2. Structured Data Within Natural Flow
 
-Present scores in the form most useful for optimization:
+After the narrative header, use XML tags for dynamic game data, but present them naturally within the flow:
 
 ```python
-# Show total scores
-output_lines.append(f"Total: {total_score}")
+# Good hybrid approach - natural language introducing structured data
+output_lines.append(f"The story: <story>{story}</story>")
 
-# Show per-token breakdown when available
-# TokenXentList objects can be converted to strings showing per-token values
-output_lines.append(f"Per-token: {str(score_object)}")
+# If there's history, introduce it conversationally before the structure
+if rounds:
+    output_lines.append("")
+    output_lines.append("--- Play History ---")
+    output_lines.append("")
+    output_lines.append("<gameHistory>")
+    # ... structured history data ...
+    output_lines.append("</gameHistory>")
+    output_lines.append("")
+    output_lines.append(f"Best score achieved: {best_score}")
+    output_lines.append("Remember: You want to MAXIMIZE your score. Higher is better!")
 ```
+
+This combines:
+- **Readable transitions**: "--- Play History ---" introduces the structured section
+- **Clean data structure**: XML tags for parseable history
+- **Natural reminders**: Optimization hints in plain language after the data
+
+### 3. Score Presentation: Clarity Through Hierarchy
+
+Present scores with both structure and explanation:
+
+```python
+# Within structured history
+output_lines.append("    <score>")
+output_lines.append(f"      Total: {round_data['score']}")
+output_lines.append(f"      Per-token: {round_data['per_token']}")
+output_lines.append("    </score>")
+
+# Followed by natural language interpretation
+output_lines.append(f"Best score achieved: {best_score}")
+output_lines.append("Remember: You want to MAXIMIZE your score. Higher is better!")
+```
+
+The structured data provides precision while the natural language provides interpretation.
 
 **Important**: The per-token breakdown is NOT for debugging - it's critical optimization information that helps players identify which tokens to adjust.
 
-### 3. History Tracking
+### 4. History Tracking
 
 Use structured XML-style tags for clear parsing:
 
@@ -165,7 +191,7 @@ Use structured XML-style tags for clear parsing:
 </gameHistory>
 ```
 
-### 4. State Utilization
+### 5. State Utilization
 
 Use state variables to provide context:
 
@@ -183,18 +209,19 @@ output_lines.append(f'Full sequence so far: "{full_sequence}"')
 
 When implementing a presentation function:
 
-- [ ] **Front-load all game information** in a structured `<gameRules>` block
-- [ ] **Explicitly state the optimization goal** (maximize/minimize score)
-- [ ] **Translate internal mechanics** into player-facing rules
-- [ ] **Show mathematical formulas** for scoring (in terms players can act on)
+- [ ] **Start with a narrative header** that naturally explains the game
+- [ ] **Embed mathematical formulas** within the flowing explanation using backticks
+- [ ] **State optimization goal explicitly** within the narrative context
+- [ ] **Use structured XML for dynamic data** (history, scores, current state)
+- [ ] **Introduce structured sections naturally** with headers like "--- Play History ---"
+- [ ] **Follow structure with interpretation** (e.g., "Best score: X" after history)
 - [ ] **Handle multiple rounds** - all games restart after completion
 - [ ] **Track game progress** appropriately (rounds and/or steps within rounds)
 - [ ] **Present scores** with per-token breakdowns when available
-- [ ] **Use structured XML tags** for history and state
 - [ ] **Include token limits** and truncation warnings
 - [ ] **End with clear move instructions** using `<move></move>` tags
 - [ ] **Never expose** internal variable names or implementation details
-- [ ] **Minimize redundancy** - static info appears once at the top
+- [ ] **Avoid redundancy** - static info in header, dynamic info in structured sections
 - [ ] **Show best score** and remind players they're optimizing across rounds
 
 ## Common Anti-Patterns to Avoid
@@ -238,6 +265,33 @@ output_lines.append(f"Total: {total}")
 output_lines.append(f"Per-token: {str(token_scores)}")
 ```
 
+### ❌ Pure Structure Without Context
+```python
+# BAD: Only structured data, no narrative
+<gameRules>
+- Objective: Minimize cross-entropy
+- Formula: xed(s | x)
+- Constraints: 10 tokens max
+</gameRules>
+
+# GOOD: Narrative explanation with embedded details
+"""You are playing a text prefix game. Your task is to provide a prefix that makes 
+the story as predictable as possible... Specifically: `Score = crossEntropy(story) - 
+crossEntropy(story | prefix)`. Your goal is to MAXIMIZE this score..."""
+```
+
+### ❌ Pure Narrative Without Structure
+```python
+# BAD: Everything in prose, hard to parse history
+"In round 1 you tried 'Once upon a' and got 5.2. In round 2..."
+
+# GOOD: Narrative intro with structured history
+"--- Play History ---"
+<gameHistory>
+  <round1>...</round1>
+</gameHistory>
+```
+
 ## Example: Analyzing `likely_sequence_unlikely_result_presentation.py`
 
 This exemplary presentation demonstrates several best practices:
@@ -258,6 +312,17 @@ This presentation excels at:
 4. **Clean history structure** - Uses consistent XML tags for parsing
 5. **Combined scoring** - Shows individual direction scores AND combined total
 
+## Example: The Hybrid Approach in Condense
+
+The Condense presentation exemplifies the hybrid approach:
+
+1. **Narrative opening**: Explains the game naturally with embedded formulas
+2. **Structured data**: `<story>`, `<gameHistory>`, `<round>` tags for clarity
+3. **Natural transitions**: "--- Play History ---" introduces structured sections  
+4. **Contextual reminders**: "Remember: You want to MAXIMIZE your score" after data
+
+This combination ensures both human readability and LLM parseability.
+
 ## Testing Your Presentation
 
 Ask yourself:
@@ -267,6 +332,7 @@ Ask yourself:
 4. Are per-token scores shown when available?
 5. Is everything translated into player-facing terms?
 6. Does it end with `<move></move>` instructions?
+7. Does it combine narrative flow with structured data effectively?
 
 ## The XegaEvent Types Reference
 

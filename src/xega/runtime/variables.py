@@ -94,11 +94,24 @@ def common_word_set(s1: str | XString, s2: str | XString):
     return word_set(s1).intersection(word_set(s2))
 
 
-def remove_common_words(s1: str | XString, s2: str | XString):
+def remove_common_words(s1: str | XString, s2: str | XString) -> XString:
     common_words = common_word_set(s1, s2)
+
+    # Define separators as whitespace or ASCII punctuation
+    # This matches our tokenization (split on whitespace, ignore punctuation)
+    separator_class = re.escape(string.punctuation) + r"\s"
+
+    result = str(s1)
     for word in common_words:
-        s1 = re.sub(word, "", str(s1), flags=re.IGNORECASE)
-    result = re.sub(r"\s{2,}", " ", str(s1)).strip()
+        escaped = re.escape(word)
+        # We use a positive lookahead for the right separator: it allows it
+        # to be the left separator of the next word and not be consumed.
+        pattern = rf"(^|[{separator_class}]){escaped}(?=$|[{separator_class}])"
+        # Remove the word, but keep the left separator. The right separator is
+        # not part of the group.
+        result = re.sub(pattern, r"\1", result, flags=re.IGNORECASE)
+
+    result = re.sub(r"\s{2,}", " ", result).strip()
     return XString(result)
 
 

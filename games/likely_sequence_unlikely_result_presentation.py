@@ -25,7 +25,7 @@ def present(state, history):
     header = f"""You are playing a game. 
 
 <gameRules>
-You will be given a start text. You are going to construct a sequence of 10 short texts which follow that start text. Each of the texts must make sense and be likely to come after the previous text. Your score will be how unlikely the last text is given the first.
+You will be given a start text. You are going to construct a sequence of 5 short texts which follow that start text. Each of the texts must make sense and be likely to come after the previous text. Your score will be how unlikely the last text is given the first.
 
 So the idea is to make a series of texts which, in sequence, are likely and predictable. But the first and last text are extremely unlikely.
 

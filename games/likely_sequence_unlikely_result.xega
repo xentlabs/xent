@@ -13,6 +13,6 @@ assign(x2=x1)
 elicit(x1, 5)
 ensure(xed(x1 | x2) >= xed(t2 | t1))
 
-replay(flag_1, 10)
+replay(flag_1, 5)
 
 reward(dex(x1 | s))

@@ -67,9 +67,9 @@ class XegaRuntime:
         self.history = []
         self.replay_counters = {}
         self.last_elicit_player = None
-        # Don't reset the main beacon, it should persist across iterations
-        main_beacon = self.beacons.get("main")
-        self.beacons = {"main": main_beacon} if main_beacon else {}
+        # NB: we don't currently reset beacons because they may be set _before_ the main beacon.
+        # This means that on the next round they can be be unset when the `replay` call is made.
+        # TODO: we should consider dropping the "main" beacon altogether and replaying from the start. The history is already available and there is no need to have any state persist between rounds
         return game_result
 
     async def execute(

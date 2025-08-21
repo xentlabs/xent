@@ -16,3 +16,8 @@ ensure(xed(x1 | x2) >= xed(t2 | t1))
 replay(flag_1, 5)
 
 reward(dex(x1 | s))
+
+# Clear state for the next round of play
+assign(x1=s)
+assign(s1=x1)
+assign(x2=x1)

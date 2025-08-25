@@ -25,13 +25,17 @@ def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
         "judge_model": "gpt-4",
         "npc_players": [],
         "num_variables_per_register": 4,
-        "max_steps": 100,
-        "auto_replay": True,
+        "num_rounds_per_game": 30,
         "seed": "test-seed",
         "num_maps_per_game": 1,
         "games": [
             {
-                "game": {"name": "game1", "code": "...", "map_seed": "map-seed-1"},
+                "game": {
+                    "name": "game1",
+                    "code": "...",
+                    "presentation_function": "...",
+                    "map_seed": "map-seed-1",
+                },
                 "players": [
                     {
                         "id": "player-a",
@@ -43,14 +47,18 @@ def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
                 "judge_model": "gpt-4",
                 "npc_players": [],
                 "num_variables_per_register": 4,
-                "max_steps": 100,
-                "auto_replay": True,
+                "num_rounds_per_game": 30,
                 "seed": "test-seed",
                 "num_maps_per_game": 1,
                 "map_seed": "map-seed-1",
             },
             {
-                "game": {"name": "game2", "code": "...", "map_seed": "map-seed-2"},
+                "game": {
+                    "name": "game2",
+                    "code": "...",
+                    "presentation_function": "...",
+                    "map_seed": "map-seed-2",
+                },
                 "players": [
                     {
                         "id": "player-a",
@@ -62,14 +70,18 @@ def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
                 "judge_model": "gpt-4",
                 "npc_players": [],
                 "num_variables_per_register": 4,
-                "max_steps": 100,
-                "auto_replay": True,
+                "num_rounds_per_game": 30,
                 "seed": "test-seed",
                 "num_maps_per_game": 1,
                 "map_seed": "map-seed-2",
             },
             {
-                "game": {"name": "game1", "code": "...", "map_seed": "map-seed-1"},
+                "game": {
+                    "name": "game1",
+                    "code": "...",
+                    "presentation_function": "...",
+                    "map_seed": "map-seed-1",
+                },
                 "players": [
                     {
                         "id": "player-b",
@@ -81,8 +93,7 @@ def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
                 "judge_model": "gpt-4",
                 "npc_players": [],
                 "num_variables_per_register": 4,
-                "max_steps": 100,
-                "auto_replay": True,
+                "num_rounds_per_game": 30,
                 "seed": "test-seed",
                 "num_maps_per_game": 1,
                 "map_seed": "map-seed-1",

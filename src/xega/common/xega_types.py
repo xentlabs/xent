@@ -84,8 +84,7 @@ class XegaMetadata(TypedDict):
     judge_model: str
     npc_players: list[PlayerConfig]
     num_variables_per_register: int
-    max_steps: int
-    auto_replay: bool
+    num_rounds_per_game: int
     seed: str
     num_maps_per_game: int
 

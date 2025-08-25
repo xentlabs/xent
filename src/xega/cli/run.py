@@ -19,8 +19,7 @@ from xega.common.xega_types import (
 
 DEFAULT_XEGA_CONFIG = XegaMetadata(
     judge_model="gpt2",
-    auto_replay=True,
-    max_steps=100,
+    num_rounds_per_game=30,
     seed="notrandom",
     num_variables_per_register=4,
     npc_players=[],

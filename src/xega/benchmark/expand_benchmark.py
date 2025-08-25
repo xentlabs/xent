@@ -22,8 +22,7 @@ def expand_benchmark_config(
         judge_model=benchmark_config["judge_model"],
         npc_players=benchmark_config["npc_players"],
         num_variables_per_register=benchmark_config["num_variables_per_register"],
-        max_steps=benchmark_config["max_steps"],
-        auto_replay=benchmark_config["auto_replay"],
+        num_rounds_per_game=benchmark_config["num_rounds_per_game"],
         seed=benchmark_config["seed"],
         num_maps_per_game=benchmark_config["num_maps_per_game"],
         games=[],
@@ -50,8 +49,7 @@ def expand_benchmark_config(
                     num_variables_per_register=benchmark_config[
                         "num_variables_per_register"
                     ],
-                    max_steps=benchmark_config["max_steps"],
-                    auto_replay=benchmark_config["auto_replay"],
+                    num_rounds_per_game=benchmark_config["num_rounds_per_game"],
                     seed=benchmark_config["seed"],
                     num_maps_per_game=benchmark_config["num_maps_per_game"],
                 )

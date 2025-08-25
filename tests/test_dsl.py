@@ -4,7 +4,6 @@ from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
 from xega.common.x_flag import XFlag
 from xega.common.x_string import XString
 from xega.runtime.execution import eval_line, play_game
-from xega.runtime.runtime import MAX_ENSURE_FAILURES
 
 
 class TestAssignInstruction:
@@ -157,7 +156,7 @@ class TestAssignInstruction:
         reveal(black, s3)
         """
 
-        game_results = await play_game(game_code, xrt, auto_replay=False)
+        game_results = await play_game(game_code, xrt, num_rounds=1)
         assert len(game_results) == 1
 
         # Check that the assignments worked by looking at the reveal
@@ -482,7 +481,7 @@ class TestRewardInstruction:
         """
         start_score = xrt.local_vars["black"].get_score()
 
-        game_results = await play_game(game_code, xrt, auto_replay=False)
+        game_results = await play_game(game_code, xrt, num_rounds=1)
         assert len(game_results) == 1
 
         # Player should have received some reward
@@ -601,12 +600,12 @@ class TestEnsureInstruction:
         ensure(s == 'impossible_to_guess')
         """
 
-        # This should eventually throw
-        game_results = await play_game(
-            game_code, xrt, auto_replay=False, max_steps=MAX_ENSURE_FAILURES + 5
-        )
-
-        assert len(game_results) == 0
+        with pytest.raises(XegaGameError):
+            await play_game(
+                game_code,
+                xrt,
+                num_rounds=1,
+            )
 
     @pytest.mark.asyncio
     async def test_ensure_with_validated_bool(self, xrt):
@@ -630,7 +629,7 @@ class TestEnsureInstruction:
 
 
 class TestBeaconReplayInstructions:
-    """Test beacon, replay, auto_replay, and main flag functionality."""
+    """Test beacon, replay, and main flag functionality."""
 
     @pytest.mark.asyncio
     async def test_beacon_creation_comprehensive(self, xrt):
@@ -704,7 +703,7 @@ class TestBeaconReplayInstructions:
         replay(flag_1, 3)
         """
 
-        results = await play_game(game_code, xrt, auto_replay=False)
+        results = await play_game(game_code, xrt, num_rounds=1)
         assert len(results) == 1
         reward_count = 0
         for event in results[0]["xrt_history"]:
@@ -740,7 +739,7 @@ class TestBeaconReplayInstructions:
         replay(flag_1, 1)
         """
 
-        await play_game(game_code, xrt, auto_replay=False, max_steps=20)
+        await play_game(game_code, xrt, num_rounds=1)
 
         # Check history to see execution pattern
         player = xrt.players[0]
@@ -755,30 +754,30 @@ class TestBeaconReplayInstructions:
         """Test using both flag_1 and flag_2."""
         game_code = """
         beacon(flag_1)
-        assign(s='first')
+        reward(xent('hello world'))
         beacon(flag_2)
-        assign(s='second')
+        reward(-xent('hello world'))
         replay(flag_2, 1)
         replay(flag_1, 1)
         """
 
-        await play_game(game_code, xrt, auto_replay=False, max_steps=10)
+        results = await play_game(game_code, xrt, num_rounds=1)
 
-        # Should have executed both replays
-        assert len(xrt.replay_counters) >= 2
+        # Confirms the inner loop is executed more than the outer loop
+        assert results[0]["scores"]["black"] < 0
 
     @pytest.mark.asyncio
-    async def test_auto_replay_at_end(self, xrt):
-        """Test that auto_replay creates an implicit replay at the end."""
+    async def test_multi_round(self, xrt):
+        """Test that multi round configuration creates an implicit replay at the end."""
         game_code = """
         assign(s='hello')
         reveal(black, s)
         reward(xent('hello world'))
         """.strip()
 
-        game_results = await play_game(game_code, xrt, auto_replay=True, max_steps=10)
+        game_results = await play_game(game_code, xrt, num_rounds=2)
 
-        # Should have multiple game results from auto replay
+        # Should have multiple game results from multiple rounds
         assert len(game_results) > 1
 
         # Each iteration should give the same reward
@@ -794,7 +793,7 @@ class TestBeaconReplayInstructions:
         replay(main, 3)
         """
 
-        await play_game(game_code, xrt, auto_replay=False)
+        await play_game(game_code, xrt, num_rounds=1)
 
         player = xrt.players[0]
         # Should have executed the replay 3 times, but it doesn't create a new history entry
@@ -809,7 +808,7 @@ class TestBeaconReplayInstructions:
         replay(main, 3)
         """
 
-        await play_game(game_code, xrt, auto_replay=False)
+        await play_game(game_code, xrt, num_rounds=1)
 
         player = xrt.players[0]
         assert len(player.event_history) == 8  # 4x elicit request + response
@@ -1141,7 +1140,7 @@ class TestCombinedOperations:
         reveal(black, s1)
         """
 
-        await play_game(game_code, xrt, auto_replay=False)
+        await play_game(game_code, xrt, num_rounds=1)
 
         player = xrt.players[0]
         # Should have received two reveals + elicit + elicit response
@@ -1160,7 +1159,7 @@ class TestCombinedOperations:
         reveal(bob, s1)
         """
 
-        await play_game(game_code, xrt, auto_replay=False)
+        await play_game(game_code, xrt, num_rounds=1)
 
         alice = xrt.players[0]
         bob = xrt.players[1]

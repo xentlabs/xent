@@ -21,6 +21,7 @@ from xega.common.xega_types import (
     PlayerConfig,
     XegaBenchmarkConfig,
 )
+from xega.presentation.executor import get_default_presentation
 
 
 @pytest.fixture
@@ -58,6 +59,7 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
                     reward(xent(x | s1))
                     reward(-xent(s2 | (s1+x)))
                 """,
+                presentation_function=get_default_presentation(),
             ),
             # Game 2: Multi-step test
             GameConfig(
@@ -70,6 +72,7 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
                     reveal(black, t2)
                     reward(-xent(t2 | y))
                 """,
+                presentation_function=get_default_presentation(),
             ),
         ],
         players=[
@@ -86,8 +89,7 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
                 ),
             ],
         ],
-        auto_replay=False,
-        max_steps=100,
+        num_rounds_per_game=1,
         judge_model=DEFAULT_XEGA_CONFIG["judge_model"],
         npc_players=DEFAULT_XEGA_CONFIG["npc_players"],
         num_variables_per_register=DEFAULT_XEGA_CONFIG["num_variables_per_register"],
@@ -138,7 +140,7 @@ def test_benchmark_structure(shared_benchmark_results):
     # Test Game 1 (simple single player)
     game1_result = game_results[0]
     assert len(game1_result["scores"].keys()) == 1
-    assert len(game1_result["game_results"]) == 1  # No auto replay
+    assert len(game1_result["game_results"]) == 1  # Single round
 
     game1_iteration = game1_result["game_results"][0]
     assert len(game1_iteration["scores"].keys()) == 1
@@ -150,7 +152,7 @@ def test_benchmark_structure(shared_benchmark_results):
     # Test Game 2 (multi-step)
     game2_result = game_results[1]
     assert len(game2_result["scores"].keys()) == 1
-    assert len(game2_result["game_results"]) == 1  # No auto replay
+    assert len(game2_result["game_results"]) == 1  # Single round
 
     game2_iteration = game2_result["game_results"][0]
     assert len(game2_iteration["xrt_history"]) > 5  # More steps than game 1
@@ -262,6 +264,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             GameConfig(
                 name="smoke",
                 code="assign(s=story())\nreveal(black, s)\nelicit(black, x, 5)\nreward(xent(x | s))",
+                presentation_function=get_default_presentation(),
             ),
         ],
         players=[
@@ -274,8 +277,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
                 ),
             ]
         ],
-        auto_replay=False,
-        max_steps=10,  # Very low for speed
+        num_rounds_per_game=2,  # Very low for speed
         judge_model=DEFAULT_XEGA_CONFIG["judge_model"],
         npc_players=DEFAULT_XEGA_CONFIG["npc_players"],
         num_variables_per_register=DEFAULT_XEGA_CONFIG["num_variables_per_register"],

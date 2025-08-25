@@ -46,8 +46,7 @@ async def run_game(
         game_results = await play_game(
             game_code,
             xrt,
-            auto_replay=game_config["auto_replay"],
-            max_steps=game_config["max_steps"],
+            num_rounds=game_config["num_rounds_per_game"],
         )
         logging.info(f"Game {game_name} completed successfully")
 

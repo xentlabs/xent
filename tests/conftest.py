@@ -14,8 +14,7 @@ FAKE_GAME_CONFIG: XegaGameConfig = {
         "map_seed": "test_seed_0",
         "presentation_function": get_default_presentation(),
     },
-    "auto_replay": True,
-    "max_steps": 100,
+    "num_rounds_per_game": 30,
     "players": [
         {
             "name": "black",

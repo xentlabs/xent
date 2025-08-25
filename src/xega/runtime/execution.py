@@ -26,27 +26,22 @@ class StringLiteralToXStringTransformer(ast.NodeTransformer):
 
 
 async def play_game(
-    code: str, xrt: XegaRuntime, auto_replay=False, max_steps=100
+    code: str,
+    xrt: XegaRuntime,
+    num_rounds=30,
 ) -> list[XegaGameIterationResult]:
     lines = [line.strip() for line in code.split("\n")]
     if len(lines) > 64:
         raise XegaConfigurationError("Code too long. Max 64 lines.")
-    total_steps_taken = 0
 
+    rounds_played = 0
     game_results: list[XegaGameIterationResult] = []
-    result, steps_taken = await play_single_game(lines, xrt, max_steps)
-    total_steps_taken += steps_taken
-    if result is not None:
-        game_results.append(result)
 
-    if not auto_replay:
-        return game_results
-
-    while result is not None and total_steps_taken < max_steps:
-        result, steps_taken = await play_single_game(
-            lines, xrt, max_steps - total_steps_taken
-        )
-        total_steps_taken += steps_taken
+    while rounds_played < num_rounds:
+        result = await play_single_game(lines, xrt)
+        if result is None:
+            return []  # TODO what to do here?
+        rounds_played += 1
         if result is not None:
             game_results.append(result)
 
@@ -54,17 +49,16 @@ async def play_game(
     return game_results
 
 
+# TODO need to clean up error handling / none return here
 async def play_single_game(
-    lines: list[str], xrt: XegaRuntime, steps_left: int
-) -> tuple[XegaGameIterationResult | None, int]:
-    steps_taken = 0
+    lines: list[str], xrt: XegaRuntime
+) -> XegaGameIterationResult | None:
     line_index = 0
 
-    while steps_taken < steps_left and line_index < len(lines):
+    while line_index < len(lines):
         line = lines[line_index]
-        logging.info(f"Executing line {line_index}: {line}. Steps taken: {steps_taken}")
+        logging.info(f"Executing line {line_index}: {line}.")
         execution_result = await eval_line(line, line_index, xrt)
-        steps_taken += 1
 
         if execution_result is None:
             line_index += 1
@@ -79,13 +73,9 @@ async def play_single_game(
                     f"Invalid line number {line_index} returned by instruction"
                 )
 
-    if steps_taken >= steps_left:
-        logging.info("Max steps reached")
-        return None, steps_taken
-
     logging.info("Game round completed successfully")
     results = xrt.get_results_and_reset()
-    return results, steps_taken
+    return results
 
 
 async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:

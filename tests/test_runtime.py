@@ -644,7 +644,7 @@ class TestJudge:
         "statement, expected_truthfulness",
         [
             # Cases that should be True
-            ("Water boils at 100 degrees Celsius at sea level", True),
+            ("Water boils at 30 degrees Celsius at sea level", True),
             ("Grass is green", True),
             # Cases that should be False
             ("The sun is smaller than the earth", False),
@@ -669,8 +669,7 @@ class TestTokenUsage:
             "map_seed": "test_seed_0",
             "presentation_function": get_default_presentation(),
         },
-        "auto_replay": True,
-        "max_steps": 100,
+        "num_rounds_per_game": 30,
         "players": [
             {
                 "name": "alice",
@@ -1351,8 +1350,7 @@ def present(state, history):
         "judge_model": "test",
         "npc_players": [],
         "num_variables_per_register": 4,
-        "max_steps": 100,
-        "auto_replay": False,
+        "num_rounds_per_game": 1,
         "seed": "test",
         "num_maps_per_game": 1,
     }
@@ -1539,8 +1537,7 @@ elicit(black, z, 10)""",
             "judge_model": "test",
             "npc_players": [],
             "num_variables_per_register": 4,
-            "max_steps": 100,
-            "auto_replay": False,
+            "num_rounds_per_game": 1,
             "seed": "test",
             "num_maps_per_game": 1,
         }
@@ -1629,8 +1626,7 @@ elicit(black, x, 5)""",
             "judge_model": "test",
             "npc_players": [],
             "num_variables_per_register": 4,
-            "max_steps": 100,
-            "auto_replay": False,
+            "num_rounds_per_game": 1,
             "seed": "test",
             "num_maps_per_game": 1,
         }

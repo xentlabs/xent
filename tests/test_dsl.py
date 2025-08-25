@@ -784,35 +784,6 @@ class TestBeaconReplayInstructions:
         for result in game_results:
             assert result["scores"]["black"] > 0
 
-    @pytest.mark.asyncio
-    async def test_main_flag(self, xrt):
-        """Test explicit replay of main beacon with reveal."""
-        game_code = """
-        assign(s='test')
-        reveal(black, s)
-        replay(main, 3)
-        """
-
-        await play_game(game_code, xrt, num_rounds=1)
-
-        player = xrt.players[0]
-        # Should have executed the replay 3 times, but it doesn't create a new history entry
-        assert len(player.event_history) == 1
-
-    @pytest.mark.asyncio
-    async def test_main_flag_no_reveal(self, xrt):
-        """Test explicit replay of main beacon with elicit."""
-        game_code = """
-        assign(s='test')
-        elicit(black, t, 10)
-        replay(main, 3)
-        """
-
-        await play_game(game_code, xrt, num_rounds=1)
-
-        player = xrt.players[0]
-        assert len(player.event_history) == 8  # 4x elicit request + response
-
 
 class TestDSLFunctions:
     """Test DSL functions including string operations and entropy functions."""

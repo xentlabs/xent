@@ -55,6 +55,15 @@ class XegaRuntime:
     def instruction_names(self) -> set[str]:
         return {"assign", "elicit", "reveal", "reward", "ensure", "beacon", "replay"}
 
+    def _reset_register_states(self):
+        for var_name, var in self.local_vars.items():
+            if not isinstance(var, XString):
+                continue
+
+            self.local_vars[var_name] = XString(
+                "", static=var.static, public=var.public, name=var.name
+            )
+
     def get_results_and_reset(self) -> XegaGameIterationResult:
         scores = self.scores.copy()
         token_usage = deepcopy(self.token_usage)
@@ -68,9 +77,8 @@ class XegaRuntime:
         self.history = []
         self.replay_counters = {}
         self.last_elicit_player = None
-        # NB: we don't currently reset beacons because they may be set _before_ the main beacon.
-        # This means that on the next round they can be be unset when the `replay` call is made.
-        # TODO: we should consider dropping the "main" beacon altogether and replaying from the start. The history is already available and there is no need to have any state persist between rounds
+        self.beacons = {}
+        self._reset_register_states()
         return game_result
 
     async def execute(
@@ -174,7 +182,7 @@ class XegaRuntime:
         player = args[0]
         if not isinstance(player, XGP):
             var_arg_start = 0
-            player = self.local_vars.get("black")  # Or is this "solo"?
+            player = self.local_vars.get("black")
         if not isinstance(player, XGP):
             raise XegaInternalError("No player identified for elicit")
 

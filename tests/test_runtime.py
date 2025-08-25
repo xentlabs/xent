@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from xega.benchmark.expand_benchmark import expand_game_config, preprocess_dsl_code
+from xega.benchmark.run_benchmark import extract_token_usage
 from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
 from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.x_string import XString
@@ -74,7 +75,7 @@ class TestXString:
 
         # Invalid type
         with pytest.raises(XegaTypeError):
-            XString(123)
+            XString(123)  # type: ignore[arg-type]
 
     def test_prefix_decorator(self):
         s1 = XString("LeftOperand")
@@ -242,7 +243,7 @@ class TestXString:
         # but it would be better to avoid this situation by being more
         # careful wrapping all strings in XString.
         with pytest.raises(TypeError):
-            "hello world after" % xs  # noqa: UP031
+            "hello world after" % xs  # type: ignore[str-format]  # noqa: UP031
 
         # Test with invalid types
         with pytest.raises(XegaTypeError):
@@ -797,9 +798,6 @@ class TestTokenUsage:
         assert iteration2_result["token_usage"]["alice"]["input_tokens"] == 15
         assert iteration2_result["token_usage"]["alice"]["output_tokens"] == 10
 
-        # Simulate what extract_token_usage() function does
-        from xega.benchmark.run_benchmark import extract_token_usage
-
         total_usage = extract_token_usage([iteration1_result, iteration2_result])
 
         # Verify total accumulation across iterations
@@ -864,6 +862,7 @@ class TestExpandConfig:
                 elicit(black, x, 10)
                 reward(xent(x | s))
             """,
+            presentation_function="",
         )
 
     @pytest.fixture
@@ -879,6 +878,7 @@ class TestExpandConfig:
                 assign(s3=story())
                 reward(-xent(s3 | x))
             """,
+            presentation_function="",
         )
 
     @pytest.fixture
@@ -892,6 +892,7 @@ class TestExpandConfig:
                 elicit(black, x, 15)
                 reward(xent(x | s))
             """,
+            presentation_function="",
         )
 
     @pytest.fixture
@@ -907,6 +908,7 @@ class TestExpandConfig:
                 elicit(black, response, 25)
                 reward(xent(response | s2))
             """,
+            presentation_function="",
         )
 
     def test_expand_game_config_simple_story(self, simple_game_config, mock_judge):
@@ -1045,7 +1047,7 @@ elicit(player, y, 10)"""
 
     def test_expand_game_config_empty_code(self):
         """Test expansion of game with empty code"""
-        game_config = GameConfig(name="test_empty", code="")
+        game_config = GameConfig(name="test_empty", code="", presentation_function="")
 
         mock_judge = Mock()
         map_seed = "test_seed"

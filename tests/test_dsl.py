@@ -699,18 +699,19 @@ class TestBeaconReplayInstructions:
     async def test_replay_counter(self, xrt):
         """Test replay counter functionality."""
         game_code = """
-        assign(s="1")
         beacon(flag_1)
-        assign(s=s+"1")
+        reward(xent('hello world'))
         replay(flag_1, 3)
-        assign(t='done')
         """
 
-        await play_game(game_code, xrt, auto_replay=False)
+        results = await play_game(game_code, xrt, auto_replay=False)
+        assert len(results) == 1
+        reward_count = 0
+        for event in results[0]["xrt_history"]:
+            if event["type"] == "reward":
+                reward_count += 1
 
-        # Initial length + 1 for first run + 3 for replays
-        assert len(xrt.local_vars["s"]) == 5
-        assert str(xrt.local_vars["t"]) == "done"
+        assert reward_count == 4
 
     @pytest.mark.asyncio
     async def test_replay_without_beacon(self, xrt):
@@ -773,7 +774,7 @@ class TestBeaconReplayInstructions:
         assign(s='hello')
         reveal(black, s)
         reward(xent('hello world'))
-        """
+        """.strip()
 
         game_results = await play_game(game_code, xrt, auto_replay=True, max_steps=10)
 

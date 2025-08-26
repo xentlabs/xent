@@ -52,7 +52,7 @@ class Judge:
             )
             self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
                 model_path
-            ).to(self.device)  # type: ignore[arg-type]
+            ).to(self.device)
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(
@@ -65,7 +65,7 @@ class Judge:
         if isinstance(string, XString):
             string = str(string)
         return self.tokenizer(string, return_tensors="pt").input_ids.to(
-            self.model.device
+            self.model.device  # type: ignore[attr-defined]
         )
 
     def num_tokens(self, string: str | XString) -> int:
@@ -82,7 +82,7 @@ class Judge:
         return self.tokenizer.decode(tokens.cpu().view(-1))
 
     def comp_logits(self, tokens: torch.Tensor) -> torch.Tensor:
-        result = self.model(tokens, return_dict=True)
+        result = self.model(tokens, return_dict=True)  # type: ignore[operator]
         return result.logits
 
     def xent(

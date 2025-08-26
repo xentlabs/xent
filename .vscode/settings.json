@@ -18,7 +18,8 @@
 
   "mypy-type-checker.interpreter": ["${workspaceFolder}/.venv/bin/python"],
   // MyPy type checking - using daemon for speed
-  "mypy-type-checker.preferDaemon": true,
+  // Disabled daemon due to a bug in mypy I think
+  "mypy-type-checker.preferDaemon": false,
   "mypy-type-checker.reportingScope": "workspace",
   "mypy-type-checker.args": [
     "--config-file=${workspaceFolder}/pyproject.toml",

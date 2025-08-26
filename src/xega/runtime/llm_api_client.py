@@ -618,10 +618,10 @@ class HuggingFaceClient(LLMClient):
             elif self.device == "cuda":
                 model_kwargs["device_map"] = "auto"
 
-            self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)  # type: ignore[arg-type]
+            self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)
 
             if not (load_in_8bit or load_in_4bit) and self.device != "cuda":
-                self.model_instance = self.model_instance.to(self.device)  # type: ignore[arg-type]
+                self.model_instance = self.model_instance.to(self.device)
 
             self.model_instance.eval()
             logging.info(f"Loaded model {model_name_or_path} on {self.device}")
@@ -718,7 +718,7 @@ class HuggingFaceClient(LLMClient):
                 input_ids,
                 attention_mask=attention_mask,
                 generation_config=generation_config,
-            )  # type: ignore[return-value]
+            )
 
     def count_tokens(self, text: str) -> int:
         return len(self.tokenizer.encode(text, add_special_tokens=True))

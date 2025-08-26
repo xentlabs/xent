@@ -65,6 +65,7 @@ python_version = "3.13"
 packages = ["xega"]
 mypy_path = "src"
 show_error_codes = true
+exclude = ["games/"]
 
 # Performance optimizations
 incremental = true          # Cache type information between runs

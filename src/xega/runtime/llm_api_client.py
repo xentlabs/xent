@@ -227,9 +227,7 @@ class OpenAIClient(LLMClient):
                 str(e), provider="openai", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(
-                str(e), provider="openai", status_code=e.status_code
-            ) from e
+            raise XegaApiError(str(e), provider="openai", status_code=500) from e
 
 
 class AnthropicClient(LLMClient):
@@ -312,9 +310,7 @@ class AnthropicClient(LLMClient):
                 str(e), provider="anthropic", status_code=e.status_code
             ) from e
         except AnthropicAPIError as e:
-            raise XegaApiError(
-                str(e), provider="anthropic", status_code=e.status_code
-            ) from e
+            raise XegaApiError(str(e), provider="anthropic", status_code=500) from e
 
 
 class GeminiClient(LLMClient):
@@ -326,7 +322,7 @@ class GeminiClient(LLMClient):
         self.client = genai.Client(api_key=google_api_key)
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
-        gemini_contents = []
+        gemini_contents: list[Any] = []
         system_instruction_content: str | None = None
         processed_messages = list(messages)
 
@@ -401,12 +397,16 @@ class GeminiClient(LLMClient):
                     provider="gemini",
                 )
 
-        except genai.types.ResourceExhaustedError as e:
-            raise XegaRateLimitError(str(e), provider="gemini") from e
-        except genai.types.InternalServerError as e:
+        except genai.errors.ClientError as e:
+            # Map specific client errors based on status code
+            if e.code == 429:
+                raise XegaRateLimitError(str(e), provider="gemini") from e
+            elif e.code in (401, 403):
+                raise XegaAuthenticationError(str(e), provider="gemini") from e
+            else:
+                raise XegaInvalidRequestError(str(e), provider="gemini") from e
+        except genai.errors.ServerError as e:
             raise XegaInternalServerError(str(e), provider="gemini") from e
-        except genai.types.PermissionDeniedError as e:
-            raise XegaAuthenticationError(str(e), provider="gemini") from e
         except Exception as e:
             raise XegaApiError(
                 f"An unexpected error occurred: {e}", provider="gemini"
@@ -487,9 +487,7 @@ class GrokClient(LLMClient):
                 str(e), provider="grok", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(
-                str(e), provider="grok", status_code=e.status_code
-            ) from e
+            raise XegaApiError(str(e), provider="grok") from e
 
 
 class DeepSeekClient(LLMClient):
@@ -568,9 +566,7 @@ class DeepSeekClient(LLMClient):
                 str(e), provider="deepseek", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(
-                str(e), provider="deepseek", status_code=e.status_code
-            ) from e
+            raise XegaApiError(str(e), provider="deepseek") from e
 
 
 class HuggingFaceClient(LLMClient):
@@ -622,10 +618,10 @@ class HuggingFaceClient(LLMClient):
             elif self.device == "cuda":
                 model_kwargs["device_map"] = "auto"
 
-            self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)
+            self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)  # type: ignore[arg-type]
 
             if not (load_in_8bit or load_in_4bit) and self.device != "cuda":
-                self.model_instance = self.model_instance.to(self.device)
+                self.model_instance = self.model_instance.to(self.device)  # type: ignore[arg-type]
 
             self.model_instance.eval()
             logging.info(f"Loaded model {model_name_or_path} on {self.device}")
@@ -722,7 +718,7 @@ class HuggingFaceClient(LLMClient):
                 input_ids,
                 attention_mask=attention_mask,
                 generation_config=generation_config,
-            )
+            )  # type: ignore[return-value]
 
     def count_tokens(self, text: str) -> int:
         return len(self.tokenizer.encode(text, add_special_tokens=True))

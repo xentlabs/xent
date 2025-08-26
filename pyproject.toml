@@ -61,9 +61,15 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 packages = ["xega"]
+mypy_path = "src"
 show_error_codes = true
+
+# Performance optimizations
+incremental = true          # Cache type information between runs
+cache_dir = ".mypy_cache"   # Explicit cache location
+sqlite_cache = true         # Use SQLite for faster cache
 
 # Enable valuable strict checks selectively instead of blanket "strict = true"
 warn_unused_configs = true
@@ -72,7 +78,7 @@ warn_unused_ignores = true
 warn_return_any = true
 warn_unreachable = true
 strict_equality = true
-strict_concatenate = true
+extra_checks = true
 no_implicit_optional = true
 
 # Disable overly strict checks for gradual typing adoption

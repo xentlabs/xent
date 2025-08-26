@@ -84,7 +84,7 @@ def calculate_arms_values(
                 values_at_iteration.append(seed_maxes[i])
 
         if values_at_iteration:
-            arms_values.append(np.mean(values_at_iteration))
+            arms_values.append(np.mean(values_at_iteration).item())
 
     return arms_values
 
@@ -363,9 +363,9 @@ def generate_normalized_score_summary_chart(
         for game in ordered_game_names:
             scores = scores_by_game_player.get(game, {}).get(player_id, [])
             if scores:
-                player_scores.append(np.mean(scores))
+                player_scores.append(np.mean(scores).item())
             else:
-                player_scores.append(0)
+                player_scores.append(0.0)
 
         bar_positions = x + first_bar_offset + i * bar_width
 

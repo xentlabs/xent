@@ -52,7 +52,7 @@ class Judge:
             )
             self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
                 model_path
-            ).to(self.device)
+            ).to(self.device)  # type: ignore[arg-type]
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
             self.model = AutoModelForCausalLM.from_pretrained(

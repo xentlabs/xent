@@ -9,5 +9,19 @@ repos:
     rev: v1.17.0
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests, types-click]
+        additional_dependencies: [
+          types-requests,
+          types-click,
+          numpy,
+          torch,
+          transformers,
+          matplotlib,
+          anthropic,
+          openai,
+          google-genai,
+          ollama,
+          typeguard
+        ]
         exclude: ^games/
+        pass_filenames: false
+        args: [--config-file=pyproject.toml, src/xega]

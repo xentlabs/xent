@@ -1,0 +1,53 @@
+{
+  // Python configuration
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+  // Ruff as primary linter and formatter
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
+    },
+    "editor.rulers": [88]
+  },
+
+  // Ruff extension settings (using new format)
+  "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
+
+  "mypy-type-checker.interpreter": ["${workspaceFolder}/.venv/bin/python"],
+  // MyPy type checking - using daemon for speed
+  "mypy-type-checker.preferDaemon": true,
+  "mypy-type-checker.reportingScope": "workspace",
+  "mypy-type-checker.args": [
+    "--config-file=${workspaceFolder}/pyproject.toml",
+    "--cache-dir=${workspaceFolder}/.mypy_cache",
+  ],
+  "mypy-type-checker.ignorePatterns": [
+    "**/games/**",
+  ],
+
+  // Testing
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+
+  // General editor settings matching project style
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // File exclusions
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/games/**": true,
+    ".mypy_cache": true,
+    ".ruff_cache": true,
+    ".pytest_cache": true
+  },
+}

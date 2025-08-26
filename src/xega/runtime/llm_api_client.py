@@ -111,7 +111,8 @@ class LLMClient(ABC):
 class OllamaClient(LLMClient):
     def __init__(self, model: str):
         super().__init__(model)
-        self.client = AsyncClient()
+        ollama_host = os.environ.get("OLLAMA_HOST")
+        self.client = AsyncClient(ollama_host) if ollama_host else AsyncClient()
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         try:

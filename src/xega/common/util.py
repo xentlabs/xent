@@ -3,7 +3,7 @@ import logging
 import os
 import subprocess
 
-from xega.common.token_xent_list import TokenXentList
+from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.x_string import XString
 
 
@@ -15,6 +15,8 @@ class XEncoder(json.JSONEncoder):
             return {"__tuple__": True, "items": list(o)}
         elif isinstance(o, TokenXentList):
             return {"__TokenXentList__": True, "pairs": o.pairs, "scale": o.scale}
+        elif isinstance(o, ValidatedBool):
+            return bool(o)
         return super().default(o)
 
 

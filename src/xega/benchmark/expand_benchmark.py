@@ -2,6 +2,7 @@ import ast
 import io
 import tokenize
 
+from xega.common.version import get_xega_version
 from xega.common.xega_types import (
     ExpandedGameConfig,
     ExpandedXegaBenchmarkConfig,
@@ -27,6 +28,7 @@ def expand_benchmark_config(
         num_maps_per_game=benchmark_config["num_maps_per_game"],
         games=[],
         benchmark_id=benchmark_config["benchmark_id"],
+        xega_version=get_xega_version(),
     )
 
     for game in benchmark_config["games"]:

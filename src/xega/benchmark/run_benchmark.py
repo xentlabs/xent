@@ -4,6 +4,7 @@ import logging
 import os
 
 from xega.common.util import dumps
+from xega.common.version import get_xega_version, validate_version
 from xega.common.xega_types import (
     ExpandedXegaBenchmarkConfig,
     PlayerName,
@@ -159,6 +160,17 @@ async def run_benchmark(
     results_dir: str,
     max_concurrent_games: int,
 ) -> XegaBenchmarkResult:
+    config_version = benchmark_config.get("xega_version")
+    current_version = get_xega_version()
+    is_valid, message = validate_version(config_version, current_version)
+
+    if not is_valid:
+        logging.warning(f"Version validation in run_benchmark: {message}")
+    elif config_version is None:
+        logging.warning(message)
+    else:
+        logging.debug(f"Version validation in run_benchmark: {message}")
+
     with open(os.path.join(results_dir, "benchmark_config.json"), "w") as f:
         f.write(dumps(benchmark_config, indent=4))
 

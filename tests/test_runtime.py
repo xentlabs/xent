@@ -3,10 +3,15 @@ from unittest.mock import Mock
 
 import pytest
 
-from xega.benchmark.expand_benchmark import expand_game_config, preprocess_dsl_code
+from xega.benchmark.expand_benchmark import (
+    expand_benchmark_config,
+    expand_game_config,
+    preprocess_dsl_code,
+)
 from xega.benchmark.run_benchmark import extract_token_usage
 from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
 from xega.common.token_xent_list import TokenXentList, ValidatedBool
+from xega.common.version import get_xega_version, validate_version
 from xega.common.x_string import XString
 from xega.common.xega_types import (
     ElicitRequestEvent,
@@ -1124,6 +1129,77 @@ assign(s2=story())  # Second story
             in processed_mixed
         )
         assert "# Footer comment" in processed_mixed
+
+    def test_expand_benchmark_config_sets_version(self):
+        """Test that expand_benchmark_config sets the xega_version field"""
+        from xega.common.xega_types import XegaBenchmarkConfig
+
+        # Create a minimal benchmark config
+        benchmark_config: XegaBenchmarkConfig = {
+            "config_type": "short_benchmark_config",
+            "games": [
+                {
+                    "name": "test_game",
+                    "code": "assign(s='test')\nreveal(black, s)",
+                    "presentation_function": None,
+                }
+            ],
+            "players": [
+                [{"name": "black", "id": "gpt2", "player_type": "hf", "options": None}]
+            ],
+            "benchmark_id": "test-benchmark-123",
+            "judge_model": "gpt2",
+            "npc_players": [],
+            "num_variables_per_register": 4,
+            "num_rounds_per_game": 1,
+            "seed": "test_seed",
+            "num_maps_per_game": 1,
+        }
+
+        # Expand the config
+        expanded = expand_benchmark_config(benchmark_config)
+
+        # Verify xega_version is set
+        assert "xega_version" in expanded
+        assert expanded["xega_version"] == get_xega_version()
+
+        # Verify it's a valid version string
+        assert isinstance(expanded["xega_version"], str)
+        assert len(expanded["xega_version"]) > 0
+
+
+class TestVersioning:
+    """Tests for version tracking functionality"""
+
+    def test_get_xega_version(self):
+        """Test that get_xega_version returns a valid version string"""
+        version = get_xega_version()
+        assert isinstance(version, str)
+        assert len(version) > 0
+        # Should be semantic version or dev version
+        assert "." in version or "dev" in version
+
+    def test_validate_version_matching(self):
+        """Test version validation with matching versions"""
+        current = get_xega_version()
+        is_valid, message = validate_version(current, current)
+        assert is_valid is True
+        assert "match" in message.lower()
+
+    def test_validate_version_mismatch(self):
+        """Test version validation with mismatching versions"""
+        is_valid, message = validate_version("1.0.0", "2.0.0")
+        assert is_valid is False
+        assert "mismatch" in message.lower()
+        assert "1.0.0" in message
+        assert "2.0.0" in message
+
+    def test_validate_version_missing(self):
+        """Test version validation with missing version (old config)"""
+        current = get_xega_version()
+        is_valid, message = validate_version(None, current)
+        assert is_valid is True  # Should not fail for backward compatibility
+        assert "no version" in message.lower() or "warning" in message.lower()
 
 
 class TestSDKFunctions:

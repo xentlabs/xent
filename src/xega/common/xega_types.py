@@ -121,6 +121,7 @@ class ExpandedXegaBenchmarkConfig(XegaMetadata):
     config_type: Literal["expanded_benchmark_config"]
     games: list[XegaGameConfig]
     benchmark_id: str
+    xega_version: str
 
 
 # Result types

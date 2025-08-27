@@ -13,6 +13,8 @@ from xega.cli.configure import (
     games_from_dir,
     remove_player_from_expanded_config,
 )
+from xega.cli.run import check_version
+from xega.common.version import get_xega_version
 from xega.common.xega_types import ExpandedXegaBenchmarkConfig, PlayerConfig
 
 
@@ -22,6 +24,7 @@ def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
     return {
         "config_type": "expanded_benchmark_config",
         "benchmark_id": "test-benchmark",
+        "xega_version": "0.1.0-dev",
         "judge_model": "gpt-4",
         "npc_players": [],
         "num_variables_per_register": 4,
@@ -263,3 +266,100 @@ class TestCLIPresentationIntegration:
             another = next(g for g in games if g["name"] == "another")
             assert another["code"] == 'assign(s="another")'
             assert another.get("presentation_function") is None
+
+
+class TestVersionChecking:
+    """Test version checking functionality in CLI"""
+
+    def test_check_version_matching(self, simple_expanded_config):
+        """Test check_version with matching versions"""
+
+        # Add current version to config
+        config = deepcopy(simple_expanded_config)
+        config["xega_version"] = get_xega_version()
+
+        # Should not raise any exception
+        check_version(config, ignore_version_mismatch=False)
+
+    def test_check_version_mismatch_raises(self, simple_expanded_config):
+        """Test check_version raises SystemExit on version mismatch"""
+
+        # Add different version to config
+        config = deepcopy(simple_expanded_config)
+        config["xega_version"] = "99.99.99"
+
+        # Should raise SystemExit
+        with pytest.raises(SystemExit) as exc_info:
+            check_version(config, ignore_version_mismatch=False)
+        assert exc_info.value.code == 1
+
+    def test_check_version_mismatch_ignored(self, simple_expanded_config, caplog):
+        """Test check_version with ignore flag allows mismatch"""
+        import logging
+
+        # Add different version to config
+        config = deepcopy(simple_expanded_config)
+        config["xega_version"] = "99.99.99"
+
+        # Should not raise exception when ignored
+        with caplog.at_level(logging.WARNING):
+            check_version(config, ignore_version_mismatch=True)
+
+        # Should have warning in logs
+        assert "mismatch" in caplog.text.lower()
+        assert "99.99.99" in caplog.text
+
+    def test_check_version_missing_version(self, simple_expanded_config, caplog):
+        """Test check_version with missing version field (backward compatibility)"""
+        import logging
+
+        # Config without xega_version field
+        config = deepcopy(simple_expanded_config)
+        if "xega_version" in config:
+            del config["xega_version"]
+
+        # Should not raise exception (backward compatible)
+        with caplog.at_level(logging.WARNING):
+            check_version(config, ignore_version_mismatch=False)
+
+        # Should have warning about missing version
+        assert "no version" in caplog.text.lower() or "warning" in caplog.text.lower()
+
+    def test_configure_expand_includes_version(self, tmp_path):
+        """Test that configure creates config with version when expanded"""
+        from xega.benchmark.expand_benchmark import expand_benchmark_config
+        from xega.common.xega_types import XegaBenchmarkConfig
+
+        # Create a simple benchmark config
+        config: XegaBenchmarkConfig = {
+            "config_type": "short_benchmark_config",
+            "games": [
+                {
+                    "name": "test_game",
+                    "code": "assign(s='test')\nreveal(black, s)",
+                    "presentation_function": None,
+                }
+            ],
+            "players": [
+                [{"name": "black", "id": "gpt2", "player_type": "hf", "options": None}]
+            ],
+            "benchmark_id": "test-version-check",
+            "judge_model": "gpt2",
+            "npc_players": [],
+            "num_variables_per_register": 4,
+            "num_rounds_per_game": 1,
+            "seed": "test",
+            "num_maps_per_game": 1,
+        }
+
+        # Save the config
+        config_path = tmp_path / "config.json"
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+
+        # Expand the config (this is what configure --expand does internally)
+        expanded = expand_benchmark_config(config)
+
+        # Verify version is included
+        assert "xega_version" in expanded
+        assert expanded["xega_version"] == get_xega_version()

@@ -11,6 +11,7 @@ from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.util import log_git_snapshot
+from xega.common.version import get_xega_version, validate_version
 from xega.common.xega_types import (
     ExpandedXegaBenchmarkConfig,
     XegaBenchmarkConfig,
@@ -68,6 +69,11 @@ def load_benchmark_config(
     help="Number of games to run in parallel. Default is 1. Increase this for higher throughput benchmarking.",
 )
 @click.option(
+    "--ignore-version-mismatch",
+    is_flag=True,
+    help="If set, ignore version mismatches between configuration and runtime. Use with caution as results may not be comparable.",
+)
+@click.option(
     "-v", "--verbose", count=True, help="Enable verbose logging (-v, -vv, -vvv)"
 )
 def run(
@@ -78,6 +84,7 @@ def run(
     regenerate_id: bool,
     verbose: int,
     parallel_games: int,
+    ignore_version_mismatch: bool,
 ):
     """Execute Xega benchmark"""
     logging_format = (
@@ -106,6 +113,8 @@ def run(
 
     if benchmark_config["config_type"] != "expanded_benchmark_config":
         benchmark_config = expand_benchmark_config(benchmark_config)
+
+    check_version(benchmark_config, ignore_version_mismatch)
 
     results_dir = os.path.join(results_dir, benchmark_config["benchmark_id"])
     if clean and os.path.exists(results_dir):
@@ -138,3 +147,28 @@ def run(
     if not dont_analyze:
         logging.info("Performing analysis on benchmark results")
         analyze.analyze(benchmark_result, results_dir)
+
+
+def check_version(
+    benchmark_config: ExpandedXegaBenchmarkConfig, ignore_version_mismatch: bool
+):
+    config_version = benchmark_config.get("xega_version")
+    current_version = get_xega_version()
+    is_valid, message = validate_version(config_version, current_version)
+
+    if not is_valid and not ignore_version_mismatch:
+        logging.error(message)
+        logging.error(
+            "Use --ignore-version-mismatch to bypass this check (not recommended)"
+        )
+        sys.exit(1)
+    elif not is_valid and ignore_version_mismatch:
+        logging.warning(message)
+        logging.warning(
+            "Proceeding despite version mismatch (--ignore-version-mismatch specified)"
+        )
+    elif config_version is None:
+        # Old config without version field
+        logging.warning(message)
+    else:
+        logging.debug(message)

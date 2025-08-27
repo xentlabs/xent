@@ -7,6 +7,7 @@ import click
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.util import dumps
+from xega.common.version import get_xega_version
 from xega.common.xega_types import (
     ExpandedXegaBenchmarkConfig,
     GameConfig,
@@ -287,6 +288,7 @@ def configure(
 
     if expand_config:
         config = expand_benchmark_config(config)
+        print(f"Configuration expanded with xega version {config.get('xega_version', 'unknown')}")
 
     config_str = dumps(config, indent=2)
     if print_config:
@@ -294,7 +296,12 @@ def configure(
     else:
         with open(output, "w") as f:
             f.write(config_str)
-            print(f"Config written to {output}")
+            current_version = get_xega_version()
+            if expand_config:
+                print(f"Config written to {output} (xega version: {current_version})")
+            else:
+                print(f"Config written to {output}")
+                print(f"Note: Configuration will be stamped with xega version {current_version} when expanded/run")
 
 
 @configure.command("add-player")

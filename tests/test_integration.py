@@ -133,6 +133,15 @@ def test_benchmark_structure(shared_benchmark_results):
     # Verify config wasn't mutated
     assert benchmark_results["config"] == benchmark_config
 
+    # Verify version is present in the expanded config and results
+    assert "xega_version" in benchmark_config
+    assert isinstance(benchmark_config["xega_version"], str)
+    assert len(benchmark_config["xega_version"]) > 0
+    assert "xega_version" in benchmark_results["config"]
+    assert (
+        benchmark_results["config"]["xega_version"] == benchmark_config["xega_version"]
+    )
+
     # Verify we have results for both games
     game_results = benchmark_results["game_results"]
     assert len(game_results) == 2

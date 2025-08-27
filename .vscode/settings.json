@@ -46,7 +46,6 @@
   "files.exclude": {
     "**/__pycache__": true,
     "**/*.pyc": true,
-    "**/games/**": true,
     ".mypy_cache": true,
     ".ruff_cache": true,
     ".pytest_cache": true

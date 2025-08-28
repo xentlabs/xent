@@ -2,13 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Final
 
 from xega.common.configuration_types import (
+    ExecutableGameMap,
     PlayerName,
     PlayerOptions,
     TokenUsage,
-    XegaEvent,
-    XegaGameConfig,
 )
 from xega.common.x_string import XString
+from xega.common.xega_event import XegaEvent
 
 """
 Xega Game Player (XGP) base class
@@ -25,19 +25,18 @@ the PlayerType you have added.
 
 
 class XGP(ABC):
-    # TODO update to new types
     def __init__(
         self,
         name: PlayerName,
         id: str,
         options: PlayerOptions | None,
-        game_config: XegaGameConfig,
+        executable_game_map: ExecutableGameMap,
     ):
         self._score = 0.0
         self._name: Final[PlayerName] = name
         self._id: Final[str] = id
         self._options: Final[PlayerOptions | None] = options
-        self._game_config: Final[XegaGameConfig] = game_config
+        self._executable_game_map: Final[ExecutableGameMap] = executable_game_map
 
     @property
     def score(self) -> float:
@@ -60,8 +59,8 @@ class XGP(ABC):
         return self._options
 
     @property
-    def game_config(self) -> XegaGameConfig:
-        return self._game_config
+    def executable_game_map(self) -> ExecutableGameMap:
+        return self._executable_game_map
 
     @abstractmethod
     def add_score(self, score: float) -> None:

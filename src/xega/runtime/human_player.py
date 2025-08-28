@@ -1,13 +1,13 @@
 import logging
 
 from xega.common.configuration_types import (
+    ExecutableGameMap,
     PlayerName,
     PlayerOptions,
     TokenUsage,
-    XegaEvent,
-    XegaGameConfig,
 )
 from xega.common.x_string import XString
+from xega.common.xega_event import XegaEvent
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import get_presentation_function
 
@@ -18,11 +18,11 @@ class HumanXGP(XGP):
         name: PlayerName,
         id: str,
         options: PlayerOptions | None,
-        game_config: XegaGameConfig,
+        executable_game_map: ExecutableGameMap,
     ):
-        super().__init__(name, id, options, game_config)
+        super().__init__(name, id, options, executable_game_map)
         self.event_history: list[XegaEvent] = []
-        self.presentation_function = get_presentation_function(game_config)
+        self.presentation_function = get_presentation_function(executable_game_map)
 
     def add_score(self, score: float | int) -> None:
         self.score += score

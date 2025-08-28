@@ -2,14 +2,14 @@ import logging
 import re
 
 from xega.common.configuration_types import (
+    ExecutableGameMap,
     PlayerName,
     PlayerOptions,
     TokenUsage,
-    XegaEvent,
-    XegaGameConfig,
 )
 from xega.common.util import dumps
 from xega.common.x_string import XString
+from xega.common.xega_event import XegaEvent
 from xega.presentation.executor import PresentationFunction
 from xega.runtime.base_player import XGP
 from xega.runtime.llm_api_client import LLMMessage, make_client
@@ -21,17 +21,17 @@ class MockXGP(XGP):
         name: PlayerName,
         id: str,
         options: PlayerOptions | None,
-        game_config: XegaGameConfig,
+        executable_game_map: ExecutableGameMap,
         token_usage_per_move: TokenUsage | None = None,
     ):
-        super().__init__(name, id, options, game_config)
+        super().__init__(name, id, options, executable_game_map)
         self.event_history: list[XegaEvent] = []
         self.token_usage_per_move = token_usage_per_move or {
             "input_tokens": 1,
             "output_tokens": 1,
         }
 
-        self.presentation_function = get_presentation_function(game_config)
+        self.presentation_function = get_presentation_function(executable_game_map)
         self.last_message_to_llm = ""
 
     def add_score(self, score: float | int) -> None:
@@ -63,15 +63,15 @@ class DefaultXGP(XGP):
         name: PlayerName,
         id: str,
         options: PlayerOptions | None,
-        game_config: XegaGameConfig,
+        executable_game_map: ExecutableGameMap,
     ):
-        super().__init__(name, id, options, game_config)
+        super().__init__(name, id, options, executable_game_map)
         self.client = make_client(options)
-        self.game_code = game_config["game"]["code"]
+        self.game_code = executable_game_map["game_map"]["code"]
         self.event_history: list[XegaEvent] = []
         self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
-        self.presentation_function = get_presentation_function(game_config)
+        self.presentation_function = get_presentation_function(executable_game_map)
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -111,7 +111,7 @@ class DefaultXGP(XGP):
 
 
 def get_presentation_function(
-    game_config: XegaGameConfig,
+    executable_game_map: ExecutableGameMap,
 ) -> PresentationFunction:
-    presentation_code = game_config["game"]["presentation_function"]
+    presentation_code = executable_game_map["game_map"]["presentation_function"]
     return PresentationFunction(presentation_code)

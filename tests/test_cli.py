@@ -10,7 +10,7 @@ from click.testing import CliRunner
 from xega.cli.configure import (
     add_player_to_expanded_config,
     configure,
-    games_from_dir,
+    games_from_paths,
     remove_player_from_expanded_config,
 )
 from xega.cli.run import check_version
@@ -217,34 +217,36 @@ class TestConfigureCommands:
 class TestCLIPresentationIntegration:
     """Test CLI integration with presentation functions"""
 
-    def test_games_from_dir_comprehensive(self):
-        """Test games_from_dir with various presentation scenarios."""
-        with tempfile.TemporaryDirectory() as temp_dir:
+    def test_games_from_paths_comprehensive(self):
+        """Test games_from_paths with various presentation scenarios."""
+        with tempfile.TemporaryDirectory() as temp_dir_path:
+            temp_dir = Path(temp_dir_path)
             # Scenario 1: Game without presentation
-            simple_path = Path(temp_dir) / "simple.xega"
+            simple_path = temp_dir / "simple.xega"
             simple_path.write_text('assign(s="test")\nreveal(black, s)')
 
             # Scenario 2: Game with valid presentation
-            custom_path = Path(temp_dir) / "custom.xega"
+            custom_path = temp_dir / "custom.xega"
             custom_path.write_text('assign(s="custom")\nreveal(black, s)')
-            custom_pres_path = Path(temp_dir) / "custom_presentation.py"
+            custom_pres_path = temp_dir / "custom_presentation.py"
             custom_pres_path.write_text("""def present(state, history):
     return "Custom presentation"
 """)
 
             # Scenario 3: Game with non-standard presentation (warnings)
-            warning_path = Path(temp_dir) / "warning.xega"
+            warning_path = temp_dir / "warning.xega"
             warning_path.write_text('assign(s="warning")')
-            warning_pres_path = Path(temp_dir) / "warning_presentation.py"
+            warning_pres_path = temp_dir / "warning_presentation.py"
             warning_pres_path.write_text("""def present(game_state, events):  # Non-standard names
     return "Works with warnings"
 """)
 
             # Scenario 4: Another game without presentation to test mixed scenario
-            another_path = Path(temp_dir) / "another.xega"
+            another_path = temp_dir / "another.xega"
             another_path.write_text('assign(s="another")')
 
-            games = games_from_dir(temp_dir)
+            # Test that duplicate games are not added
+            games = games_from_paths([simple_path, temp_dir])
             assert len(games) == 4
 
             # Verify each game

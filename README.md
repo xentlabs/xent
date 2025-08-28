@@ -74,8 +74,8 @@ To generate such a configuration you call `uv run xega configure`.
 uv run xega configure
 # Generate a configuration with a simple game played by gpt-4.1 and o3
 uv run xega configure --model gpt-4.1 --model o3
-# Generate a configuration from games defined in a directory
-uv run xega configure --game-dir ./games
+# Generate a configuration from specific game files and/or directories
+uv run xega configure --game-path ./games/Condense.xega --game-path ./games
 # See more CLI configuration options
 uv run xega configure --help
 ```

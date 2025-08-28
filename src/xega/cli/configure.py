@@ -1,6 +1,6 @@
 import json
-import os
 from copy import deepcopy
+from pathlib import Path
 
 import click
 
@@ -38,33 +38,38 @@ DEFAULT_XEGA_CONFIG = XegaMetadata(
 )
 
 
-def games_from_dir(game_dir: str) -> list[GameConfig]:
-    files = os.listdir(game_dir)
-    game_configs = []
-    for file_name in files:
-        if not file_name.endswith(".xega"):
-            continue
-        game_name = file_name[:-5]
+def game_from_file(game_file_path: Path) -> GameConfig:
+    game_name = game_file_path.stem
+    game_code = game_file_path.read_text()
 
-        game_path = os.path.join(game_dir, file_name)
-        with open(game_path) as f:
-            game_code = f.read()
+    presentation_function = None
+    presentation_path = game_file_path.with_name(f"{game_name}_presentation.py")
+    try:
+        presentation_function = presentation_path.read_text()
+    except FileNotFoundError:
+        click.echo(f"No presentation function found for game '{game_name}'")
 
-        presentation_function = None
-        presentation_path = os.path.join(game_dir, f"{game_name}_presentation.py")
-        if os.path.exists(presentation_path):
-            with open(presentation_path) as f:
-                presentation_function = f.read()
+    return GameConfig(
+        name=game_name, code=game_code, presentation_function=presentation_function
+    )
 
-            click.echo(f"Found presentation function for game '{game_name}'")
 
-        game_config = GameConfig(
-            name=game_name,
-            code=game_code,
-            presentation_function=presentation_function,
-        )
-        game_configs.append(game_config)
-    return game_configs
+def games_from_paths(paths: list[Path]) -> list[GameConfig]:
+    all_game_paths: set[Path] = set()
+    for p in paths:
+        if p.is_dir():
+            all_game_paths.update(p.glob("*.xega"))
+        elif p.is_file():
+            if p.suffix != ".xega":
+                raise click.BadParameter(f"Not a .xega file: {p}")
+            all_game_paths.add(p)
+        else:
+            raise click.BadParameter(f"Path does not exist: {p}")
+
+    # Two paths that point to the same file should be considered the same
+    all_game_paths = {p.resolve() for p in all_game_paths}
+
+    return [game_from_file(p) for p in all_game_paths]
 
 
 def build_benchmark_config(
@@ -191,8 +196,12 @@ def remove_player_from_expanded_config(
     "--output", help="Output configuration path", default="./xega_config.json"
 )
 @click.option(
+    "--game-path",
     "--game-dir",
-    help='Path to directory containing games in files ending with ".xega"',
+    "game_paths",
+    multiple=True,
+    type=click.Path(exists=True, readable=True),
+    help="Path(s) to .xega game file(s). If a directory is provided, include all .xega files in the directory. Repeat to add multiple.",
 )
 @click.option(
     "--model",
@@ -244,7 +253,7 @@ def remove_player_from_expanded_config(
 def configure(
     ctx: click.Context,
     output: str,
-    game_dir: str,
+    game_paths: list[str],
     model: list[str],
     human: bool,
     judge: str,
@@ -264,7 +273,7 @@ def configure(
     if benchmark_id is None:
         benchmark_id = generate_benchmark_id()
 
-    if not game_dir:
+    if not game_paths:
         games = [
             GameConfig(
                 name="simple_game",
@@ -273,7 +282,7 @@ def configure(
             )
         ]
     else:
-        games = games_from_dir(game_dir)
+        games = games_from_paths([Path(p) for p in game_paths])
 
     config = build_benchmark_config(
         model,
@@ -288,7 +297,9 @@ def configure(
 
     if expand_config:
         config = expand_benchmark_config(config)
-        print(f"Configuration expanded with xega version {config.get('xega_version', 'unknown')}")
+        print(
+            f"Configuration expanded with xega version {config.get('xega_version', 'unknown')}"
+        )
 
     config_str = dumps(config, indent=2)
     if print_config:
@@ -301,7 +312,9 @@ def configure(
                 print(f"Config written to {output} (xega version: {current_version})")
             else:
                 print(f"Config written to {output}")
-                print(f"Note: Configuration will be stamped with xega version {current_version} when expanded/run")
+                print(
+                    f"Note: Configuration will be stamped with xega version {current_version} when expanded/run"
+                )
 
 
 @configure.command("add-player")

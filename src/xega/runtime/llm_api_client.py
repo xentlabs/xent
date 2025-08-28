@@ -30,6 +30,7 @@ from openai.types.chat import (
 )
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
+from xega.common.configuration_types import PlayerOptions, TokenUsage
 from xega.common.errors import (
     XegaApiError,
     XegaAuthenticationError,
@@ -39,7 +40,6 @@ from xega.common.errors import (
     XegaInvalidRequestError,
     XegaRateLimitError,
 )
-from xega.common.xega_types import PlayerOptions, TokenUsage
 from xega.runtime.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,

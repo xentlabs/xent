@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Final
 
-from xega.common.x_string import XString
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     PlayerName,
     PlayerOptions,
     TokenUsage,
     XegaEvent,
     XegaGameConfig,
 )
+from xega.common.x_string import XString
 
 """
 Xega Game Player (XGP) base class

@@ -3,10 +3,11 @@ import json
 import logging
 import os
 
-from xega.common.util import dumps
-from xega.common.version import get_xega_version, validate_version
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
+    BenchmarkResult,
+    ExecutableGameMap,
     ExpandedXegaBenchmarkConfig,
+    GameMapResults,
     PlayerName,
     TokenUsage,
     XegaBenchmarkResult,
@@ -14,6 +15,8 @@ from xega.common.xega_types import (
     XegaGameIterationResult,
     XegaGameResult,
 )
+from xega.common.util import dumps
+from xega.common.version import get_xega_version, validate_version
 from xega.runtime.base_player import XGP
 from xega.runtime.execution import play_game
 from xega.runtime.judge import Judge
@@ -101,139 +104,162 @@ def extract_scores(
     return max_scores
 
 
+# TODO: use storage system
 def write_benchmark_results(
-    benchmark_result: XegaBenchmarkResult, results_dir: str
+    benchmark_result: BenchmarkResult, results_dir: str
 ) -> None:
     if results_dir:
+        benchmark_id = benchmark_result["expanded_config"]["metadata"]["benchmark_id"]
         os.makedirs(results_dir, exist_ok=True)
         with open(
-            os.path.join(
-                results_dir,
-                f"benchmark_{benchmark_result['config']['benchmark_id']}.json",
-            ),
+            os.path.join(results_dir, f"benchmark_{benchmark_id}.json"),
             "w",
         ) as f:
             f.write(dumps(benchmark_result, indent=4))
 
 
+# TODO this should call out to the storage interface instead of directly to fs
 def get_existing_game_results(
-    results_dir: str, game_config: XegaGameConfig
+    results_dir: str, executable_game_map: ExecutableGameMap
 ) -> XegaGameResult | None:
-    results_path = os.path.join(results_dir, game_results_json_filename(game_config))
+    results_path = os.path.join(
+        results_dir, game_results_json_filename(executable_game_map)
+    )
     if os.path.exists(results_path):
         with open(results_path) as f:
             game_results = json.load(f)
-            if (
-                game_results["game"]["game"]["name"] == game_config["game"]["name"]
-                and game_results["game"]["players"][0]["id"]
-                == game_config["players"][0]["id"]
-                and game_results["game"]["map_seed"] == game_config["map_seed"]
-            ):
-                return game_results
+            return game_results
     return None
 
 
-def write_game_results(game_results: XegaGameResult, results_dir: str):
+def write_game_results(game_results: GameMapResults, results_dir: str):
     if results_dir:
         os.makedirs(results_dir, exist_ok=True)
         with open(
-            os.path.join(results_dir, game_results_json_filename(game_results["game"])),
+            os.path.join(results_dir, game_results_json_filename(game_results)),
             "w",
         ) as f:
             f.write(dumps(game_results, indent=4))
 
 
-def game_results_json_filename(game_config: XegaGameConfig) -> str:
-    return f"game_{game_config['game']['name']}_{game_config['players'][0]['id']}_{game_config['map_seed']}.json"
+def game_results_json_filename(
+    executable_game_map: ExecutableGameMap | GameMapResults,
+) -> str:
+    game_name = executable_game_map["game_map"]["name"]
+    map_seed = executable_game_map["game_map"]["map_seed"]
+    player_id = executable_game_map["player"]["id"]
+    return f"game_{game_name}_{map_seed}_{player_id}.json"
 
 
-def print_game_history(game_results: XegaGameResult) -> None:
-    logging.info(f"History for game {game_results['game']['game']['name']}:")
-    for game_result in game_results["game_results"]:
-        for line in game_result["xrt_history"]:
+def print_game_history(game_results: GameMapResults) -> None:
+    game_name = game_results["game_map"]["name"]
+    map_seed = game_results["game_map"]["map_seed"]
+    player_id = game_results["player"]["id"]
+    logging.info(f"History for game {game_name} ({map_seed}) for player {player_id}:")
+    for game_result in game_results["round_results"]:
+        for line in game_result["history"]:
             logging.info(line)
-        logging.info(f"Scores: {game_result['scores']}")
+        logging.info(f"Score: {game_result['score']}")
 
 
-async def run_benchmark(
-    benchmark_config: ExpandedXegaBenchmarkConfig,
-    results_dir: str,
-    max_concurrent_games: int,
-) -> XegaBenchmarkResult:
-    config_version = benchmark_config.get("xega_version")
+def check_version(config: ExpandedXegaBenchmarkConfig):
+    config_version = config["metadata"]["xega_version"]
     current_version = get_xega_version()
     is_valid, message = validate_version(config_version, current_version)
-
     if not is_valid:
         logging.warning(f"Version validation in run_benchmark: {message}")
-    elif config_version is None:
-        logging.warning(message)
     else:
         logging.debug(f"Version validation in run_benchmark: {message}")
 
-    with open(os.path.join(results_dir, "benchmark_config.json"), "w") as f:
-        f.write(dumps(benchmark_config, indent=4))
 
-    benchmark_result = XegaBenchmarkResult(config=benchmark_config, game_results=[])
-    logging.info(
-        f"Starting benchmark with Benchmark ID: {benchmark_result['config']['benchmark_id']}. Preparing to run {len(benchmark_config['games'])} games."
+async def run_benchmark(
+    config: ExpandedXegaBenchmarkConfig,
+    results_dir: str,
+    max_concurrent_games: int,
+) -> XegaBenchmarkResult:
+    # TODO this should be calling the storage system
+    with open(os.path.join(results_dir, "benchmark_config.json"), "w") as f:
+        f.write(dumps(config, indent=4))
+
+    check_version(config)
+
+    work_units = generate_executable_game_maps(config)
+
+    benchmark_result = BenchmarkResult(
+        expanded_config=config, results=[], finished=False
     )
 
-    semaphore = asyncio.Semaphore(max_concurrent_games)
-    done_count = 0
+    benchmark_id = config["metadata"]["benchmark_id"]
+    logging.info(f"Starting benchmark with Benchmark ID: {benchmark_id}.")
 
-    async def run_game_or_get_results(game_config, judge: Judge):
-        game_str = f"{game_config['game']['name']} with players {[p['id'] for p in game_config['players']]} and map seed {game_config['map_seed']}"
+    semaphore = asyncio.Semaphore(max_concurrent_games)
+
+    # TODO: instead of returning results, this should just store them in the storage and exit (None return)
+    async def run_game_or_get_results(
+        executable_game_map: ExecutableGameMap, judge: Judge
+    ) -> GameMapResults | None:
+        game_name = executable_game_map["game_map"]["name"]
+        map_seed = executable_game_map["game_map"]["map_seed"]
+        player_id = executable_game_map["player"]["id"]
+        game_str = f"{game_name} ({map_seed}) with player {player_id}"
+
         async with semaphore:
-            nonlocal done_count
-            existing = get_existing_game_results(results_dir, game_config)
+            existing = get_existing_game_results(results_dir, executable_game_map)
             if existing:
                 print(
                     f"Found existing results for game {game_str}, skipping execution."
                 )
-                done_count += 1
                 return existing
 
             try:
                 print(f"Executing game {game_str}")
-                result = await run_game(game_config, judge)
-                done_count += 1
+                result = await run_game(executable_game_map, judge)
                 if result:
                     print(f"Game {game_str} completed successfully")
+                    # TODO updateme
                     write_game_results(result, results_dir)
                     print_game_history(result)
                 else:
-                    print(f"Game {game_str} failed to execute")
-
-                print(f"Completed {done_count}/{len(benchmark_config['games'])} games")
+                    print(f"{game_str} failed to execute")
                 return result
             except Exception as e:
                 logging.exception(
-                    f"Error running game {game_config['game']['name']} with players {[p['id'] for p in game_config['players']]}: {e}",
+                    f"Error running game {game_str}: {e}",
                     exc_info=True,
                 )
                 return None
 
-    judge = Judge(benchmark_config["judge_model"])
-    judge.set_seed(benchmark_config["seed"], "")
+    judge = Judge(config["metadata"]["judge_model"])
     tasks = [
-        run_game_or_get_results(game_config, judge)
-        for game_config in benchmark_config["games"]
+        run_game_or_get_results(executable_game_map, judge)
+        for executable_game_map in work_units
     ]
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    print(
-        f"Benchmark {benchmark_result['config']['benchmark_id']} completed with {len(results)} games"
-    )
-    # Process results, handling any exceptions
+    print(f"Benchmark {benchmark_id} completed")
+
     for result in results:
         if isinstance(result, BaseException):
             logging.error(f"Game failed with error: {result}")
         elif result:
-            benchmark_result["game_results"].append(result)
+            benchmark_result["results"].append(result)
 
     write_benchmark_results(benchmark_result, results_dir)
-    logging.info(f"Benchmark ({benchmark_result['config']['benchmark_id']}) completed")
-    print(f"Benchmark ({benchmark_result['config']['benchmark_id']}) completed")
+    logging.info(f"Benchmark ({benchmark_id}) completed")
+    print(f"Benchmark ({benchmark_id}) completed")
     return benchmark_result
+
+
+def generate_executable_game_maps(
+    config: ExpandedXegaBenchmarkConfig,
+) -> list[ExecutableGameMap]:
+    game_maps: list[ExecutableGameMap] = []
+    for map in config["maps"]:
+        for player in config["players"]:
+            game_maps.append(
+                ExecutableGameMap(
+                    game_map=map, metadata=config["metadata"], player=player
+                )
+            )
+    return game_maps

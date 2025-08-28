@@ -7,7 +7,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from xega.common.xega_types import XegaBenchmarkResult, XegaGameResult
+from xega.common.configuration_types import XegaBenchmarkResult, XegaGameResult
 
 
 def sanitize_filename(filename: str) -> str:

@@ -6,7 +6,7 @@ from xega.analysis.plot import (
     generate_score_iteration_plots,
 )
 from xega.analysis.report import generate_markdown_report, generate_pdf
-from xega.common.xega_types import XegaBenchmarkResult
+from xega.common.configuration_types import XegaBenchmarkResult
 
 
 def extract_results_from_dir(results_dir: str) -> XegaBenchmarkResult:

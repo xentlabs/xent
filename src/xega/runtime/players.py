@@ -1,5 +1,5 @@
+from xega.common.configuration_types import PlayerName, XegaGameConfig
 from xega.common.errors import XegaConfigurationError, XegaGameError
-from xega.common.xega_types import PlayerName, XegaGameConfig
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import DefaultXGP, MockXGP
 from xega.runtime.human_player import HumanXGP

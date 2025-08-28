@@ -9,11 +9,7 @@ from xega.benchmark.expand_benchmark import (
     preprocess_dsl_code,
 )
 from xega.benchmark.run_benchmark import extract_token_usage
-from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
-from xega.common.token_xent_list import TokenXentList, ValidatedBool
-from xega.common.version import get_xega_version, validate_version
-from xega.common.x_string import XString
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     ExpandedGameConfig,
@@ -24,6 +20,10 @@ from xega.common.xega_types import (
     XegaEvent,
     XegaGameConfig,
 )
+from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
+from xega.common.token_xent_list import TokenXentList, ValidatedBool
+from xega.common.version import get_xega_version, validate_version
+from xega.common.x_string import XString
 from xega.presentation.executor import PresentationFunction, get_default_presentation
 from xega.presentation.sdk import (
     format_elicit_request,
@@ -1132,7 +1132,7 @@ assign(s2=story())  # Second story
 
     def test_expand_benchmark_config_sets_version(self):
         """Test that expand_benchmark_config sets the xega_version field"""
-        from xega.common.xega_types import XegaBenchmarkConfig
+        from xega.common.configuration_types import XegaBenchmarkConfig
 
         # Create a minimal benchmark config
         benchmark_config: XegaBenchmarkConfig = {

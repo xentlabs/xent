@@ -2,6 +2,7 @@ import ast
 import logging
 from typing import Any
 
+from xega.common.configuration_types import XegaGameIterationResult
 from xega.common.errors import (
     XegaConfigurationError,
     XegaError,
@@ -10,7 +11,6 @@ from xega.common.errors import (
     XegaSyntaxError,
 )
 from xega.common.x_flag import XFlag
-from xega.common.xega_types import XegaGameIterationResult
 from xega.runtime.runtime import XegaRuntime
 
 

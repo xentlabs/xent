@@ -3,9 +3,9 @@ from typing import Literal, NotRequired, TypedDict, cast
 import torch
 from typeguard import check_type
 
+from xega.common.configuration_types import PlayerOptions
 from xega.common.errors import XegaConfigurationError
 from xega.common.util import dumps
-from xega.common.xega_types import PlayerOptions
 
 KNOWN_PROVIDER = Literal[
     "openai", "anthropic", "gemini", "grok", "ollama", "huggingface", "deepseek"

@@ -2,6 +2,7 @@ import re
 import string
 from typing import Any
 
+from xega.common.configuration_types import XegaGameConfig
 from xega.common.constants import (
     ALL_PLAYERS,
     ALL_REGISTERS,
@@ -10,7 +11,6 @@ from xega.common.constants import (
 )
 from xega.common.x_flag import XFlag
 from xega.common.x_string import XString
-from xega.common.xega_types import XegaGameConfig
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import MockXGP
 from xega.runtime.judge import Judge

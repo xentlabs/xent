@@ -5,13 +5,13 @@ import subprocess
 from collections import defaultdict
 from datetime import datetime
 
-from xega.common.util import dumps, loads
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     PlayerName,
     XegaBenchmarkResult,
     XegaGameIterationResult,
     XegaGameResult,
 )
+from xega.common.util import dumps, loads
 
 
 def encode_image_to_base64(image_path: str) -> str:

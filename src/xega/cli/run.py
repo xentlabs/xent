@@ -10,13 +10,13 @@ from xega.analysis import analyze
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.cli_util import generate_benchmark_id
-from xega.common.util import log_git_snapshot
-from xega.common.version import get_xega_version, validate_version
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     ExpandedXegaBenchmarkConfig,
     XegaBenchmarkConfig,
     XegaMetadata,
 )
+from xega.common.util import log_git_snapshot
+from xega.common.version import get_xega_version, validate_version
 
 DEFAULT_XEGA_CONFIG = XegaMetadata(
     judge_model="gpt2",

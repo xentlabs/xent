@@ -2,8 +2,8 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
+from xega.common.configuration_types import XegaEvent
 from xega.common.errors import XegaConfigurationError, XegaInternalError
-from xega.common.xega_types import XegaEvent
 from xega.presentation import sdk
 
 DEFAULT_PRESENTATION = '''

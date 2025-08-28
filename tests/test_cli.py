@@ -14,8 +14,8 @@ from xega.cli.configure import (
     remove_player_from_expanded_config,
 )
 from xega.cli.run import check_version
+from xega.common.configuration_types import ExpandedXegaBenchmarkConfig, PlayerConfig
 from xega.common.version import get_xega_version
-from xega.common.xega_types import ExpandedXegaBenchmarkConfig, PlayerConfig
 
 
 @pytest.fixture
@@ -330,7 +330,7 @@ class TestVersionChecking:
     def test_configure_expand_includes_version(self, tmp_path):
         """Test that configure creates config with version when expanded"""
         from xega.benchmark.expand_benchmark import expand_benchmark_config
-        from xega.common.xega_types import XegaBenchmarkConfig
+        from xega.common.configuration_types import XegaBenchmarkConfig
 
         # Create a simple benchmark config
         config: XegaBenchmarkConfig = {

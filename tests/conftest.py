@@ -1,6 +1,6 @@
 import pytest
 
-from xega.common.xega_types import XegaGameConfig
+from xega.common.configuration_types import XegaGameConfig
 from xega.presentation.executor import get_default_presentation
 from xega.runtime.default_players import MockXGP
 from xega.runtime.judge import Judge

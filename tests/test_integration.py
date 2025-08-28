@@ -14,13 +14,13 @@ from xega.analysis.report import generate_markdown_report
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.run import DEFAULT_XEGA_CONFIG
-from xega.common.util import dumps
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     ExpandedXegaBenchmarkConfig,
     GameConfig,
     PlayerConfig,
     XegaBenchmarkConfig,
 )
+from xega.common.util import dumps
 from xega.presentation.executor import get_default_presentation
 
 

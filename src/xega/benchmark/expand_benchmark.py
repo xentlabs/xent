@@ -2,14 +2,14 @@ import ast
 import io
 import tokenize
 
-from xega.common.version import get_xega_version
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     ExpandedGameConfig,
     ExpandedXegaBenchmarkConfig,
     GameConfig,
     XegaBenchmarkConfig,
     XegaGameConfig,
 )
+from xega.common.version import get_xega_version
 from xega.presentation.executor import get_default_presentation
 from xega.runtime.judge import Judge
 

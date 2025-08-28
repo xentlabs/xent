@@ -1,15 +1,15 @@
 import logging
 import re
 
-from xega.common.util import dumps
-from xega.common.x_string import XString
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     PlayerName,
     PlayerOptions,
     TokenUsage,
     XegaEvent,
     XegaGameConfig,
 )
+from xega.common.util import dumps
+from xega.common.x_string import XString
 from xega.presentation.executor import PresentationFunction
 from xega.runtime.base_player import XGP
 from xega.runtime.llm_api_client import LLMMessage, make_client

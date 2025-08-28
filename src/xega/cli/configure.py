@@ -6,9 +6,7 @@ import click
 
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.cli.cli_util import generate_benchmark_id
-from xega.common.util import dumps
-from xega.common.version import get_xega_version
-from xega.common.xega_types import (
+from xega.common.configuration_types import (
     ExpandedXegaBenchmarkConfig,
     GameConfig,
     PlayerConfig,
@@ -16,6 +14,8 @@ from xega.common.xega_types import (
     XegaGameConfig,
     XegaMetadata,
 )
+from xega.common.util import dumps
+from xega.common.version import get_xega_version
 from xega.presentation.executor import get_single_presentation
 from xega.runtime.llm_api_client import guess_provider_from_model
 

@@ -25,6 +25,7 @@ the PlayerType you have added.
 
 
 class XGP(ABC):
+    # TODO update to new types
     def __init__(
         self,
         name: PlayerName,

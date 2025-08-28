@@ -89,11 +89,9 @@ class ExecutableGameMap(TypedDict):
 
 
 class GameMapRoundResult(TypedDict):
-    round_num: int
     score: float
     token_usage: TokenUsage
     history: list[XegaEvent]
-    finished: bool
 
 
 class GameMapResults(TypedDict):
@@ -103,10 +101,8 @@ class GameMapResults(TypedDict):
     score: float
     token_usage: TokenUsage
     round_results: list[GameMapRoundResult]
-    finished: bool
 
 
 class BenchmarkResult(TypedDict):
     expanded_config: ExpandedXegaBenchmarkConfig
     results: list[GameMapResults]
-    finished: bool

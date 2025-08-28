@@ -8,16 +8,11 @@ from xega.common.configuration_types import (
     ExecutableGameMap,
     ExpandedXegaBenchmarkConfig,
     GameMapResults,
-    PlayerName,
+    GameMapRoundResult,
     TokenUsage,
-    XegaBenchmarkResult,
-    XegaGameConfig,
-    XegaGameIterationResult,
-    XegaGameResult,
 )
 from xega.common.util import dumps
 from xega.common.version import get_xega_version, validate_version
-from xega.runtime.base_player import XGP
 from xega.runtime.execution import play_game
 from xega.runtime.judge import Judge
 from xega.runtime.players import make_player
@@ -26,45 +21,48 @@ from xega.runtime.variables import build_globals, build_locals
 
 
 async def run_game(
-    game_config: XegaGameConfig, judge: Judge | None, raise_on_error: bool = False
-) -> XegaGameResult | None:
-    game_name = game_config["game"]["name"]
-    game_code = game_config["game"]["code"]
-    player_configs = game_config["players"]
-    if judge is None:
-        judge = Judge(game_config["judge_model"])
-        judge.set_seed(game_config["seed"], "")
-    players: list[XGP] = []
-    for player_config in player_configs:
-        players.append(make_player(player_config["name"], game_config))
+    executable_game_map: ExecutableGameMap,
+    judge: Judge | None,
+    raise_on_error: bool = False,
+) -> GameMapResults | None:
+    game_name = executable_game_map["game_map"]["name"]
+    map_seed = executable_game_map["game_map"]["map_seed"]
+    player_id = executable_game_map["player"]["id"]
+    game_code = executable_game_map["game_map"]["code"]
+    game_str = f"{game_name} ({map_seed}) for player: {player_id}"
 
-    locals = build_locals(players, game_config)
+    if judge is None:
+        judge = Judge(executable_game_map["metadata"]["judge_model"])
+        judge.set_seed(executable_game_map["metadata"]["seed"], "")
+
+    player = make_player(executable_game_map)
+    locals = build_locals(player, executable_game_map)
     globals = build_globals(judge)
 
-    xrt = XegaRuntime(players, locals, globals)
+    xrt = XegaRuntime(player, locals, globals)
 
-    logging.info(
-        f"Running game: {game_name} for players: {[p['id'] for p in player_configs]}"
-    )
+    logging.info(f"Running game: {game_str}")
     try:
         game_results = await play_game(
             game_code,
             xrt,
-            num_rounds=game_config["num_rounds_per_game"],
+            num_rounds=executable_game_map["metadata"]["num_rounds_per_game"],
         )
-        logging.info(f"Game {game_name} completed successfully")
+        logging.info(f"Game {game_str} completed successfully")
 
-        scores = extract_scores(game_results)
+        score = extract_score(game_results)
         token_usage = extract_token_usage(game_results)
-        return XegaGameResult(
-            game=game_config,
-            game_results=game_results,
-            scores=scores,
+        return GameMapResults(
+            game_map=executable_game_map["game_map"],
+            metadata=executable_game_map["metadata"],
+            player=executable_game_map["player"],
+            score=score,
             token_usage=token_usage,
+            round_results=game_results,
         )
     except Exception as e:
         logging.exception(
-            f"Game {game_name} execution failed with exception: {e}", exc_info=True
+            f"Game {game_str} execution failed with exception: {e}", exc_info=True
         )
         if raise_on_error:
             raise e
@@ -72,36 +70,27 @@ async def run_game(
 
 
 def extract_token_usage(
-    game_results: list[XegaGameIterationResult],
-) -> dict[PlayerName, TokenUsage]:
-    total_token_usage: dict[PlayerName, TokenUsage] = {}
+    game_results: list[GameMapRoundResult],
+) -> TokenUsage:
+    total_token_usage: TokenUsage = {"input_tokens": 0, "output_tokens": 0}
     for game_result in game_results:
-        token = game_result["token_usage"]
-        for player, token_usage in token.items():
-            if player not in total_token_usage:
-                total_token_usage[player] = token_usage
-            else:
-                total_token_usage[player]["input_tokens"] += token_usage["input_tokens"]
-                total_token_usage[player]["output_tokens"] += token_usage[
-                    "output_tokens"
-                ]
+        token_usage = game_result["token_usage"]
+        total_token_usage["input_tokens"] += token_usage["input_tokens"]
+        total_token_usage["output_tokens"] += token_usage["output_tokens"]
+
     return total_token_usage
 
 
-def extract_scores(
-    game_results: list[XegaGameIterationResult],
-) -> dict[PlayerName, float]:
-    max_scores: dict[PlayerName, float] = {}
-    for game_result in game_results:
-        score = game_result["scores"]
-        for player, player_score in score.items():
-            if player not in max_scores:
-                max_scores[player] = player_score
-            else:
-                if player_score > max_scores[player]:
-                    max_scores[player] = player_score
+def extract_score(
+    game_results: list[GameMapRoundResult],
+) -> float:
+    max_score = game_results[0]["score"]
 
-    return max_scores
+    for game_result in game_results:
+        if game_result["score"] > max_score:
+            max_score = game_result["score"]
+
+    return max_score
 
 
 # TODO: use storage system
@@ -121,7 +110,7 @@ def write_benchmark_results(
 # TODO this should call out to the storage interface instead of directly to fs
 def get_existing_game_results(
     results_dir: str, executable_game_map: ExecutableGameMap
-) -> XegaGameResult | None:
+) -> GameMapResults | None:
     results_path = os.path.join(
         results_dir, game_results_json_filename(executable_game_map)
     )
@@ -176,7 +165,7 @@ async def run_benchmark(
     config: ExpandedXegaBenchmarkConfig,
     results_dir: str,
     max_concurrent_games: int,
-) -> XegaBenchmarkResult:
+) -> BenchmarkResult:
     # TODO this should be calling the storage system
     with open(os.path.join(results_dir, "benchmark_config.json"), "w") as f:
         f.write(dumps(config, indent=4))
@@ -185,9 +174,8 @@ async def run_benchmark(
 
     work_units = generate_executable_game_maps(config)
 
-    benchmark_result = BenchmarkResult(
-        expanded_config=config, results=[], finished=False
-    )
+    # TODO instead of accumulating, this should just be gathered by storage after running
+    benchmark_result = BenchmarkResult(expanded_config=config, results=[])
 
     benchmark_id = config["metadata"]["benchmark_id"]
     logging.info(f"Starting benchmark with Benchmark ID: {benchmark_id}.")

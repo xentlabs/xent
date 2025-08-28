@@ -2,7 +2,7 @@ import ast
 import logging
 from typing import Any
 
-from xega.common.configuration_types import XegaGameIterationResult
+from xega.common.configuration_types import GameMapRoundResult
 from xega.common.errors import (
     XegaConfigurationError,
     XegaError,
@@ -29,13 +29,13 @@ async def play_game(
     code: str,
     xrt: XegaRuntime,
     num_rounds=30,
-) -> list[XegaGameIterationResult]:
+) -> list[GameMapRoundResult]:
     lines = [line.strip() for line in code.split("\n")]
     if len(lines) > 64:
         raise XegaConfigurationError("Code too long. Max 64 lines.")
 
     rounds_played = 0
-    game_results: list[XegaGameIterationResult] = []
+    round_results: list[GameMapRoundResult] = []
 
     while rounds_played < num_rounds:
         result = await play_single_game(lines, xrt)
@@ -43,16 +43,16 @@ async def play_game(
             return []  # TODO what to do here?
         rounds_played += 1
         if result is not None:
-            game_results.append(result)
+            round_results.append(result)
 
     logging.info("Game completed successfully")
-    return game_results
+    return round_results
 
 
 # TODO need to clean up error handling / none return here
 async def play_single_game(
     lines: list[str], xrt: XegaRuntime
-) -> XegaGameIterationResult | None:
+) -> GameMapRoundResult | None:
     line_index = 0
 
     while line_index < len(lines):

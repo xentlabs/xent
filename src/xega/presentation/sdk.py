@@ -1,6 +1,7 @@
 from typing import Any
 
-from xega.common.configuration_types import (
+from xega.common.token_xent_list import round_xent
+from xega.common.xega_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
@@ -8,7 +9,6 @@ from xega.common.configuration_types import (
     RewardEvent,
     XegaEvent,
 )
-from xega.common.token_xent_list import round_xent
 
 
 def format_reveal(event: RevealEvent) -> str:

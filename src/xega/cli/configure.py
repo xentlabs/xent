@@ -1,22 +1,22 @@
 import json
-from copy import deepcopy
 from pathlib import Path
+from typing import Any
 
 import click
 
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.configuration_types import (
+    CondensedXegaBenchmarkConfig,
     ExpandedXegaBenchmarkConfig,
+    ExpansionConfig,
     GameConfig,
     PlayerConfig,
-    XegaBenchmarkConfig,
-    XegaGameConfig,
     XegaMetadata,
 )
 from xega.common.util import dumps
 from xega.common.version import get_xega_version
-from xega.presentation.executor import get_single_presentation
+from xega.presentation.executor import get_default_presentation, get_single_presentation
 from xega.runtime.llm_api_client import guess_provider_from_model
 
 SIMPLE_GAME_CODE = """
@@ -28,21 +28,22 @@ reward(black, xed(s | x1))
 """.strip()
 
 
-DEFAULT_XEGA_CONFIG = XegaMetadata(
+DEFAULT_XEGA_METADATA = XegaMetadata(
+    benchmark_id="",
+    xega_version=get_xega_version(),
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
-    num_variables_per_register=4,
-    npc_players=[],
-    num_maps_per_game=1,
 )
+
+DEFAULT_EXPANSION_CONFIG = ExpansionConfig(num_maps_per_game=1)
 
 
 def game_from_file(game_file_path: Path) -> GameConfig:
     game_name = game_file_path.stem
     game_code = game_file_path.read_text()
 
-    presentation_function = None
+    presentation_function = get_default_presentation()
     presentation_path = game_file_path.with_name(f"{game_name}_presentation.py")
     try:
         presentation_function = presentation_path.read_text()
@@ -81,46 +82,43 @@ def build_benchmark_config(
     seed: str,
     num_rounds_per_game: int,
     num_maps_per_game: int,
-):
+) -> CondensedXegaBenchmarkConfig:
     players = []
     if not human:
         players = [
-            [
-                PlayerConfig(
-                    name="black",
-                    id=model,
-                    player_type="default",
-                    options={
-                        "model": model,
-                        "provider": guess_provider_from_model(model),
-                    },
-                )
-            ]
+            PlayerConfig(
+                name="black",
+                id=model,
+                player_type="default",
+                options={
+                    "model": model,
+                    "provider": guess_provider_from_model(model),
+                },
+            )
             for model in models
         ]
     else:
         players.append(
-            [
-                PlayerConfig(
-                    name="black",
-                    id="human",
-                    player_type="human",
-                    options={},
-                )
-            ]
+            PlayerConfig(
+                name="black",
+                id="human",
+                player_type="human",
+                options={},
+            )
         )
 
-    return XegaBenchmarkConfig(
-        config_type="short_benchmark_config",
+    return CondensedXegaBenchmarkConfig(
+        config_type="condensed_xega_config",
         games=games,
         players=players,
-        benchmark_id=benchmark_id,
-        judge_model=judge,
-        npc_players=DEFAULT_XEGA_CONFIG["npc_players"],
-        num_rounds_per_game=num_rounds_per_game,
-        num_variables_per_register=DEFAULT_XEGA_CONFIG["num_variables_per_register"],
-        seed=seed,
-        num_maps_per_game=num_maps_per_game,
+        metadata=XegaMetadata(
+            benchmark_id=benchmark_id,
+            xega_version=get_xega_version(),
+            judge_model=judge,
+            num_rounds_per_game=num_rounds_per_game,
+            seed=seed,
+        ),
+        expansion_config=ExpansionConfig(num_maps_per_game=num_maps_per_game),
     )
 
 
@@ -128,66 +126,27 @@ def add_player_to_expanded_config(
     config: ExpandedXegaBenchmarkConfig, new_player: PlayerConfig
 ) -> ExpandedXegaBenchmarkConfig:
     """Add a new player to an expanded benchmark config"""
-    # Get unique games from the existing config
-    unique_games = {}
-    for game_config in config["games"]:
-        game_key = (
-            game_config["game"]["name"],
-            game_config["game"]["code"],
-            game_config["map_seed"],
-        )
-        if game_key not in unique_games:
-            unique_games[game_key] = (game_config["game"], game_config["map_seed"])
-
-    # Create new game configs for the new player
-    new_game_configs = []
-    for game, map_seed in unique_games.values():
-        new_game_config: XegaGameConfig = {
-            # Copy metadata fields
-            "judge_model": config["judge_model"],
-            "npc_players": config["npc_players"],
-            "num_variables_per_register": config["num_variables_per_register"],
-            "num_rounds_per_game": config["num_rounds_per_game"],
-            "seed": config["seed"],
-            "num_maps_per_game": config["num_maps_per_game"],
-            # Game-specific fields
-            "game": deepcopy(game),
-            "players": [new_player],
-            "map_seed": map_seed,
-        }
-        new_game_configs.append(new_game_config)
-
-    # Create new expanded config with all games
-    new_config = deepcopy(config)
-    new_config["games"].extend(new_game_configs)
-
-    return new_config
+    players = config["players"]
+    if any(p["id"] == new_player["id"] for p in players):
+        print("Player already exists in benchmark configuration!")
+        return config
+    players.append(new_player)
+    config["players"] = players
+    return config
 
 
 def remove_player_from_expanded_config(
     config: ExpandedXegaBenchmarkConfig, player_id_to_remove: str
 ) -> ExpandedXegaBenchmarkConfig:
     """Remove a player from an expanded benchmark config."""
-    new_config = deepcopy(config)
+    players = config["players"]
+    if not any(p["id"] == player_id_to_remove for p in players):
+        print("Player not found benchmark configuration!")
+        return config
 
-    # Filter the games, removing any associated with the specified player ID.
-    # In an expanded config, each game entry has exactly one player.
-    original_game_count = len(new_config["games"])
-    new_config["games"] = [
-        game_config
-        for game_config in new_config["games"]
-        if game_config["players"][0]["id"] != player_id_to_remove
-    ]
-
-    # Notify the user if the specified player was not found in the config
-    if len(new_config["games"]) == original_game_count:
-        click.echo(
-            f"Warning: Player with ID '{player_id_to_remove}' not found.", err=True
-        )
-    else:
-        click.echo(f"Successfully removed player: {player_id_to_remove}")
-
-    return new_config
+    new_players = [p for p in players if p["id"] != player_id_to_remove]
+    config["players"] = new_players
+    return config
 
 
 @click.group(invoke_without_command=True)
@@ -216,7 +175,7 @@ def remove_player_from_expanded_config(
 )
 @click.option(
     "--judge",
-    default=DEFAULT_XEGA_CONFIG["judge_model"],
+    default=DEFAULT_XEGA_METADATA["judge_model"],
     help="Specify the judge model to use for the benchmark. Default is 'gpt2'",
 )
 @click.option(
@@ -226,17 +185,17 @@ def remove_player_from_expanded_config(
 )
 @click.option(
     "--num-rounds-per-game",
-    default=DEFAULT_XEGA_CONFIG["num_rounds_per_game"],
+    default=DEFAULT_XEGA_METADATA["num_rounds_per_game"],
     help="Specify the number of rounds to play per game mape. Default is 30",
 )
 @click.option(
     "--seed",
-    default=DEFAULT_XEGA_CONFIG["seed"],
+    default=DEFAULT_XEGA_METADATA["seed"],
     help="Specify a seed for benchmark randomization. 'notrandom' is the default seed if not specified",
 )
 @click.option(
     "--num-maps-per-game",
-    default=DEFAULT_XEGA_CONFIG["num_maps_per_game"],
+    default=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
     help="Specify the number of maps per game. Default is 1.",
     type=int,
 )
@@ -284,7 +243,7 @@ def configure(
     else:
         games = games_from_paths([Path(p) for p in game_paths])
 
-    config = build_benchmark_config(
+    config: Any = build_benchmark_config(
         model,
         human,
         judge,

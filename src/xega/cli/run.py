@@ -11,26 +11,28 @@ from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.cli.cli_util import generate_benchmark_id
 from xega.common.configuration_types import (
+    CondensedXegaBenchmarkConfig,
     ExpandedXegaBenchmarkConfig,
-    XegaBenchmarkConfig,
+    ExpansionConfig,
     XegaMetadata,
 )
 from xega.common.util import log_git_snapshot
 from xega.common.version import get_xega_version, validate_version
 
-DEFAULT_XEGA_CONFIG = XegaMetadata(
+DEFAULT_XEGA_METADATA = XegaMetadata(
+    benchmark_id="",
+    xega_version=get_xega_version(),
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
-    num_variables_per_register=4,
-    npc_players=[],
-    num_maps_per_game=1,
 )
+
+DEFAULT_EXPANSION_CONFIG = ExpansionConfig(num_maps_per_game=1)
 
 
 def load_benchmark_config(
     benchmark_config_file_path: str,
-) -> XegaBenchmarkConfig | ExpandedXegaBenchmarkConfig:
+) -> CondensedXegaBenchmarkConfig | ExpandedXegaBenchmarkConfig:
     with open(benchmark_config_file_path) as f:
         benchmark_config = json.load(f)
 
@@ -109,14 +111,16 @@ def run(
     if regenerate_id:
         benchmark_id = generate_benchmark_id()
         logging.info(f"Generated new benchmark ID: {benchmark_id}")
-        benchmark_config["benchmark_id"] = benchmark_id
+        benchmark_config["metadata"]["benchmark_id"] = benchmark_id
 
-    if benchmark_config["config_type"] != "expanded_benchmark_config":
+    if benchmark_config["config_type"] != "expanded_xega_config":
         benchmark_config = expand_benchmark_config(benchmark_config)
 
     check_version(benchmark_config, ignore_version_mismatch)
 
-    results_dir = os.path.join(results_dir, benchmark_config["benchmark_id"])
+    results_dir = os.path.join(
+        results_dir, benchmark_config["metadata"]["benchmark_id"]
+    )
     if clean and os.path.exists(results_dir):
         logging.info(f"Cleaning results directory: {results_dir}")
         for root, dirs, files in os.walk(results_dir, topdown=False):
@@ -152,7 +156,7 @@ def run(
 def check_version(
     benchmark_config: ExpandedXegaBenchmarkConfig, ignore_version_mismatch: bool
 ):
-    config_version = benchmark_config.get("xega_version")
+    config_version = benchmark_config["metadata"]["xega_version"]
     current_version = get_xega_version()
     is_valid, message = validate_version(config_version, current_version)
 

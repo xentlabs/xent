@@ -4,26 +4,27 @@ from unittest.mock import Mock
 import pytest
 
 from xega.benchmark.expand_benchmark import (
-    expand_benchmark_config,
     expand_game_config,
     preprocess_dsl_code,
 )
 from xega.benchmark.run_benchmark import extract_token_usage
 from xega.common.configuration_types import (
-    ElicitRequestEvent,
-    ElicitResponseEvent,
-    ExpandedGameConfig,
-    FailedEnsureEvent,
+    ExecutableGameMap,
     GameConfig,
-    RevealEvent,
-    RewardEvent,
-    XegaEvent,
-    XegaGameConfig,
+    GameMapConfig,
 )
 from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
 from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.version import get_xega_version, validate_version
 from xega.common.x_string import XString
+from xega.common.xega_event import (
+    ElicitRequestEvent,
+    ElicitResponseEvent,
+    FailedEnsureEvent,
+    RevealEvent,
+    RewardEvent,
+    XegaEvent,
+)
 from xega.presentation.executor import PresentationFunction, get_default_presentation
 from xega.presentation.sdk import (
     format_elicit_request,
@@ -667,93 +668,27 @@ class TestJudge:
 class TestTokenUsage:
     """Tests for token usage tracking functionality."""
 
-    FAKE_GAME_CONFIG: XegaGameConfig = {
-        "game": {
+    FAKE_GAME_CONFIG: ExecutableGameMap = {
+        "game_map": {
             "name": "Token Usage Test",
             "code": "test_code",
             "map_seed": "test_seed_0",
             "presentation_function": get_default_presentation(),
         },
-        "num_rounds_per_game": 30,
-        "players": [
-            {
-                "name": "alice",
-                "id": "test_alice",
-                "player_type": "default",
-                "options": {"model": "test", "provider": "test"},
-            },
-            {
-                "name": "bob",
-                "id": "test_bob",
-                "player_type": "default",
-                "options": {"model": "test", "provider": "test"},
-            },
-        ],
-        "num_variables_per_register": 4,
-        "num_maps_per_game": 1,
-        "judge_model": "gpt2",
-        "npc_players": [],
-        "seed": "test_seed",
-        "map_seed": "test_seed_0",
+        "player": {
+            "name": "alice",
+            "id": "test_alice",
+            "player_type": "default",
+            "options": {"model": "test", "provider": "test"},
+        },
+        "metadata": {
+            "benchmark_id": "test",
+            "xega_version": "0.1.0-dev",
+            "judge_model": "gpt2",
+            "seed": "test_seed",
+            "num_rounds_per_game": 30,
+        },
     }
-
-    @pytest.mark.asyncio
-    async def test_token_accumulation_comprehensive(self):
-        """Comprehensive test for token accumulation with single and multiple players."""
-        game_config = self.FAKE_GAME_CONFIG.copy()
-
-        # Part 1: Test single player accumulation
-        player_single = MockXGP(
-            "alice",
-            "test_alice",
-            {},
-            game_config,
-            token_usage_per_move={"input_tokens": 10, "output_tokens": 5},
-        )
-        locals_single = build_locals([player_single], game_config)
-        judge_single = Judge("gpt2")
-        globals_single = build_globals(judge_single)
-        xrt_single = XegaRuntime([player_single], locals_single, globals_single)
-
-        # Make 3 elicit calls for single player
-        await eval_line("elicit(alice, s1, 20)", 1, xrt_single)
-        await eval_line("elicit(alice, s2, 20)", 2, xrt_single)
-        await eval_line("elicit(alice, s3, 20)", 3, xrt_single)
-
-        # Check accumulated token usage for single player
-        assert xrt_single.token_usage["alice"]["input_tokens"] == 30  # 10 * 3
-        assert xrt_single.token_usage["alice"]["output_tokens"] == 15  # 5 * 3
-
-        # Part 2: Test multiple players with separate tracking
-        alice = MockXGP(
-            "alice",
-            "test_alice",
-            {},
-            game_config,
-            token_usage_per_move={"input_tokens": 10, "output_tokens": 5},
-        )
-        bob = MockXGP(
-            "bob",
-            "test_bob",
-            {},
-            game_config,
-            token_usage_per_move={"input_tokens": 20, "output_tokens": 8},
-        )
-        locals_multi = build_locals([alice, bob], game_config)
-        judge_multi = Judge("gpt2")
-        globals_multi = build_globals(judge_multi)
-        xrt_multi = XegaRuntime([alice, bob], locals_multi, globals_multi)
-
-        # Make elicit calls for both players
-        await eval_line("elicit(alice, s1, 20)", 1, xrt_multi)
-        await eval_line("elicit(bob, s2, 20)", 2, xrt_multi)
-        await eval_line("elicit(alice, s3, 20)", 3, xrt_multi)
-
-        # Check that token usage is tracked separately
-        assert xrt_multi.token_usage["alice"]["input_tokens"] == 20  # 10 * 2
-        assert xrt_multi.token_usage["alice"]["output_tokens"] == 10  # 5 * 2
-        assert xrt_multi.token_usage["bob"]["input_tokens"] == 20  # 20 * 1
-        assert xrt_multi.token_usage["bob"]["output_tokens"] == 8  # 8 * 1
 
     @pytest.mark.asyncio
     async def test_game_iteration_reset(self):
@@ -766,47 +701,47 @@ class TestTokenUsage:
             game_config,
             token_usage_per_move={"input_tokens": 15, "output_tokens": 10},
         )
-        locals = build_locals([player], game_config)
+        locals = build_locals(player, game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XegaRuntime([player], locals, globals)
+        xrt = XegaRuntime(player, locals, globals)
 
         # First iteration: make some moves
         await eval_line("elicit(alice, s1, 20)", 1, xrt)
         await eval_line("elicit(alice, s2, 20)", 2, xrt)
 
         # Check token usage after first iteration
-        assert xrt.token_usage["alice"]["input_tokens"] == 30  # 15 * 2
-        assert xrt.token_usage["alice"]["output_tokens"] == 20  # 10 * 2
+        assert xrt.token_usage["input_tokens"] == 30  # 15 * 2
+        assert xrt.token_usage["output_tokens"] == 20  # 10 * 2
 
         # Get results and reset (simulates end of game iteration)
         iteration1_result = xrt.get_results_and_reset()
 
         # Verify iteration result contains token usage
-        assert iteration1_result["token_usage"]["alice"]["input_tokens"] == 30
-        assert iteration1_result["token_usage"]["alice"]["output_tokens"] == 20
+        assert iteration1_result["token_usage"]["input_tokens"] == 30
+        assert iteration1_result["token_usage"]["output_tokens"] == 20
 
         # Verify runtime token usage was reset
-        assert xrt.token_usage["alice"]["input_tokens"] == 0
-        assert xrt.token_usage["alice"]["output_tokens"] == 0
+        assert xrt.token_usage["input_tokens"] == 0
+        assert xrt.token_usage["output_tokens"] == 0
 
         # Second iteration: make more moves
         await eval_line("elicit(alice, s3, 20)", 1, xrt)
 
         # Check token usage in second iteration
-        assert xrt.token_usage["alice"]["input_tokens"] == 15  # 15 * 1
-        assert xrt.token_usage["alice"]["output_tokens"] == 10  # 10 * 1
+        assert xrt.token_usage["input_tokens"] == 15  # 15 * 1
+        assert xrt.token_usage["output_tokens"] == 10  # 10 * 1
 
         # Get second iteration results
         iteration2_result = xrt.get_results_and_reset()
-        assert iteration2_result["token_usage"]["alice"]["input_tokens"] == 15
-        assert iteration2_result["token_usage"]["alice"]["output_tokens"] == 10
+        assert iteration2_result["token_usage"]["input_tokens"] == 15
+        assert iteration2_result["token_usage"]["output_tokens"] == 10
 
         total_usage = extract_token_usage([iteration1_result, iteration2_result])
 
         # Verify total accumulation across iterations
-        assert total_usage["alice"]["input_tokens"] == 45  # 30 + 15
-        assert total_usage["alice"]["output_tokens"] == 30  # 20 + 10
+        assert total_usage["input_tokens"] == 45  # 30 + 15
+        assert total_usage["output_tokens"] == 30  # 20 + 10
 
     @pytest.mark.asyncio
     async def test_zero_token_usage(self):
@@ -819,22 +754,22 @@ class TestTokenUsage:
             game_config,
             token_usage_per_move={"input_tokens": 0, "output_tokens": 0},
         )
-        locals = build_locals([player], game_config)
+        locals = build_locals(player, game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XegaRuntime([player], locals, globals)
+        xrt = XegaRuntime(player, locals, globals)
 
         # Make elicit call with zero token usage
         await eval_line("elicit(alice, s1, 20)", 1, xrt)
 
         # Verify zero accumulation works correctly
-        assert xrt.token_usage["alice"]["input_tokens"] == 0
-        assert xrt.token_usage["alice"]["output_tokens"] == 0
+        assert xrt.token_usage["input_tokens"] == 0
+        assert xrt.token_usage["output_tokens"] == 0
 
         # Test reset with zero values
         result = xrt.get_results_and_reset()
-        assert result["token_usage"]["alice"]["input_tokens"] == 0
-        assert result["token_usage"]["alice"]["output_tokens"] == 0
+        assert result["token_usage"]["input_tokens"] == 0
+        assert result["token_usage"]["output_tokens"] == 0
 
 
 class TestExpandConfig:
@@ -1130,43 +1065,6 @@ assign(s2=story())  # Second story
         )
         assert "# Footer comment" in processed_mixed
 
-    def test_expand_benchmark_config_sets_version(self):
-        """Test that expand_benchmark_config sets the xega_version field"""
-        from xega.common.configuration_types import XegaBenchmarkConfig
-
-        # Create a minimal benchmark config
-        benchmark_config: XegaBenchmarkConfig = {
-            "config_type": "short_benchmark_config",
-            "games": [
-                {
-                    "name": "test_game",
-                    "code": "assign(s='test')\nreveal(black, s)",
-                    "presentation_function": None,
-                }
-            ],
-            "players": [
-                [{"name": "black", "id": "gpt2", "player_type": "hf", "options": None}]
-            ],
-            "benchmark_id": "test-benchmark-123",
-            "judge_model": "gpt2",
-            "npc_players": [],
-            "num_variables_per_register": 4,
-            "num_rounds_per_game": 1,
-            "seed": "test_seed",
-            "num_maps_per_game": 1,
-        }
-
-        # Expand the config
-        expanded = expand_benchmark_config(benchmark_config)
-
-        # Verify xega_version is set
-        assert "xega_version" in expanded
-        assert expanded["xega_version"] == get_xega_version()
-
-        # Verify it's a valid version string
-        assert isinstance(expanded["xega_version"], str)
-        assert len(expanded["xega_version"]) > 0
-
 
 class TestVersioning:
     """Tests for version tracking functionality"""
@@ -1412,23 +1310,28 @@ def present(state, history):
     return "\\n".join(lines)
 """
 
-    expanded_game: ExpandedGameConfig = {
+    expanded_game: GameMapConfig = {
         "name": "test_game",
         "code": 'assign(x="test")\nreveal(black, x)\nelicit(black, y, 10)',
         "map_seed": "test_seed",
         "presentation_function": presentation_code,
     }
 
-    config: XegaGameConfig = {
-        "game": expanded_game,
-        "players": [],
-        "map_seed": "test_seed",
-        "judge_model": "test",
-        "npc_players": [],
-        "num_variables_per_register": 4,
-        "num_rounds_per_game": 1,
-        "seed": "test",
-        "num_maps_per_game": 1,
+    config: ExecutableGameMap = {
+        "game_map": expanded_game,
+        "player": {
+            "name": "black",
+            "id": "mock_id",
+            "player_type": "mock",
+            "options": {},
+        },
+        "metadata": {
+            "benchmark_id": "test",
+            "xega_version": "0.1.0-dev",
+            "judge_model": "test",
+            "num_rounds_per_game": 1,
+            "seed": "test",
+        },
     }
 
     return config
@@ -1491,7 +1394,7 @@ class TestPresentationIntegration:
 def present(state, history):
     raise ValueError("Intentional error")
 """
-        game_config["game"]["presentation_function"] = broken_code
+        game_config["game_map"]["presentation_function"] = broken_code
 
         options: dict[str, str | int | float | bool] = {
             "provider": "ollama",
@@ -1590,7 +1493,7 @@ def present(state, history):
 """
 
         # Create game configuration
-        expanded_game: ExpandedGameConfig = {
+        expanded_game: GameMapConfig = {
             "name": "test_integration",
             "code": """assign(x="initial_value")
 reveal(black, x)
@@ -1599,23 +1502,21 @@ elicit(black, z, 10)""",
             "presentation_function": presentation_code,
         }
 
-        config: XegaGameConfig = {
-            "game": expanded_game,
-            "players": [
-                {
-                    "name": "black",
-                    "id": "mock_id",
-                    "player_type": "mock",
-                    "options": {},
-                }
-            ],
-            "map_seed": "test_seed",
-            "judge_model": "test",
-            "npc_players": [],
-            "num_variables_per_register": 4,
-            "num_rounds_per_game": 1,
-            "seed": "test",
-            "num_maps_per_game": 1,
+        config: ExecutableGameMap = {
+            "game_map": expanded_game,
+            "player": {
+                "name": "black",
+                "id": "mock_id",
+                "player_type": "mock",
+                "options": {},
+            },
+            "metadata": {
+                "benchmark_id": "test",
+                "xega_version": "0.1.0-dev",
+                "judge_model": "test",
+                "num_rounds_per_game": 1,
+                "seed": "test",
+            },
         }
 
         # Create MockXGP player with the game config
@@ -1685,7 +1586,7 @@ def present(state, history):
     return 1 / 0  # Division by zero error
 """
 
-        expanded_game: ExpandedGameConfig = {
+        expanded_game: GameMapConfig = {
             "name": "test_fallback",
             "code": """reveal(black, "test")
 elicit(black, x, 5)""",
@@ -1693,18 +1594,21 @@ elicit(black, x, 5)""",
             "presentation_function": broken_presentation,
         }
 
-        config: XegaGameConfig = {
-            "game": expanded_game,
-            "players": [
-                {"name": "black", "id": "mock_id", "player_type": "mock", "options": {}}
-            ],
-            "map_seed": "test_seed",
-            "judge_model": "test",
-            "npc_players": [],
-            "num_variables_per_register": 4,
-            "num_rounds_per_game": 1,
-            "seed": "test",
-            "num_maps_per_game": 1,
+        config: ExecutableGameMap = {
+            "metadata": {
+                "benchmark_id": "test",
+                "xega_version": "0.1.0-dev",
+                "judge_model": "test",
+                "num_rounds_per_game": 1,
+                "seed": "test",
+            },
+            "game_map": expanded_game,
+            "player": {
+                "name": "black",
+                "id": "mock_id",
+                "player_type": "mock",
+                "options": {},
+            },
         }
 
         mock_player = MockXGP("black", "mock_id", None, config)

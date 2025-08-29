@@ -158,6 +158,8 @@ def check_version(
 ):
     config_version = benchmark_config["metadata"]["xega_version"]
     current_version = get_xega_version()
+    print(f"Config: {config_version}")
+    print(f"Current: {current_version}")
     is_valid, message = validate_version(config_version, current_version)
 
     if not is_valid and not ignore_version_mismatch:

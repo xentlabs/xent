@@ -122,7 +122,7 @@ def build_benchmark_config(
     )
 
 
-def add_player_to_expanded_config(
+def add_player_to_config(
     config: ExpandedXegaBenchmarkConfig, new_player: PlayerConfig
 ) -> ExpandedXegaBenchmarkConfig:
     """Add a new player to an expanded benchmark config"""
@@ -135,10 +135,9 @@ def add_player_to_expanded_config(
     return config
 
 
-def remove_player_from_expanded_config(
+def remove_player_from_config(
     config: ExpandedXegaBenchmarkConfig, player_id_to_remove: str
 ) -> ExpandedXegaBenchmarkConfig:
-    """Remove a player from an expanded benchmark config."""
     players = config["players"]
     if not any(p["id"] == player_id_to_remove for p in players):
         print("Player not found benchmark configuration!")
@@ -305,17 +304,6 @@ def add_player_cmd(
     with open(config_path) as f:
         config = json.load(f)
 
-    # Verify it's an expanded config
-    if config.get("config_type") != "expanded_benchmark_config":
-        click.echo(
-            "Error: This command only works with expanded configurations.", err=True
-        )
-        click.echo(
-            "Use --expand-config when creating the configuration or convert it first.",
-            err=True,
-        )
-        raise click.Abort()
-
     # Add each model as a new player
     for model_name in model:
         new_player = PlayerConfig(
@@ -327,7 +315,7 @@ def add_player_cmd(
                 "provider": guess_provider_from_model(model_name),
             },
         )
-        config = add_player_to_expanded_config(config, new_player)
+        config = add_player_to_config(config, new_player)
         click.echo(f"Added player: {model_name}")
 
     # Output
@@ -350,11 +338,11 @@ def add_player_cmd(
     default="./xega_config.json",
 )
 @click.option(
-    "--model",
-    "-m",
+    "--player-id",
+    "-p",
     multiple=True,
     required=True,
-    help="Model ID to remove as a player (can be used multiple times).",
+    help="Player ID to remove as a player (can be used multiple times).",
 )
 @click.option(
     "--output",
@@ -363,7 +351,7 @@ def add_player_cmd(
 )
 def remove_player_cmd(
     config_path: str,
-    model: list[str],
+    player_id: list[str],
     output: str | None,
 ):
     """Remove players from an existing expanded Xega benchmark configuration."""
@@ -373,7 +361,7 @@ def remove_player_cmd(
         config = json.load(f)
 
     # Verify it's an expanded config
-    if config.get("config_type") != "expanded_benchmark_config":
+    if config.get("config_type") != "expanded_xega_config":
         click.echo(
             "Error: This command only works with expanded configurations.", err=True
         )
@@ -383,9 +371,10 @@ def remove_player_cmd(
         )
         raise click.Abort()
 
-    # Remove each specified player model
-    for model_name in model:
-        config = remove_player_from_expanded_config(config, model_name)
+    # Remove each specified player id
+    for pid in player_id:
+        config = remove_player_from_config(config, pid)
+        print(f"Successfully removed player: {pid}")
 
     # Output
     config_str = dumps(config, indent=2)

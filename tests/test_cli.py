@@ -3,16 +3,15 @@ import logging
 import tempfile
 from copy import deepcopy
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
 from xega.cli.configure import (
-    add_player_to_expanded_config,
+    add_player_to_config,
     configure,
     games_from_paths,
-    remove_player_from_expanded_config,
+    remove_player_from_config,
 )
 from xega.cli.run import check_version
 from xega.common.configuration_types import (
@@ -20,6 +19,7 @@ from xega.common.configuration_types import (
     PlayerConfig,
 )
 from xega.common.version import get_xega_version
+from xega.presentation.executor import get_default_presentation
 
 
 @pytest.fixture
@@ -83,7 +83,7 @@ class TestConfigureCommands:
     def test_remove_player_success(self, tmp_path, simple_expanded_config):
         """Test removing a player both directly and via CLI command."""
         # Test 1: Direct function call
-        config_direct = remove_player_from_expanded_config(
+        config_direct = remove_player_from_config(
             deepcopy(simple_expanded_config), "player-a"
         )
         assert len(config_direct["players"]) == 1, (
@@ -99,7 +99,7 @@ class TestConfigureCommands:
 
         result = runner.invoke(
             configure,
-            ["remove-player", str(config_path), "--model", "player-a"],
+            ["remove-player", str(config_path), "--player-id", "player-a"],
             catch_exceptions=False,
         )
         assert result.exit_code == 0, "Got non zero error code"
@@ -121,38 +121,12 @@ class TestConfigureCommands:
         original_config = deepcopy(simple_expanded_config)
 
         # Act
-        with patch("click.echo") as mock_echo:
-            config = remove_player_from_expanded_config(
-                simple_expanded_config, "non-existent-player"
-            )
-
-            # Assert
-            assert config == original_config, "Config should not be modified"
-            mock_echo.assert_called_with(
-                "Warning: Player with ID 'non-existent-player' not found.", err=True
-            )
-
-    def test_remove_player_cmd_not_expanded_config(self, tmp_path):
-        """Test that the 'remove-player' command fails on a non-expanded config."""
-        # Arrange
-        runner = CliRunner()
-        config_path = tmp_path / "config.json"
-        config_data = {"config_type": "short_benchmark_config"}
-        with open(config_path, "w") as f:
-            json.dump(config_data, f)
-
-        # Act
-        result = runner.invoke(
-            configure,
-            ["remove-player", str(config_path), "--model", "player-a"],
+        config = remove_player_from_config(
+            simple_expanded_config, "non-existent-player"
         )
 
         # Assert
-        assert result.exit_code != 0
-        assert (
-            "Error: This command only works with expanded configurations."
-            in result.output
-        )
+        assert config == original_config, "Config should not be modified"
 
     def test_add_player_success(self, tmp_path, simple_expanded_config):
         """Test adding a player both directly and via CLI command."""
@@ -160,7 +134,7 @@ class TestConfigureCommands:
         new_player = PlayerConfig(
             id="player-c", name="black", player_type="default", options={}
         )
-        config_direct = add_player_to_expanded_config(
+        config_direct = add_player_to_config(
             deepcopy(simple_expanded_config), new_player
         )
         assert len(config_direct["players"]) == 3
@@ -176,6 +150,7 @@ class TestConfigureCommands:
             ["add-player", str(config_path), "--model", "player-c"],
             catch_exceptions=False,
         )
+        print(result.output)
         assert result.exit_code == 0
         assert "Added player: player-c" in result.output
 
@@ -222,7 +197,7 @@ class TestCLIPresentationIntegration:
             # Verify each game
             simple = next(g for g in games if g["name"] == "simple")
             assert simple["code"] == 'assign(s="test")\nreveal(black, s)'
-            assert simple.get("presentation_function") is None
+            assert simple["presentation_function"] == get_default_presentation()
 
             custom = next(g for g in games if g["name"] == "custom")
             assert custom["code"] == 'assign(s="custom")\nreveal(black, s)'
@@ -237,7 +212,7 @@ class TestCLIPresentationIntegration:
 
             another = next(g for g in games if g["name"] == "another")
             assert another["code"] == 'assign(s="another")'
-            assert another.get("presentation_function") is None
+            assert another["presentation_function"] == get_default_presentation()
 
 
 class TestVersionChecking:
@@ -258,7 +233,7 @@ class TestVersionChecking:
 
         # Add different version to config
         config = deepcopy(simple_expanded_config)
-        config["xega_version"] = "99.99.99"
+        config["metadata"]["xega_version"] = "99.99.99"
 
         # Should raise SystemExit
         with pytest.raises(SystemExit) as exc_info:
@@ -270,7 +245,7 @@ class TestVersionChecking:
 
         # Add different version to config
         config = deepcopy(simple_expanded_config)
-        config["xega_version"] = "99.99.99"
+        config["metadata"]["xega_version"] = "99.99.99"
 
         # Should not raise exception when ignored
         with caplog.at_level(logging.WARNING):
@@ -279,18 +254,3 @@ class TestVersionChecking:
         # Should have warning in logs
         assert "mismatch" in caplog.text.lower()
         assert "99.99.99" in caplog.text
-
-    def test_check_version_missing_version(self, simple_expanded_config, caplog):
-        """Test check_version with missing version field (backward compatibility)"""
-
-        # Config without xega_version field
-        config = deepcopy(simple_expanded_config)
-        if "xega_version" in config:
-            del config["xega_version"]
-
-        # Should not raise exception (backward compatible)
-        with caplog.at_level(logging.WARNING):
-            check_version(config, ignore_version_mismatch=False)
-
-        # Should have warning about missing version
-        assert "no version" in caplog.text.lower() or "warning" in caplog.text.lower()

@@ -9,10 +9,10 @@ from xega.common.configuration_types import (
     ExpandedXegaBenchmarkConfig,
     GameMapResults,
     GameMapRoundResult,
-    TokenUsage,
 )
 from xega.common.util import dumps
 from xega.common.version import get_xega_version, validate_version
+from xega.common.xega_event import TokenUsage
 from xega.runtime.execution import play_game
 from xega.runtime.judge import Judge
 from xega.runtime.players import make_player

@@ -5,11 +5,10 @@ from xega.common.configuration_types import (
     ExecutableGameMap,
     PlayerName,
     PlayerOptions,
-    TokenUsage,
 )
 from xega.common.util import dumps
 from xega.common.x_string import XString
-from xega.common.xega_event import XegaEvent
+from xega.common.xega_event import TokenUsage, XegaEvent
 from xega.presentation.executor import PresentationFunction
 from xega.runtime.base_player import XGP
 from xega.runtime.llm_api_client import LLMMessage, make_client

@@ -4,10 +4,9 @@ from xega.common.configuration_types import (
     ExecutableGameMap,
     PlayerName,
     PlayerOptions,
-    TokenUsage,
 )
 from xega.common.x_string import XString
-from xega.common.xega_event import XegaEvent
+from xega.common.xega_event import TokenUsage, XegaEvent
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import get_presentation_function
 

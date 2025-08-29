@@ -1,12 +1,6 @@
 from typing import Literal, TypedDict, TypeGuard
 
-from xega.common.xega_event import XegaEvent
-
-
-class TokenUsage(TypedDict):
-    input_tokens: int
-    output_tokens: int
-
+from xega.common.xega_event import TokenUsage, XegaEvent
 
 PlayerName = Literal["black", "white", "alice", "bob", "carol", "env"]
 OmniscientPlayerName = Literal["black", "white", "env"]

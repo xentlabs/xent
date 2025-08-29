@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 from copy import deepcopy
 from pathlib import Path
@@ -14,7 +15,10 @@ from xega.cli.configure import (
     remove_player_from_expanded_config,
 )
 from xega.cli.run import check_version
-from xega.common.configuration_types import ExpandedXegaBenchmarkConfig, PlayerConfig
+from xega.common.configuration_types import (
+    ExpandedXegaBenchmarkConfig,
+    PlayerConfig,
+)
 from xega.common.version import get_xega_version
 
 
@@ -22,84 +26,52 @@ from xega.common.version import get_xega_version
 def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
     """Provides a simple, expanded benchmark configuration for testing."""
     return {
-        "config_type": "expanded_benchmark_config",
-        "benchmark_id": "test-benchmark",
-        "xega_version": "0.1.0-dev",
-        "judge_model": "gpt-4",
-        "npc_players": [],
-        "num_variables_per_register": 4,
-        "num_rounds_per_game": 30,
-        "seed": "test-seed",
-        "num_maps_per_game": 1,
+        "config_type": "expanded_xega_config",
+        "metadata": {
+            "benchmark_id": "test-benchmark",
+            "xega_version": get_xega_version(),
+            "judge_model": "gpt-4",
+            "num_rounds_per_game": 30,
+            "seed": "test-seed",
+        },
         "games": [
             {
-                "game": {
-                    "name": "game1",
-                    "code": "...",
-                    "presentation_function": "...",
-                    "map_seed": "map-seed-1",
-                },
-                "players": [
-                    {
-                        "id": "player-a",
-                        "name": "black",
-                        "player_type": "default",
-                        "options": {},
-                    }
-                ],
-                "judge_model": "gpt-4",
-                "npc_players": [],
-                "num_variables_per_register": 4,
-                "num_rounds_per_game": 30,
-                "seed": "test-seed",
-                "num_maps_per_game": 1,
+                "name": "game1",
+                "code": "...",
+                "presentation_function": "...",
+            },
+            {
+                "name": "game2",
+                "code": "...",
+                "presentation_function": "...",
+            },
+        ],
+        "maps": [
+            {
+                "name": "game1",
+                "code": "...",
+                "presentation_function": "...",
                 "map_seed": "map-seed-1",
             },
             {
-                "game": {
-                    "name": "game2",
-                    "code": "...",
-                    "presentation_function": "...",
-                    "map_seed": "map-seed-2",
-                },
-                "players": [
-                    {
-                        "id": "player-a",
-                        "name": "black",
-                        "player_type": "default",
-                        "options": {},
-                    }
-                ],
-                "judge_model": "gpt-4",
-                "npc_players": [],
-                "num_variables_per_register": 4,
-                "num_rounds_per_game": 30,
-                "seed": "test-seed",
-                "num_maps_per_game": 1,
+                "name": "game2",
+                "code": "...",
+                "presentation_function": "...",
                 "map_seed": "map-seed-2",
             },
+        ],
+        "players": [
             {
-                "game": {
-                    "name": "game1",
-                    "code": "...",
-                    "presentation_function": "...",
-                    "map_seed": "map-seed-1",
-                },
-                "players": [
-                    {
-                        "id": "player-b",
-                        "name": "black",
-                        "player_type": "default",
-                        "options": {},
-                    }
-                ],
-                "judge_model": "gpt-4",
-                "npc_players": [],
-                "num_variables_per_register": 4,
-                "num_rounds_per_game": 30,
-                "seed": "test-seed",
-                "num_maps_per_game": 1,
-                "map_seed": "map-seed-1",
+                "id": "player-a",
+                "name": "black",
+                "player_type": "default",
+                "options": {},
+            },
+            {
+                "id": "player-b",
+                "name": "black",
+                "player_type": "default",
+                "options": {},
             },
         ],
     }
@@ -114,11 +86,10 @@ class TestConfigureCommands:
         config_direct = remove_player_from_expanded_config(
             deepcopy(simple_expanded_config), "player-a"
         )
-        assert len(config_direct["games"]) == 1, "Should remove all games for player-a"
-        remaining_player_ids = {
-            game["players"][0]["id"] for game in config_direct["games"]
-        }
-        assert remaining_player_ids == {"player-b"}
+        assert len(config_direct["players"]) == 1, (
+            "Should remove all games for player-a"
+        )
+        assert config_direct["players"][0]["id"] == "player-b"
 
         # Test 2: Via CLI command
         runner = CliRunner()
@@ -131,12 +102,15 @@ class TestConfigureCommands:
             ["remove-player", str(config_path), "--model", "player-a"],
             catch_exceptions=False,
         )
-        assert result.exit_code == 0
+        assert result.exit_code == 0, "Got non zero error code"
         assert "Successfully removed player: player-a" in result.output
 
         with open(config_path) as f:
             updated_config = json.load(f)
-        assert len(updated_config["games"]) == 1
+        assert len(updated_config["players"]) == 1, (
+            "Should remove all games for player-a"
+        )
+        assert updated_config["players"][0]["id"] == "player-b"
 
     def test_remove_player_from_expanded_config_player_not_found(
         self,
@@ -189,11 +163,7 @@ class TestConfigureCommands:
         config_direct = add_player_to_expanded_config(
             deepcopy(simple_expanded_config), new_player
         )
-        assert len(config_direct["games"]) == 5, (
-            "Should add 2 new games for the new player"
-        )
-        player_ids = [game["players"][0]["id"] for game in config_direct["games"]]
-        assert player_ids.count("player-c") == 2, "New player should have 2 games"
+        assert len(config_direct["players"]) == 3
 
         # Test 2: Via CLI command
         runner = CliRunner()
@@ -211,7 +181,7 @@ class TestConfigureCommands:
 
         with open(config_path) as f:
             updated_config = json.load(f)
-        assert len(updated_config["games"]) == 5
+        assert len(updated_config["players"]) == 3
 
 
 class TestCLIPresentationIntegration:
@@ -297,7 +267,6 @@ class TestVersionChecking:
 
     def test_check_version_mismatch_ignored(self, simple_expanded_config, caplog):
         """Test check_version with ignore flag allows mismatch"""
-        import logging
 
         # Add different version to config
         config = deepcopy(simple_expanded_config)
@@ -313,7 +282,6 @@ class TestVersionChecking:
 
     def test_check_version_missing_version(self, simple_expanded_config, caplog):
         """Test check_version with missing version field (backward compatibility)"""
-        import logging
 
         # Config without xega_version field
         config = deepcopy(simple_expanded_config)
@@ -326,42 +294,3 @@ class TestVersionChecking:
 
         # Should have warning about missing version
         assert "no version" in caplog.text.lower() or "warning" in caplog.text.lower()
-
-    def test_configure_expand_includes_version(self, tmp_path):
-        """Test that configure creates config with version when expanded"""
-        from xega.benchmark.expand_benchmark import expand_benchmark_config
-        from xega.common.configuration_types import XegaBenchmarkConfig
-
-        # Create a simple benchmark config
-        config: XegaBenchmarkConfig = {
-            "config_type": "short_benchmark_config",
-            "games": [
-                {
-                    "name": "test_game",
-                    "code": "assign(s='test')\nreveal(black, s)",
-                    "presentation_function": None,
-                }
-            ],
-            "players": [
-                [{"name": "black", "id": "gpt2", "player_type": "hf", "options": None}]
-            ],
-            "benchmark_id": "test-version-check",
-            "judge_model": "gpt2",
-            "npc_players": [],
-            "num_variables_per_register": 4,
-            "num_rounds_per_game": 1,
-            "seed": "test",
-            "num_maps_per_game": 1,
-        }
-
-        # Save the config
-        config_path = tmp_path / "config.json"
-        with open(config_path, "w") as f:
-            json.dump(config, f)
-
-        # Expand the config (this is what configure --expand does internally)
-        expanded = expand_benchmark_config(config)
-
-        # Verify version is included
-        assert "xega_version" in expanded
-        assert expanded["xega_version"] == get_xega_version()

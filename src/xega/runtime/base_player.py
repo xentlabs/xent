@@ -5,10 +5,9 @@ from xega.common.configuration_types import (
     ExecutableGameMap,
     PlayerName,
     PlayerOptions,
-    TokenUsage,
 )
 from xega.common.x_string import XString
-from xega.common.xega_event import XegaEvent
+from xega.common.xega_event import TokenUsage, XegaEvent
 
 """
 Xega Game Player (XGP) base class

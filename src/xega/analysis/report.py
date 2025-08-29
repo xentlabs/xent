@@ -6,10 +6,9 @@ from collections import defaultdict
 from datetime import datetime
 
 from xega.common.configuration_types import (
-    PlayerName,
-    XegaBenchmarkResult,
-    XegaGameIterationResult,
-    XegaGameResult,
+    BenchmarkResult,
+    GameMapResults,
+    GameMapRoundResult,
 )
 from xega.common.util import dumps, loads
 
@@ -26,7 +25,7 @@ def get_file_extension(image_path: str) -> str:
     return os.path.splitext(image_path)[1][1:]
 
 
-def calculate_arms(game_results: list[XegaGameIterationResult]) -> list[float]:
+def calculate_arms(game_results: list[GameMapRoundResult]) -> list[float]:
     """
     Calculate Average Running Max Score (ARMS) for a set of game iterations.
     Returns a list of ARMS values, one for each iteration.
@@ -39,7 +38,7 @@ def calculate_arms(game_results: list[XegaGameIterationResult]) -> list[float]:
 
     for _i, iteration_result in enumerate(game_results):
         # Get the score for the black player (or adjust as needed)
-        score = iteration_result["scores"].get("black", 0)
+        score = iteration_result["score"]
         running_max = max(running_max, score)
 
         # Calculate average of all running maxes up to this point
@@ -51,56 +50,46 @@ def calculate_arms(game_results: list[XegaGameIterationResult]) -> list[float]:
 
 
 def group_results_by_game_and_seed(
-    game_results: list[XegaGameResult],
-) -> dict[str, dict[str, list[XegaGameResult]]]:
+    game_results: list[GameMapResults],
+) -> dict[str, dict[str, list[GameMapResults]]]:
     """
     Group game results by game name and map seed.
     Returns: {game_name: {map_seed: [results]}}
     """
-    grouped: dict[str, dict[str, list[XegaGameResult]]] = defaultdict(
+    grouped: dict[str, dict[str, list[GameMapResults]]] = defaultdict(
         lambda: defaultdict(list)
     )
 
     for result in game_results:
-        game_name = result["game"]["game"]["name"]
-        map_seed = result["game"]["map_seed"]
+        game_name = result["game_map"]["name"]
+        map_seed = result["game_map"]["map_seed"]
         grouped[game_name][map_seed].append(result)
 
     return grouped
 
 
 def calculate_average_scores_across_seeds(
-    results_by_seed: dict[str, list[XegaGameResult]],
+    results_by_seed: dict[str, list[GameMapResults]],
 ) -> dict[str, float]:
     """
     Calculate average scores across all map seeds for each player.
     Returns: {map_seed: {player_name: score}}
     """
-    all_scores: dict[str, dict[PlayerName, list[float]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
+    all_scores: dict[str, list[float]] = defaultdict(list)
 
     for _map_seed, results in results_by_seed.items():
         for result in results:
-            for player_name, score in result["scores"].items():
-                player_id = None
-                for player in result["game"]["players"]:
-                    if player["name"] == player_name:
-                        player_id = player["id"]
-                        break
-
-                if player_id:
-                    all_scores[player_id][player_name].append(score)
+            player_id = result["player"]["id"]
+            all_scores[player_id].append(result["score"])
 
     # Calculate averages
     average_scores = {}
     for player_id, player_scores in all_scores.items():
         avg_score = 0.0
         count = 0
-        for scores in player_scores.values():
-            if scores:
-                avg_score += sum(scores) / len(scores)
-                count += 1
+        for score in player_scores:
+            avg_score += score
+            count += 1
 
         if count > 0:
             average_scores[player_id] = avg_score / count
@@ -111,11 +100,11 @@ def calculate_average_scores_across_seeds(
 
 
 def generate_markdown_report(
-    benchmark_result: XegaBenchmarkResult,
+    benchmark_result: BenchmarkResult,
     results_dir: str,
     output_file_name: str = "report.md",
 ) -> None:
-    benchmark_id = benchmark_result["config"]["benchmark_id"]
+    benchmark_id = benchmark_result["expanded_config"]["metadata"]["benchmark_id"]
     summary_image = f"benchmark_{benchmark_id}_normalized_score_summary.png"
     summary_image_path = os.path.join(results_dir, summary_image)
 
@@ -151,7 +140,7 @@ def generate_markdown_report(
     markdown_content.append("")
 
     # Group results by game and map seed
-    grouped_results = group_results_by_game_and_seed(benchmark_result["game_results"])
+    grouped_results = group_results_by_game_and_seed(benchmark_result["results"])
 
     # Extract player IDs and game configurations
     player_ids = set()
@@ -163,11 +152,10 @@ def generate_markdown_report(
 
         for results in seed_results.values():
             if results:
-                game_config = results[0]["game"]
+                game_config = results[0]["game_map"]
                 game_configs[game_name] = game_config
 
-                for player in game_config["players"]:
-                    player_ids.add(player["id"])
+                player_ids.add(results[0]["player"]["id"])
 
     sorted_player_ids = sorted(list(player_ids))
 
@@ -219,7 +207,7 @@ def generate_markdown_report(
         # Game Code
         markdown_content.append("#### Game Code\n")
         markdown_content.append("```python")
-        markdown_content.append(game_config["game"]["code"])
+        markdown_content.append(game_config["code"])
         markdown_content.append("```\n")
 
         # Game Configuration
@@ -321,20 +309,10 @@ def generate_markdown_report(
             for player_id in sorted_player_ids:
                 found = False
                 for result in seed_result_list:
-                    for player in result["game"]["players"]:
-                        if player["id"] == player_id:
-                            score = result["scores"].get("black")
-                            if score is not None:
-                                markdown_content.append(
-                                    f"| {player_id} | {score:.4f} |"
-                                )
-                            else:
-                                markdown_content.append(
-                                    f"| {player_id} | N/A (no black) |"
-                                )
-                            found = True
-                            break
-                    if found:
+                    player = result["player"]
+                    if player["id"] == player_id:
+                        score = result["score"]
+                        markdown_content.append(f"| {player_id} | {score:.4f} |")
                         break
 
                 if not found:

@@ -7,7 +7,7 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import numpy as np
 
-from xega.common.configuration_types import XegaBenchmarkResult, XegaGameResult
+from xega.common.configuration_types import BenchmarkResult, GameMapResults
 
 
 def sanitize_filename(filename: str) -> str:
@@ -20,26 +20,26 @@ def sanitize_filename(filename: str) -> str:
 
 
 def group_results_by_game_and_seed(
-    benchmark_result: XegaBenchmarkResult,
-) -> dict[str, dict[str, list[XegaGameResult]]]:
+    benchmark_result: BenchmarkResult,
+) -> dict[str, dict[str, list[GameMapResults]]]:
     """
     Group game results by game name and map seed.
     Returns: {game_name: {map_seed: [results]}}
     """
-    grouped: dict[str, dict[str, list[XegaGameResult]]] = defaultdict(
+    grouped: dict[str, dict[str, list[GameMapResults]]] = defaultdict(
         lambda: defaultdict(list)
     )
 
-    for result in benchmark_result["game_results"]:
-        game_name = result["game"]["game"]["name"]
-        map_seed = result["game"]["map_seed"]
+    for result in benchmark_result["results"]:
+        game_name = result["game_map"]["name"]
+        map_seed = result["game_map"]["map_seed"]
         grouped[game_name][map_seed].append(result)
 
     return grouped
 
 
 def calculate_arms_values(
-    results_by_seed: dict[str, list[XegaGameResult]], player_id: str
+    results_by_seed: dict[str, list[GameMapResults]], player_id: str
 ) -> list[float]:
     """
     Calculate Average Running Max Score (ARMS) for a specific player across all map seeds.
@@ -53,19 +53,19 @@ def calculate_arms_values(
         # Find results for this player
         player_results = None
         for result in seed_results:
-            if result["game"]["players"][0]["id"] == player_id:
+            if result["player"]["id"] == player_id:
                 player_results = result
                 break
 
-        if player_results is None or not player_results["game_results"]:
+        if player_results is None or not player_results["round_results"]:
             continue
 
         # Calculate running max for this seed
         running_max = float("-inf")
         seed_maxes = []
 
-        for iteration_result in player_results["game_results"]:
-            score = iteration_result["scores"].get("black", 0)
+        for iteration_result in player_results["round_results"]:
+            score = iteration_result["score"]
             running_max = max(running_max, score)
             seed_maxes.append(running_max)
 
@@ -89,7 +89,7 @@ def calculate_arms_values(
     return arms_values
 
 
-def generate_per_seed_plots(benchmark_result: XegaBenchmarkResult, output_dir: str):
+def generate_per_seed_plots(benchmark_result: BenchmarkResult, output_dir: str):
     """Generate score vs iteration plots for each game+seed combination."""
     logging.info(f"Generating per-seed plots in directory: {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
@@ -105,12 +105,11 @@ def generate_per_seed_plots(benchmark_result: XegaBenchmarkResult, output_dir: s
 
             plot_has_data = False
             for single_player_results in results_list:
-                player_config = single_player_results["game"]["players"][0]
+                player_config = single_player_results["player"]
                 player_id = player_config["id"]
 
                 iteration_scores = [
-                    res["scores"]["black"]
-                    for res in single_player_results["game_results"]
+                    res["score"] for res in single_player_results["round_results"]
                 ]
 
                 if not iteration_scores:
@@ -163,7 +162,7 @@ def generate_per_seed_plots(benchmark_result: XegaBenchmarkResult, output_dir: s
             plt.close(fig)
 
 
-def generate_aggregated_plots(benchmark_result: XegaBenchmarkResult, output_dir: str):
+def generate_aggregated_plots(benchmark_result: BenchmarkResult, output_dir: str):
     """Generate averaged score vs iteration plots across all seeds for each game."""
     logging.info(f"Generating aggregated plots in directory: {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
@@ -178,7 +177,7 @@ def generate_aggregated_plots(benchmark_result: XegaBenchmarkResult, output_dir:
         player_ids = set()
         for seed_data in seed_results.values():
             for result in seed_data:
-                player_ids.add(result["game"]["players"][0]["id"])
+                player_ids.add(result["player"]["id"])
 
         plot_has_data = False
         for player_id in sorted(player_ids):
@@ -188,9 +187,9 @@ def generate_aggregated_plots(benchmark_result: XegaBenchmarkResult, output_dir:
 
             for seed_data in seed_results.values():
                 for result in seed_data:
-                    if result["game"]["players"][0]["id"] == player_id:
+                    if result["player"]["id"] == player_id:
                         iteration_scores = [
-                            res["scores"]["black"] for res in result["game_results"]
+                            res["score"] for res in result["round_results"]
                         ]
                         all_iteration_scores.append(iteration_scores)
                         max_iterations = max(max_iterations, len(iteration_scores))
@@ -251,7 +250,7 @@ def generate_aggregated_plots(benchmark_result: XegaBenchmarkResult, output_dir:
         plt.close(fig)
 
 
-def generate_arms_plots(benchmark_result: XegaBenchmarkResult, output_dir: str):
+def generate_arms_plots(benchmark_result: BenchmarkResult, output_dir: str):
     """Generate ARMS (Average Running Max Score) plots for each game."""
     logging.info(f"Generating ARMS plots in directory: {output_dir}")
     os.makedirs(output_dir, exist_ok=True)
@@ -266,7 +265,7 @@ def generate_arms_plots(benchmark_result: XegaBenchmarkResult, output_dir: str):
         player_ids = set()
         for seed_data in seed_results.values():
             for result in seed_data:
-                player_ids.add(result["game"]["players"][0]["id"])
+                player_ids.add(result["player"]["id"])
 
         plot_has_data = False
         for player_id in sorted(player_ids):
@@ -312,7 +311,7 @@ def generate_arms_plots(benchmark_result: XegaBenchmarkResult, output_dir: str):
 
 
 def generate_normalized_score_summary_chart(
-    benchmark_result: XegaBenchmarkResult, output_dir: str
+    benchmark_result: BenchmarkResult, output_dir: str
 ):
     """Generate summary chart with scores averaged across map seeds."""
     logging.info(f"Generating summary chart in directory: {output_dir}")
@@ -325,12 +324,12 @@ def generate_normalized_score_summary_chart(
     all_player_ids = set()
 
     # Collect all scores grouped by game and player
-    for game_res in benchmark_result["game_results"]:
-        if game_res["game_results"] is None or not game_res["game_results"]:
+    for game_res in benchmark_result["results"]:
+        if game_res["round_results"] is None or not game_res["round_results"]:
             continue
-        game_name = game_res["game"]["game"]["name"]
-        player_config = game_res["game"]["players"][0]
-        normalized_score = game_res["scores"]["black"]
+        game_name = game_res["game_map"]["name"]
+        player_config = game_res["player"]
+        normalized_score = game_res["score"]
 
         player_id = player_config["id"]
         all_game_names.add(game_name)
@@ -374,7 +373,7 @@ def generate_normalized_score_summary_chart(
 
     ax.set_ylabel("Average Normalized Score")
     ax.set_title(
-        f"Average Normalized Score by Game and Player (Benchmark: {benchmark_result['config']['benchmark_id']})"
+        f"Average Normalized Score by Game and Player (Benchmark: {benchmark_result['expanded_config']['metadata']['benchmark_id']})"
     )
     ax.set_xticks(x)
     ax.set_xticklabels(ordered_game_names)
@@ -386,7 +385,7 @@ def generate_normalized_score_summary_chart(
 
     fig.tight_layout(rect=(0.0, 0.0, 0.9, 1.0))
 
-    output_filename = f"benchmark_{benchmark_result['config']['benchmark_id']}_normalized_score_summary.png"
+    output_filename = f"benchmark_{benchmark_result['expanded_config']['metadata']['benchmark_id']}_normalized_score_summary.png"
     output_path = os.path.join(output_dir, output_filename)
 
     try:
@@ -398,9 +397,7 @@ def generate_normalized_score_summary_chart(
     plt.close(fig)
 
 
-def generate_score_iteration_plots(
-    benchmark_result: XegaBenchmarkResult, output_dir: str
-):
+def generate_score_iteration_plots(benchmark_result: BenchmarkResult, output_dir: str):
     """
     Legacy function maintained for compatibility.
     Generates all types of plots: per-seed, aggregated, and ARMS.
@@ -410,7 +407,7 @@ def generate_score_iteration_plots(
     generate_arms_plots(benchmark_result, output_dir)
 
 
-def load_benchmark_result_from_json(file_path: str) -> XegaBenchmarkResult:
+def load_benchmark_result_from_json(file_path: str) -> BenchmarkResult:
     try:
         with open(file_path, encoding="utf-8") as f:
             data = json.load(f)

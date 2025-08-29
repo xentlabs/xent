@@ -6,10 +6,10 @@ from xega.analysis.plot import (
     generate_score_iteration_plots,
 )
 from xega.analysis.report import generate_markdown_report, generate_pdf
-from xega.common.configuration_types import XegaBenchmarkResult
+from xega.common.configuration_types import BenchmarkResult
 
 
-def extract_results_from_dir(results_dir: str) -> XegaBenchmarkResult:
+def extract_results_from_dir(results_dir: str) -> BenchmarkResult:
     benchmark_files = [
         f
         for f in os.listdir(results_dir)
@@ -24,13 +24,13 @@ def extract_results_from_dir(results_dir: str) -> XegaBenchmarkResult:
     benchmark_file = benchmark_files[0]  # Take the first one if multiple exist
 
     with open(os.path.join(results_dir, benchmark_file)) as f:
-        benchmark_result: XegaBenchmarkResult = json.load(f)
+        benchmark_result: BenchmarkResult = json.load(f)
 
     return benchmark_result
 
 
 def analyze(
-    benchmark_result: XegaBenchmarkResult, results_dir: str, make_pdf: bool = False
+    benchmark_result: BenchmarkResult, results_dir: str, make_pdf: bool = False
 ) -> None:
     generate_score_iteration_plots(benchmark_result, results_dir)
     generate_normalized_score_summary_chart(benchmark_result, results_dir)

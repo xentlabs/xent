@@ -1,9 +1,13 @@
 # Event types
 from typing import Literal, TypedDict
 
-from xega.common.configuration_types import TokenUsage
 from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
+
+
+class TokenUsage(TypedDict):
+    input_tokens: int
+    output_tokens: int
 
 
 class BaseXegaEvent(TypedDict):

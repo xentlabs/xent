@@ -4,7 +4,6 @@ from typing import Any
 
 from xega.common.configuration_types import (
     GameMapRoundResult,
-    TokenUsage,
     is_omniscient_player_name,
 )
 from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
@@ -17,6 +16,7 @@ from xega.common.xega_event import (
     FailedEnsureEvent,
     RevealEvent,
     RewardEvent,
+    TokenUsage,
     XegaEvent,
 )
 from xega.runtime.base_player import XGP

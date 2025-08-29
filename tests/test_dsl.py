@@ -160,7 +160,7 @@ class TestAssignInstruction:
         assert len(game_results) == 1
 
         # Check that the assignments worked by looking at the reveal
-        player_history = xrt.players[0].event_history
+        player_history = xrt.player.event_history
         assert any("hello world" in str(h) for h in player_history)
 
 
@@ -180,7 +180,7 @@ class TestRevealInstruction:
         await eval_line("assign(s='message for black')", 1, xrt)
         await eval_line("reveal(black, s)", 2, xrt)
 
-        player = xrt.players[0]
+        player = xrt.player
         assert len(player.event_history) == 1
         assert "message for black" in str(player.event_history[0])
 
@@ -190,7 +190,7 @@ class TestRevealInstruction:
         await eval_line("assign(s1='first', s2='second', s3='third')", 1, xrt)
         await eval_line("reveal(black, s1, s2, s3)", 2, xrt)
 
-        player = xrt.players[0]
+        player = xrt.player
         assert len(player.event_history) == 1
         # All values should be in the reveal
         assert "first" in str(player.event_history[0])
@@ -198,33 +198,12 @@ class TestRevealInstruction:
         assert "third" in str(player.event_history[0])
 
     @pytest.mark.asyncio
-    async def test_reveal_to_different_players(self, xrt_multi_player):
-        """Test revealing to different players."""
-        xrt = xrt_multi_player
-        await eval_line("assign(s='shared message')", 1, xrt)
-
-        # Reveal to alice
-        await eval_line("reveal(alice, s)", 2, xrt)
-        alice = xrt.players[0]
-        assert len(alice.event_history) == 1
-        assert "shared message" in str(alice.event_history[0])
-
-        # Bob should not have received it
-        bob = xrt.players[1]
-        assert len(bob.event_history) == 0
-
-        # Now reveal to bob
-        await eval_line("reveal(bob, s)", 3, xrt)
-        assert len(bob.event_history) == 1
-        assert "shared message" in str(bob.event_history[0])
-
-    @pytest.mark.asyncio
     async def test_reveal_empty_string(self, xrt):
         """Test revealing empty strings."""
         await eval_line("assign(s='')", 1, xrt)
         await eval_line("reveal(black, s)", 2, xrt)
 
-        player = xrt.players[0]
+        player = xrt.player
         assert len(player.event_history) == 1
         # The reveal should still happen even with empty string
 
@@ -234,7 +213,7 @@ class TestRevealInstruction:
         await eval_line("assign(s1='hello', s2='world')", 1, xrt)
         await eval_line("reveal(black, s1 + ' ' + s2)", 2, xrt)
 
-        player = xrt.players[0]
+        player = xrt.player
         assert len(player.event_history) == 1
         assert "hello world" in str(player.event_history[0])
 
@@ -321,35 +300,6 @@ class TestElicitInstruction:
         with pytest.raises(XegaSyntaxError):
             await eval_line("elicit(var=s, limit=10)", 1, xrt)
 
-    @pytest.mark.asyncio
-    async def test_elicit_updates_last_elicit_player(self, xrt):
-        """Test that elicit updates the last_elicit_player in runtime."""
-        # Initially should be None
-        assert xrt.last_elicit_player is None
-
-        await eval_line("elicit(s, 10)", 1, xrt)
-
-        # Should now point to the player
-        assert xrt.last_elicit_player is not None
-        assert xrt.last_elicit_player.name == "black"
-
-    @pytest.mark.asyncio
-    async def test_elicit_from_different_players(self, xrt_multi_player):
-        """Test eliciting from different players in a multi-player game."""
-        xrt = xrt_multi_player
-
-        # Elicit from alice
-        await eval_line("elicit(alice, s1, 10)", 1, xrt)
-        assert xrt.last_elicit_player.name == "alice"
-
-        # Elicit from bob
-        await eval_line("elicit(bob, s2, 10)", 2, xrt)
-        assert xrt.last_elicit_player.name == "bob"
-
-        # Both variables should be set
-        assert "s1" in xrt.local_vars
-        assert "s2" in xrt.local_vars
-
 
 class TestRewardInstruction:
     """Test the reward instruction functionality."""
@@ -357,7 +307,7 @@ class TestRewardInstruction:
     @pytest.mark.asyncio
     async def test_reward_values_comprehensive(self, xrt):
         """Comprehensive test for reward with various value types."""
-        player = xrt.players[0]
+        player = xrt.player
 
         # Part 1: Test basic positive xent reward
         initial_score = player.get_score()
@@ -384,7 +334,7 @@ class TestRewardInstruction:
     @pytest.mark.asyncio
     async def test_reward_xent_expression(self, xrt):
         """Test reward with cross-entropy expression."""
-        player = xrt.players[0]
+        player = xrt.player
         initial_score = player.get_score()
 
         await eval_line(
@@ -398,59 +348,6 @@ class TestRewardInstruction:
         assert final_score > initial_score
 
     @pytest.mark.asyncio
-    async def test_reward_zero_sum_players(self, xrt_zero_sum):
-        """Test that reward to zero-sum players affects both."""
-        xrt = xrt_zero_sum
-        black = xrt.players[0]
-        white = xrt.players[1]
-
-        black_initial = black.get_score()
-        white_initial = white.get_score()
-
-        # Reward black
-        await eval_line("reward(black, xent('hello world'))", 1, xrt)
-
-        # Black should gain, white should lose
-        assert black.get_score() > black_initial
-        assert white.get_score() < white_initial
-
-        # Reward white
-        await eval_line(
-            "reward(white, xent('hello world this is a longer string and xent will be more'))",
-            2,
-            xrt,
-        )
-
-        # White should gain, black should lose
-        assert white.get_score() > white_initial
-        assert black.get_score() < black_initial
-
-    @pytest.mark.asyncio
-    async def test_reward_non_zero_sum_players(self, xrt_multi_player):
-        """Test that reward to non-zero-sum players only affects the target."""
-        xrt = xrt_multi_player
-        alice = xrt.players[0]
-        bob = xrt.players[1]
-
-        alice_initial = alice.get_score()
-        bob_initial = bob.get_score()
-
-        # Reward alice
-        await eval_line("reward(alice, xent('hello world'))", 1, xrt)
-
-        # Only alice should be affected
-        alice_temp = alice.get_score()
-        assert alice_temp > alice_initial
-        assert bob.get_score() == bob_initial
-
-        # Reward bob
-        await eval_line("reward(bob, xent('hello world'))", 2, xrt)
-
-        # Only bob should be affected
-        assert bob.get_score() > bob_initial
-        assert alice.get_score() == alice_temp
-
-    @pytest.mark.asyncio
     async def test_reward_only_positional_args(self, xrt):
         """Test that reward only accepts positional arguments."""
         with pytest.raises(XegaSyntaxError):
@@ -460,7 +357,7 @@ class TestRewardInstruction:
     async def test_reward_xed_function(self, xrt):
         """Test reward with xed function."""
         await eval_line("assign(s='hello world')", 1, xrt)
-        player = xrt.players[0]
+        player = xrt.player
         initial_score = player.get_score()
 
         # xed(s1 | s2) = xent(s1) - xent(s1 | s2)
@@ -485,7 +382,7 @@ class TestRewardInstruction:
         assert len(game_results) == 1
 
         # Player should have received some reward
-        assert game_results[0]["scores"]["black"] != start_score
+        assert game_results[0]["score"] != start_score
 
     @pytest.mark.asyncio
     async def test_reward_history(self, xrt):
@@ -498,12 +395,6 @@ class TestRewardInstruction:
 
 class TestEnsureInstruction:
     """Test the ensure instruction functionality."""
-
-    @pytest.mark.asyncio
-    async def test_ensure_before_elicit(self, xrt):
-        """Test ensure before elicit throws"""
-        with pytest.raises(XegaSyntaxError):
-            await eval_line("ensure(1 == 1)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_ensure_true_condition(self, xrt):
@@ -706,7 +597,7 @@ class TestBeaconReplayInstructions:
         results = await play_game(game_code, xrt, num_rounds=1)
         assert len(results) == 1
         reward_count = 0
-        for event in results[0]["xrt_history"]:
+        for event in results[0]["history"]:
             if event["type"] == "reward":
                 reward_count += 1
 
@@ -742,7 +633,7 @@ class TestBeaconReplayInstructions:
         await play_game(game_code, xrt, num_rounds=1)
 
         # Check history to see execution pattern
-        player = xrt.players[0]
+        player = xrt.player
         loop_count = sum(1 for h in player.event_history if "loop" in str(h))
         inner_count = sum(1 for h in player.event_history if "inner" in str(h))
 
@@ -764,7 +655,7 @@ class TestBeaconReplayInstructions:
         results = await play_game(game_code, xrt, num_rounds=1)
 
         # Confirms the inner loop is executed more than the outer loop
-        assert results[0]["scores"]["black"] < 0
+        assert results[0]["score"] < 0
 
     @pytest.mark.asyncio
     async def test_multi_round(self, xrt):
@@ -782,7 +673,7 @@ class TestBeaconReplayInstructions:
 
         # Each iteration should give the same reward
         for result in game_results:
-            assert result["scores"]["black"] > 0
+            assert result["score"] > 0
 
 
 class TestDSLFunctions:
@@ -1113,36 +1004,11 @@ class TestCombinedOperations:
 
         await play_game(game_code, xrt, num_rounds=1)
 
-        player = xrt.players[0]
+        player = xrt.player
         # Should have received two reveals + elicit + elicit response
         assert len(player.event_history) == 4
         assert "Please enter a word" in str(player.event_history[0])
         assert "mocked_move" in str(player.event_history[3])
-
-    @pytest.mark.asyncio
-    async def test_multi_player_reveal_elicit(self, xrt_multi_player):
-        """Test reveal and elicit in a multi-player context."""
-        xrt = xrt_multi_player
-        game_code = """
-        assign(s='secret for alice')
-        reveal(alice, s)
-        elicit(alice, s1, 10)
-        reveal(bob, s1)
-        """
-
-        await play_game(game_code, xrt, num_rounds=1)
-
-        alice = xrt.players[0]
-        bob = xrt.players[1]
-
-        # Alice should have received the secret
-        assert any("secret for alice" in str(h) for h in alice.event_history)
-
-        # Bob should have received alice's response
-        assert any("mocked_move" in str(h) for h in bob.event_history)
-
-        # Bob should NOT have received the original secret
-        assert not any("secret for alice" in str(h) for h in bob.event_history)
 
     @pytest.mark.asyncio
     async def test_elicit_registers(self, xrt):
@@ -1155,7 +1021,7 @@ class TestCombinedOperations:
         await eval_line("assign(t3='test6')", 1, xrt)
         await eval_line("elicit(s, 10)", 1, xrt)
 
-        player = xrt.players[0]
+        player = xrt.player
         assert player.event_history[-1]["type"] == "elicit_response"
         assert player.event_history[-2]["type"] == "elicit_request"
         event = player.event_history[-2]

@@ -18,6 +18,8 @@ from xega.common.configuration_types import (
 )
 from xega.common.util import log_git_snapshot
 from xega.common.version import get_xega_version, validate_version
+from xega.storage.directory_storage import DirectoryStorage
+from xega.storage.storage_interface import Storage
 
 DEFAULT_XEGA_METADATA = XegaMetadata(
     benchmark_id="",
@@ -118,19 +120,15 @@ def run(
 
     check_version(benchmark_config, ignore_version_mismatch)
 
-    results_dir = os.path.join(
+    storage: Storage = DirectoryStorage(
         results_dir, benchmark_config["metadata"]["benchmark_id"]
     )
-    if clean and os.path.exists(results_dir):
-        logging.info(f"Cleaning results directory: {results_dir}")
-        for root, dirs, files in os.walk(results_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
 
-    os.makedirs(results_dir, exist_ok=True)
+    asyncio.run(storage.initialize())
+    if clean:
+        asyncio.run(storage.clear())
 
+    # TODO how to handle this with storage?
     log_file_path = os.path.join(results_dir, "log.txt")
     file_handler = logging.FileHandler(log_file_path)
 
@@ -146,7 +144,7 @@ def run(
     log_git_snapshot()
 
     benchmark_result = asyncio.run(
-        run_benchmark(benchmark_config, results_dir, parallel_games)
+        run_benchmark(benchmark_config, storage, parallel_games)
     )
     if not dont_analyze:
         logging.info("Performing analysis on benchmark results")

@@ -15,6 +15,14 @@ class Storage(ABC):
         self.benchmark_id = benchmark_id
 
     @abstractmethod
+    async def initialize(self):
+        pass
+
+    @abstractmethod
+    async def clear(self):
+        pass
+
+    @abstractmethod
     async def get_config(self) -> ExpandedXegaBenchmarkConfig | None:
         pass
 

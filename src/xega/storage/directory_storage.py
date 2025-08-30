@@ -17,8 +17,17 @@ class DirectoryStorage(Storage):
         super().__init__(benchmark_id)
         self.storage_dir = storage_dir
         self.results_dir = os.path.join(self.storage_dir, self.benchmark_id)
-        # Ensure results_dir exists - should this only happen on write?
+
+    async def initialize(self):
         os.makedirs(self.results_dir, exist_ok=True)
+
+    async def clear(self):
+        logging.info(f"Cleaning results directory: {self.results_dir}")
+        for root, dirs, files in os.walk(self.results_dir, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     async def get_config(self) -> ExpandedXegaBenchmarkConfig | None:
         config_path = os.path.join(self.results_dir, "benchmark_config.json")

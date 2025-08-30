@@ -10,7 +10,7 @@ from xega.common.configuration_types import (
     GameMapResults,
     GameMapRoundResult,
 )
-from xega.common.util import dumps
+from xega.common.util import dumps, generate_executable_game_maps
 from xega.common.version import get_xega_version, validate_version
 from xega.common.xega_event import TokenUsage
 from xega.runtime.execution import play_game
@@ -237,17 +237,3 @@ async def run_benchmark(
     logging.info(f"Benchmark ({benchmark_id}) completed")
     print(f"Benchmark ({benchmark_id}) completed")
     return benchmark_result
-
-
-def generate_executable_game_maps(
-    config: ExpandedXegaBenchmarkConfig,
-) -> list[ExecutableGameMap]:
-    game_maps: list[ExecutableGameMap] = []
-    for map in config["maps"]:
-        for player in config["players"]:
-            game_maps.append(
-                ExecutableGameMap(
-                    game_map=map, metadata=config["metadata"], player=player
-                )
-            )
-    return game_maps

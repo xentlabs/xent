@@ -1,24 +1,23 @@
 import logging
 import re
-from copy import deepcopy
 from typing import Any
 
-from xega.common.constants import ZERO_SUM_PLAYER_PAIRS
+from xega.common.configuration_types import (
+    GameMapRoundResult,
+    is_omniscient_player_name,
+)
 from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
 from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.x_flag import XFlag
 from xega.common.x_string import XString
-from xega.common.xega_types import (
+from xega.common.xega_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
-    PlayerName,
     RevealEvent,
     RewardEvent,
     TokenUsage,
     XegaEvent,
-    XegaGameIterationResult,
-    is_omniscient_player_name,
 )
 from xega.runtime.base_player import XGP
 
@@ -30,27 +29,20 @@ MAX_ENSURE_FAILURES = 100
 
 
 class XegaRuntime:
-    def __init__(
-        self, players: list[XGP], locals: dict[str, Any], globals: dict[str, Any]
-    ):
+    def __init__(self, player: XGP, locals: dict[str, Any], globals: dict[str, Any]):
         self.local_vars = locals
-        self.players = players
-        self.scores: dict[PlayerName, float] = {player.name: 0.0 for player in players}
-        self.token_usage: dict[PlayerName, TokenUsage] = {
-            player.name: {"input_tokens": 0, "output_tokens": 0} for player in players
-        }
+        self.player = player
+        self.score = 0.0
+        self.token_usage: TokenUsage = {"input_tokens": 0, "output_tokens": 0}
         self.globals = globals
         self.beacons: dict[str, XFlag] = {}
         self.history: list[XegaEvent] = []
         # Map from line number to the number of times the replay has been called since reset
         self.replay_counters: dict[int, int] = {}
-        self.last_elicit_player: XGP | None = None
 
-    def add_token_usage(self, player_name: PlayerName, token_usage: TokenUsage) -> None:
-        if player_name not in self.token_usage:
-            self.token_usage[player_name] = {"input_tokens": 0, "output_tokens": 0}
-        self.token_usage[player_name]["input_tokens"] += token_usage["input_tokens"]
-        self.token_usage[player_name]["output_tokens"] += token_usage["output_tokens"]
+    def add_token_usage(self, token_usage: TokenUsage) -> None:
+        self.token_usage["input_tokens"] += token_usage["input_tokens"]
+        self.token_usage["output_tokens"] += token_usage["output_tokens"]
 
     def instruction_names(self) -> set[str]:
         return {"assign", "elicit", "reveal", "reward", "ensure", "beacon", "replay"}
@@ -64,19 +56,19 @@ class XegaRuntime:
                 "", static=var.static, public=var.public, name=var.name
             )
 
-    def get_results_and_reset(self) -> XegaGameIterationResult:
-        scores = self.scores.copy()
-        token_usage = deepcopy(self.token_usage)
-        for player in self.players:
-            self.scores[player.name] = 0.0
-            self.token_usage[player.name] = {"input_tokens": 0, "output_tokens": 0}
-            player.reset_score()
-        game_result = XegaGameIterationResult(
-            scores=scores, xrt_history=self.history, token_usage=token_usage
+    def get_results_and_reset(self) -> GameMapRoundResult:
+        score = self.score
+        self.score = 0
+        self.player.reset_score()
+
+        token_usage = self.token_usage
+        self.token_usage = {"input_tokens": 0, "output_tokens": 0}
+
+        game_result = GameMapRoundResult(
+            score=score, history=self.history, token_usage=token_usage
         )
         self.history = []
         self.replay_counters = {}
-        self.last_elicit_player = None
         self.beacons = {}
         self._reset_register_states()
         return game_result
@@ -261,7 +253,7 @@ class XegaRuntime:
                 token_usage=token_usage,
             )
             await self.send_event(player, response_event)
-            self.add_token_usage(player.name, token_usage)
+            self.add_token_usage(token_usage)
 
             logging.info(f'Setting {var.name} to "{trimmed_move}"')
             var.primary_string = trimmed_move
@@ -326,7 +318,7 @@ class XegaRuntime:
             )
 
         player.add_score(score.total_xent())
-        self.scores[player.name] += score.total_xent()
+        self.score += score.total_xent()
         reward_event = RewardEvent(
             type="reward",
             line=line,
@@ -338,27 +330,6 @@ class XegaRuntime:
         logging.info(
             f"Rewarded player {player.name} with {score.total_xent()}. Reward event: {reward_event}"
         )
-
-        # Handle zero-sum player pairs
-        for pair in ZERO_SUM_PLAYER_PAIRS:
-            if player.name in pair:
-                other_name = pair[1] if player.name == pair[0] else pair[0]
-                other_player = self.local_vars.get(other_name)
-                if isinstance(other_player, XGP) and other_player.name in self.scores:
-                    neg_score = -1 * score
-                    other_player.add_score(neg_score.total_xent())
-                    self.scores[other_player.name] += neg_score.total_xent()
-                    reward_event = RewardEvent(
-                        type="reward",
-                        line=line,
-                        line_num=line_num,
-                        player=other_player.name,
-                        value=neg_score,
-                    )
-                    await self.send_event(other_player, reward_event)
-                    logging.info(
-                        f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
-                    )
         return None
 
     def _validate_ensure_args(self, args: list[Any]) -> None:

@@ -3,7 +3,7 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from xega.common.xega_types import XegaBenchmarkResult, XegaGameResult
+from xega.common.configuration_types import XegaBenchmarkResult, XegaGameResult
 
 PlayerId = str
 GameName = str

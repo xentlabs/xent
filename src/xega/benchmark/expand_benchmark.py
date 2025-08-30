@@ -2,88 +2,65 @@ import ast
 import io
 import tokenize
 
-from xega.common.version import get_xega_version
-from xega.common.xega_types import (
-    ExpandedGameConfig,
+from xega.common.configuration_types import (
+    CondensedXegaBenchmarkConfig,
     ExpandedXegaBenchmarkConfig,
     GameConfig,
-    XegaBenchmarkConfig,
-    XegaGameConfig,
+    GameMapConfig,
+    XegaMetadata,
 )
-from xega.presentation.executor import get_default_presentation
 from xega.runtime.judge import Judge
 
 
 def expand_benchmark_config(
-    benchmark_config: XegaBenchmarkConfig,
+    condensed_config: CondensedXegaBenchmarkConfig,
 ) -> ExpandedXegaBenchmarkConfig:
-    judge = Judge(benchmark_config["judge_model"])
+    judge = Judge(condensed_config["metadata"]["judge_model"])
     expanded_benchmark_config = ExpandedXegaBenchmarkConfig(
-        config_type="expanded_benchmark_config",
-        judge_model=benchmark_config["judge_model"],
-        npc_players=benchmark_config["npc_players"],
-        num_variables_per_register=benchmark_config["num_variables_per_register"],
-        num_rounds_per_game=benchmark_config["num_rounds_per_game"],
-        seed=benchmark_config["seed"],
-        num_maps_per_game=benchmark_config["num_maps_per_game"],
-        games=[],
-        benchmark_id=benchmark_config["benchmark_id"],
-        xega_version=get_xega_version(),
+        config_type="expanded_xega_config",
+        metadata=XegaMetadata(
+            judge_model=condensed_config["metadata"]["judge_model"],
+            num_rounds_per_game=condensed_config["metadata"]["num_rounds_per_game"],
+            seed=condensed_config["metadata"]["seed"],
+            benchmark_id=condensed_config["metadata"]["benchmark_id"],
+            xega_version=condensed_config["metadata"]["xega_version"],
+        ),
+        players=condensed_config["players"],
+        games=condensed_config["games"],
+        maps=[],
     )
 
-    for game in benchmark_config["games"]:
-        game_configs = build_game_configs_from_benchmark_config(
-            game, benchmark_config, judge
+    for game in condensed_config["games"]:
+        game_map_configs = build_game_configs_from_condensed_config(
+            game, condensed_config, judge
         )
-        for game_config in game_configs:
-            for player_set in benchmark_config["players"]:
-                if len(player_set) != 1:
-                    raise Exception(
-                        "Currently only single player benchmarks are supported"
-                    )
-                player = player_set[0]
-                full_game_config = XegaGameConfig(
-                    game=game_config,
-                    players=[player],
-                    map_seed=game_config["map_seed"],
-                    judge_model=benchmark_config["judge_model"],
-                    npc_players=benchmark_config["npc_players"],
-                    num_variables_per_register=benchmark_config[
-                        "num_variables_per_register"
-                    ],
-                    num_rounds_per_game=benchmark_config["num_rounds_per_game"],
-                    seed=benchmark_config["seed"],
-                    num_maps_per_game=benchmark_config["num_maps_per_game"],
-                )
-                expanded_benchmark_config["games"].append(full_game_config)
+        expanded_benchmark_config["maps"].extend(game_map_configs)
 
     return expanded_benchmark_config
 
 
-def build_game_configs_from_benchmark_config(
+def build_game_configs_from_condensed_config(
     game: GameConfig,
-    benchmark_config: XegaBenchmarkConfig,
+    condensed_config: CondensedXegaBenchmarkConfig,
     judge: Judge,
-) -> list[ExpandedGameConfig]:
-    game_configs: list[ExpandedGameConfig] = []
-    for map_num in range(benchmark_config["num_maps_per_game"]):
+) -> list[GameMapConfig]:
+    game_map_configs: list[GameMapConfig] = []
+    for map_num in range(condensed_config["expansion_config"]["num_maps_per_game"]):
         map_seed = f"game{game['name']}_map{map_num}"
-        judge.set_seed(benchmark_config["seed"], map_seed)
-        expanded_game_config = expand_game_config(game, map_seed, judge)
-        game_configs.append(expanded_game_config)
+        judge.set_seed(condensed_config["metadata"]["seed"], map_seed)
+        game_map_config = expand_game_config(game, map_seed, judge)
+        game_map_configs.append(game_map_config)
 
-    return game_configs
+    return game_map_configs
 
 
 def expand_game_config(
     game_config: GameConfig, map_seed: str, judge: Judge
-) -> ExpandedGameConfig:
+) -> GameMapConfig:
     expanded_code = preprocess_dsl_code(game_config["code"], judge)
-    presentation_function = game_config.get("presentation_function")
-    if presentation_function is None:
-        presentation_function = get_default_presentation()
+    presentation_function = game_config["presentation_function"]
 
-    return ExpandedGameConfig(
+    return GameMapConfig(
         name=game_config["name"],
         code=expanded_code,
         map_seed=map_seed,

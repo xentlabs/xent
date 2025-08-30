@@ -2,24 +2,25 @@ import re
 import string
 from typing import Any
 
+from xega.common.configuration_types import ExecutableGameMap
 from xega.common.constants import (
     ALL_PLAYERS,
     ALL_REGISTERS,
+    NUM_VARIABLES_PER_REGISTER,
     PUBLIC_REGISTERS,
     STATIC_REGISTERS,
 )
 from xega.common.x_flag import XFlag
 from xega.common.x_string import XString
-from xega.common.xega_types import XegaGameConfig
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import MockXGP
 from xega.runtime.judge import Judge
 
 
-def build_locals(players: list[XGP], game_config: XegaGameConfig):
+def build_locals(player: XGP, game_config: ExecutableGameMap):
     local_vars: dict[str, Any] = dict()
 
-    for i in range(game_config["num_variables_per_register"]):
+    for i in range(NUM_VARIABLES_PER_REGISTER):
         for t in ALL_REGISTERS:
             var_name = t if i == 0 else f"{t}{i}"
             local_vars[var_name] = XString(
@@ -29,8 +30,7 @@ def build_locals(players: list[XGP], game_config: XegaGameConfig):
                 name=var_name,
             )
 
-    for player in players:
-        local_vars[player.name] = player
+    local_vars[player.name] = player
 
     for player_name in ALL_PLAYERS:
         if player_name not in local_vars:

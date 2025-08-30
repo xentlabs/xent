@@ -13,14 +13,17 @@ from xega.analysis.plot import (
 from xega.analysis.report import generate_markdown_report
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
-from xega.cli.run import DEFAULT_XEGA_CONFIG
-from xega.common.util import dumps
-from xega.common.xega_types import (
+from xega.cli.configure import DEFAULT_EXPANSION_CONFIG
+from xega.cli.run import DEFAULT_XEGA_METADATA
+from xega.common.configuration_types import (
+    CondensedXegaBenchmarkConfig,
     ExpandedXegaBenchmarkConfig,
+    ExpansionConfig,
     GameConfig,
     PlayerConfig,
-    XegaBenchmarkConfig,
+    XegaMetadata,
 )
+from xega.common.util import dumps
 from xega.presentation.executor import get_default_presentation
 
 
@@ -38,16 +41,25 @@ def module_test_data_dir(tmp_path_factory):
     yield test_dir
 
 
-def create_test_benchmark_config() -> XegaBenchmarkConfig:
+def create_test_benchmark_config() -> CondensedXegaBenchmarkConfig:
     """Create a comprehensive benchmark config for testing all scenarios"""
     id_string = (
         datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         + "-"
         + hex(hash(str(datetime.datetime.now().timestamp())))[-6:]
     )
-    return XegaBenchmarkConfig(
-        config_type="short_benchmark_config",
-        benchmark_id=id_string,
+    return CondensedXegaBenchmarkConfig(
+        config_type="condensed_xega_config",
+        metadata=XegaMetadata(
+            benchmark_id=id_string,
+            xega_version=DEFAULT_XEGA_METADATA["xega_version"],
+            num_rounds_per_game=1,
+            judge_model=DEFAULT_XEGA_METADATA["judge_model"],
+            seed=DEFAULT_XEGA_METADATA["seed"],
+        ),
+        expansion_config=ExpansionConfig(
+            num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
+        ),
         games=[
             # Game 1: Simple single player test
             GameConfig(
@@ -76,25 +88,16 @@ def create_test_benchmark_config() -> XegaBenchmarkConfig:
             ),
         ],
         players=[
-            # Single player configuration
-            [
-                PlayerConfig(
-                    name="black",
-                    id="qwen3:0.6b",
-                    player_type="default",
-                    options={
-                        "provider": "ollama",
-                        "model": "qwen3:0.6b",
-                    },
-                ),
-            ],
+            PlayerConfig(
+                name="black",
+                id="qwen3:0.6b",
+                player_type="default",
+                options={
+                    "provider": "ollama",
+                    "model": "qwen3:0.6b",
+                },
+            ),
         ],
-        num_rounds_per_game=1,
-        judge_model=DEFAULT_XEGA_CONFIG["judge_model"],
-        npc_players=DEFAULT_XEGA_CONFIG["npc_players"],
-        num_variables_per_register=DEFAULT_XEGA_CONFIG["num_variables_per_register"],
-        seed=DEFAULT_XEGA_CONFIG["seed"],
-        num_maps_per_game=DEFAULT_XEGA_CONFIG["num_maps_per_game"],
     )
 
 
@@ -131,40 +134,37 @@ def test_benchmark_structure(shared_benchmark_results):
     benchmark_results = shared_benchmark_results["results"]
 
     # Verify config wasn't mutated
-    assert benchmark_results["config"] == benchmark_config
+    assert benchmark_results["expanded_config"] == benchmark_config
 
     # Verify version is present in the expanded config and results
-    assert "xega_version" in benchmark_config
-    assert isinstance(benchmark_config["xega_version"], str)
-    assert len(benchmark_config["xega_version"]) > 0
-    assert "xega_version" in benchmark_results["config"]
+    assert isinstance(benchmark_config["metadata"]["xega_version"], str)
+    assert len(benchmark_config["metadata"]["xega_version"]) > 0
+    assert "xega_version" in benchmark_results["expanded_config"]["metadata"]
     assert (
-        benchmark_results["config"]["xega_version"] == benchmark_config["xega_version"]
+        benchmark_results["expanded_config"]["metadata"]["xega_version"]
+        == benchmark_config["metadata"]["xega_version"]
     )
 
     # Verify we have results for both games
-    game_results = benchmark_results["game_results"]
+    game_results = benchmark_results["results"]
     assert len(game_results) == 2
 
     # Test Game 1 (simple single player)
     game1_result = game_results[0]
-    assert len(game1_result["scores"].keys()) == 1
-    assert len(game1_result["game_results"]) == 1  # Single round
+    assert len(game1_result["round_results"]) == 1  # Single round
 
-    game1_iteration = game1_result["game_results"][0]
-    assert len(game1_iteration["scores"].keys()) == 1
-    assert game1_result["scores"]["black"] == game1_iteration["scores"]["black"]
+    game1_iteration = game1_result["round_results"][0]
+    assert game1_result["score"] == game1_iteration["score"]
     assert (
-        len(game1_iteration["xrt_history"]) == 5
+        len(game1_iteration["history"]) == 5
     )  # reveal, elicit(req), elicit(resp), reward, reward
 
     # Test Game 2 (multi-step)
     game2_result = game_results[1]
-    assert len(game2_result["scores"].keys()) == 1
-    assert len(game2_result["game_results"]) == 1  # Single round
+    assert len(game2_result["round_results"]) == 1  # Single round
 
-    game2_iteration = game2_result["game_results"][0]
-    assert len(game2_iteration["xrt_history"]) > 5  # More steps than game 1
+    game2_iteration = game2_result["round_results"][0]
+    assert len(game2_iteration["history"]) > 5  # More steps than game 1
 
 
 @pytest.mark.integration
@@ -179,12 +179,11 @@ def test_analyze_extraction(shared_benchmark_results):
 
     # Verify extraction
     assert (
-        extracted_results["config"]["benchmark_id"] == benchmark_config["benchmark_id"]
+        extracted_results["expanded_config"]["metadata"]["benchmark_id"]
+        == benchmark_config["metadata"]["benchmark_id"]
     )
-    assert len(extracted_results["game_results"]) == len(
-        benchmark_results["game_results"]
-    )
-    assert extracted_results["config"] == benchmark_results["config"]
+    assert len(extracted_results["results"]) == len(benchmark_results["results"])
+    assert extracted_results["expanded_config"] == benchmark_results["expanded_config"]
 
 
 @pytest.mark.integration
@@ -192,17 +191,13 @@ def test_all_outputs_generated(shared_benchmark_results):
     """Test that all expected outputs are generated correctly"""
     test_dir = shared_benchmark_results["test_dir"]
     benchmark_config = shared_benchmark_results["config"]
-    benchmark_id = benchmark_config["benchmark_id"]
+    benchmark_id = benchmark_config["metadata"]["benchmark_id"]
 
     # Check individual game plots
     for game in benchmark_config["games"]:
-        plot_path = os.path.join(
-            test_dir, f"{game['game']['name']}_score_vs_iteration.png"
-        )
-        assert os.path.exists(plot_path), f"Plot for {game['game']['name']} not created"
-        assert os.path.getsize(plot_path) > 0, (
-            f"Plot for {game['game']['name']} is empty"
-        )
+        plot_path = os.path.join(test_dir, f"{game['name']}_score_vs_iteration.png")
+        assert os.path.exists(plot_path), f"Plot for {game['name']} not created"
+        assert os.path.getsize(plot_path) > 0, f"Plot for {game['name']} is empty"
 
     # Check summary chart
     summary_path = os.path.join(
@@ -227,15 +222,14 @@ def test_all_outputs_generated(shared_benchmark_results):
 
     # Check both games are included
     for game in benchmark_config["games"]:
-        assert f"### Game: {game['game']['name']}" in report_content
+        assert f"### Game: {game['name']}" in report_content
         assert "#### Game Code" in report_content
         assert "#### Game Configuration" in report_content
         assert "##### Average Player Scores" in report_content
-        assert game["game"]["code"] in report_content
-        assert f"{game['game']['name']}_score_vs_iteration.png" in report_content
+        assert f"{game['name']}_score_vs_iteration.png" in report_content
 
     # Check model information
-    player_id = str(benchmark_config["games"][0]["players"][0]["id"])
+    player_id = str(benchmark_config["players"][0]["id"])
     assert player_id in report_content
 
     # Check summary chart reference
@@ -266,9 +260,18 @@ def test_individual_analysis_functions(shared_benchmark_results):
 async def test_minimal_benchmark_smoke(test_data_dir):
     """Quick smoke test with minimal configuration"""
     id_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    config = XegaBenchmarkConfig(
-        config_type="short_benchmark_config",
-        benchmark_id=id_string,
+    config = CondensedXegaBenchmarkConfig(
+        config_type="condensed_xega_config",
+        metadata=XegaMetadata(
+            benchmark_id=id_string,
+            xega_version=DEFAULT_XEGA_METADATA["xega_version"],
+            num_rounds_per_game=2,  # Very low for speed
+            judge_model=DEFAULT_XEGA_METADATA["judge_model"],
+            seed=DEFAULT_XEGA_METADATA["seed"],
+        ),
+        expansion_config=ExpansionConfig(
+            num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"]
+        ),
         games=[
             GameConfig(
                 name="smoke",
@@ -277,26 +280,18 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             ),
         ],
         players=[
-            [
-                PlayerConfig(
-                    name="black",
-                    id="qwen3:0.6b",
-                    player_type="default",
-                    options={"provider": "ollama", "model": "qwen3:0.6b"},
-                ),
-            ]
+            PlayerConfig(
+                name="black",
+                id="qwen3:0.6b",
+                player_type="default",
+                options={"provider": "ollama", "model": "qwen3:0.6b"},
+            ),
         ],
-        num_rounds_per_game=2,  # Very low for speed
-        judge_model=DEFAULT_XEGA_CONFIG["judge_model"],
-        npc_players=DEFAULT_XEGA_CONFIG["npc_players"],
-        num_variables_per_register=DEFAULT_XEGA_CONFIG["num_variables_per_register"],
-        seed=DEFAULT_XEGA_CONFIG["seed"],
-        num_maps_per_game=DEFAULT_XEGA_CONFIG["num_maps_per_game"],
     )
 
     expanded_config = expand_benchmark_config(config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
 
     results = await run_benchmark(expanded_config, f"{test_data_dir}", 1)
-    assert results["config"]["benchmark_id"] == id_string
-    assert len(results["game_results"]) == 1
+    assert results["expanded_config"]["metadata"]["benchmark_id"] == id_string
+    assert len(results["results"]) == 1

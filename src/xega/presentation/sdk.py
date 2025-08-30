@@ -1,7 +1,7 @@
 from typing import Any
 
 from xega.common.token_xent_list import round_xent
-from xega.common.xega_types import (
+from xega.common.xega_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,

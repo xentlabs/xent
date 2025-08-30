@@ -1,4 +1,6 @@
-from xega.common.xega_types import PlayerName
+from xega.common.configuration_types import PlayerName
+
+NUM_VARIABLES_PER_REGISTER = 4
 
 ALL_REGISTERS = ["a", "b", "c", "s", "t", "x", "y", "p"]
 STATIC_REGISTERS = ["a", "b", "c"]

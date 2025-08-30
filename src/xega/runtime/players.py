@@ -1,5 +1,5 @@
-from xega.common.errors import XegaConfigurationError, XegaGameError
-from xega.common.xega_types import PlayerName, XegaGameConfig
+from xega.common.configuration_types import ExecutableGameMap
+from xega.common.errors import XegaConfigurationError
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import DefaultXGP, MockXGP
 from xega.runtime.human_player import HumanXGP
@@ -19,14 +19,8 @@ def register_player_type(player_type: str, constructor: type[XGP]) -> None:
     player_constructors[player_type] = constructor
 
 
-def make_player(player_name: PlayerName, game_config: XegaGameConfig) -> XGP:
-    player_config = next(
-        (x for x in game_config["players"] if x["name"] == player_name), None
-    )
-    if player_config is None:
-        raise XegaGameError(
-            f"Player configuration for {player_name} not found in game config."
-        )
+def make_player(executable_game_map: ExecutableGameMap) -> XGP:
+    player_config = executable_game_map["player"]
     player_type = player_config["player_type"]
     if player_type not in player_constructors:
         raise XegaConfigurationError(
@@ -34,5 +28,8 @@ def make_player(player_name: PlayerName, game_config: XegaGameConfig) -> XGP:
         )
     constructor = player_constructors[player_type]
     return constructor(
-        player_name, player_config["id"], player_config.get("options", {}), game_config
+        player_config["name"],
+        player_config["id"],
+        player_config.get("options", {}),
+        executable_game_map,
     )

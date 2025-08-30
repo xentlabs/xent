@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import os
@@ -5,7 +6,7 @@ import os
 import pytest
 from typeguard import check_type
 
-from xega.analysis.analyze import analyze, extract_results_from_dir
+from xega.analysis.analyze import analyze
 from xega.analysis.plot import (
     generate_normalized_score_summary_chart,
     generate_score_iteration_plots,
@@ -25,6 +26,7 @@ from xega.common.configuration_types import (
 )
 from xega.common.util import dumps
 from xega.presentation.executor import get_default_presentation
+from xega.storage.directory_storage import DirectoryStorage
 
 
 @pytest.fixture
@@ -104,7 +106,6 @@ def create_test_benchmark_config() -> CondensedXegaBenchmarkConfig:
 @pytest.fixture(scope="module")
 def shared_benchmark_results(module_test_data_dir):
     """Run benchmark once and share results across all tests"""
-    import asyncio
 
     benchmark_config = create_test_benchmark_config()
     logging.info(f"Running shared benchmark with config: {benchmark_config}")
@@ -113,9 +114,12 @@ def shared_benchmark_results(module_test_data_dir):
     expanded_config = expand_benchmark_config(benchmark_config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
     # Run the benchmark once in the event loop
-    benchmark_results = asyncio.run(
-        run_benchmark(expanded_config, f"{module_test_data_dir}", 1)
+    storage = DirectoryStorage(
+        module_test_data_dir, benchmark_config["metadata"]["benchmark_id"]
     )
+    asyncio.run(storage.initialize())
+    asyncio.run(storage.store_config(expanded_config))
+    benchmark_results = asyncio.run(run_benchmark(expanded_config, storage, 1))
 
     # Also run the full analysis pipeline once
     analyze(benchmark_results, f"{module_test_data_dir}", make_pdf=False)
@@ -165,25 +169,6 @@ def test_benchmark_structure(shared_benchmark_results):
 
     game2_iteration = game2_result["round_results"][0]
     assert len(game2_iteration["history"]) > 5  # More steps than game 1
-
-
-@pytest.mark.integration
-def test_analyze_extraction(shared_benchmark_results):
-    """Test that analyze.extract_results_from_dir works correctly"""
-    test_dir = shared_benchmark_results["test_dir"]
-    benchmark_config = shared_benchmark_results["config"]
-    benchmark_results = shared_benchmark_results["results"]
-
-    # Extract results from directory
-    extracted_results = extract_results_from_dir(f"{test_dir}")
-
-    # Verify extraction
-    assert (
-        extracted_results["expanded_config"]["metadata"]["benchmark_id"]
-        == benchmark_config["metadata"]["benchmark_id"]
-    )
-    assert len(extracted_results["results"]) == len(benchmark_results["results"])
-    assert extracted_results["expanded_config"] == benchmark_results["expanded_config"]
 
 
 @pytest.mark.integration
@@ -292,6 +277,11 @@ async def test_minimal_benchmark_smoke(test_data_dir):
     expanded_config = expand_benchmark_config(config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
 
-    results = await run_benchmark(expanded_config, f"{test_data_dir}", 1)
+    storage = DirectoryStorage(
+        test_data_dir, expanded_config["metadata"]["benchmark_id"]
+    )
+    await storage.initialize()
+    await storage.store_config(expanded_config)
+    results = await run_benchmark(expanded_config, storage, 1)
     assert results["expanded_config"]["metadata"]["benchmark_id"] == id_string
     assert len(results["results"]) == 1

@@ -1,16 +1,23 @@
+import asyncio
 import logging
+import os
 
 import click
 
 from xega.analysis.analyze import analyze as analyze_results
-from xega.analysis.analyze import extract_results_from_dir
+from xega.storage.directory_storage import DirectoryStorage
 
 
 @click.command()
 @click.option(
-    "--results-dir",
+    "--benchmark-id",
     required=True,
-    help="Results directory. Used for loading benchmark results as well as output directory for analysis results",
+    help="Benchmark Id to analyze",
+)
+@click.option(
+    "--storage-dir",
+    required=True,
+    help="Storage directory. This should contain a sub-directory with the benchmark data. Used for loading benchmark results as well as output directory for analysis results",
 )
 @click.option(
     "--generate-pdf",
@@ -19,7 +26,9 @@ from xega.analysis.analyze import extract_results_from_dir
 )
 @click.option("--verbose", is_flag=True, help="Enable verbose logging")
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-def analyze(results_dir: str, generate_pdf: bool, verbose: bool, debug: bool) -> None:
+def analyze(
+    benchmark_id: str, storage_dir: str, generate_pdf: bool, verbose: bool, debug: bool
+) -> None:
     """Analyze completed benchmark results"""
     log_level = logging.WARNING
     logging_format = (
@@ -30,5 +39,11 @@ def analyze(results_dir: str, generate_pdf: bool, verbose: bool, debug: bool) ->
     if debug:
         log_level = logging.DEBUG
     logging.basicConfig(level=log_level, format=logging_format)
-    results = extract_results_from_dir(results_dir)
+    storage = DirectoryStorage(storage_dir, benchmark_id)
+    asyncio.run(storage.initialize())
+    results = asyncio.run(storage.get_benchmark_results())
+    if results is None:
+        print("No benchmark results found at target path")
+        return
+    results_dir = os.path.join(storage_dir, benchmark_id)
     analyze_results(results, results_dir, make_pdf=generate_pdf)

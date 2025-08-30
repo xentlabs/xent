@@ -3,6 +3,10 @@ import logging
 import os
 import subprocess
 
+from xega.common.configuration_types import (
+    ExecutableGameMap,
+    ExpandedXegaBenchmarkConfig,
+)
 from xega.common.token_xent_list import TokenXentList, ValidatedBool
 from xega.common.x_string import XString
 
@@ -80,3 +84,17 @@ def log_git_snapshot(repo_path="."):
         )
     except Exception as e:
         logging.error(f"An unexpected error occurred while logging git snapshot: {e}")
+
+
+def generate_executable_game_maps(
+    config: ExpandedXegaBenchmarkConfig,
+) -> list[ExecutableGameMap]:
+    game_maps: list[ExecutableGameMap] = []
+    for map in config["maps"]:
+        for player in config["players"]:
+            game_maps.append(
+                ExecutableGameMap(
+                    game_map=map, metadata=config["metadata"], player=player
+                )
+            )
+    return game_maps

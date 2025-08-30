@@ -128,7 +128,7 @@ def run(
     if clean:
         asyncio.run(storage.clear())
 
-    # TODO how to handle this with storage?
+    # TODO how to handle this with non-directory storage?
     log_file_path = os.path.join(results_dir, "log.txt")
     file_handler = logging.FileHandler(log_file_path)
 

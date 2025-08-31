@@ -88,24 +88,18 @@ So, now that we have a configuration, how do we run it?
 
 ### Benchmark Execution
 
-#### Option 1: Web Interface (Recommended for Monitoring)
+#### Option 1: Web Interface (For Monitoring)
 
-Xega includes a web interface for running and monitoring benchmarks with real-time progress updates:
+Xega includes a web interface for monitoring benchmark progress:
 
 ```bash
 # Start the web server
 uv run xega serve
 
-# Then open your browser to http://localhost:8000
+# Open your browser to http://localhost:8000
 ```
 
-The web interface allows you to:
-- Start and stop benchmarks
-- Monitor progress in real-time
-- View results as they complete
-- Manage multiple benchmarks
-
-See the [Web Interface Guide](docs/web_interface_guide.md) for detailed instructions.
+The web interface shows real-time progress and results for benchmarks started via the CLI.
 
 #### Option 2: Command Line Interface
 

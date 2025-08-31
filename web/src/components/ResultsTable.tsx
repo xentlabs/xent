@@ -1,5 +1,5 @@
 import React from 'react';
-import { BenchmarkResult } from '@/types/benchmark';
+import { BenchmarkResult } from '../types/benchmark';
 
 interface ResultsTableProps {
   results: BenchmarkResult;

@@ -1,14 +1,13 @@
 import React from 'react';
-import { BenchmarkListItem } from '@/types/benchmark';
+import { BenchmarkListItem } from '../types/benchmark';
 
 interface BenchmarkListProps {
   benchmarks: BenchmarkListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  onStop: (id: string) => void;
 }
 
-export function BenchmarkList({ benchmarks, selectedId, onSelect, onStop }: BenchmarkListProps) {
+export function BenchmarkList({ benchmarks, selectedId, onSelect }: BenchmarkListProps) {
   const formatDate = (timestamp: number | null) => {
     if (!timestamp) return 'Unknown';
     return new Date(timestamp * 1000).toLocaleString();
@@ -31,36 +30,9 @@ export function BenchmarkList({ benchmarks, selectedId, onSelect, onStop }: Benc
               }`}
               onClick={() => onSelect(benchmark.id)}
             >
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-medium">{benchmark.id}</div>
-                  <div className="text-sm text-gray-500">
-                    Created: {formatDate(benchmark.created)}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {benchmark.is_running && (
-                    <>
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">
-                        Running
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onStop(benchmark.id);
-                        }}
-                        className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded hover:bg-red-200"
-                      >
-                        Stop
-                      </button>
-                    </>
-                  )}
-                  {!benchmark.has_config && (
-                    <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded">
-                      No Config
-                    </span>
-                  )}
-                </div>
+              <div className="font-medium">{benchmark.id}</div>
+              <div className="text-sm text-gray-500">
+                Created: {formatDate(benchmark.created)}
               </div>
             </div>
           ))

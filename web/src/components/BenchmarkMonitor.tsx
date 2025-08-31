@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { BenchmarkStatus, WebSocketMessage } from '@/types/benchmark';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { ProgressBar } from './ProgressBar';
+import { BenchmarkStatus, WebSocketMessage } from '../types/benchmark';
+import { useWebSocket } from '../hooks/useWebSocket';
 import { ResultsTable } from './ResultsTable';
 
 interface BenchmarkMonitorProps {
@@ -17,10 +16,8 @@ export function BenchmarkMonitor({ benchmarkId, initialStatus }: BenchmarkMonito
     percentage: number;
   } | null>(null);
 
-  const { isConnected, lastMessage } = useWebSocket(benchmarkId, {
+  const { isConnected } = useWebSocket(benchmarkId, {
     onMessage: (message: WebSocketMessage) => {
-      console.log('Received WebSocket message:', message);
-      
       if (message.type === 'config_update' && message.data) {
         setStatus(prev => prev ? { ...prev, config: message.data } : null);
       } else if (message.type === 'results_update') {
@@ -55,12 +52,7 @@ export function BenchmarkMonitor({ benchmarkId, initialStatus }: BenchmarkMonito
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">{benchmarkId}</h2>
-            <p className="text-gray-600">
-              Status: {status.is_running ? 'Running' : 'Completed'}
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold">{benchmarkId}</h2>
           <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="text-sm text-gray-600">
@@ -71,11 +63,19 @@ export function BenchmarkMonitor({ benchmarkId, initialStatus }: BenchmarkMonito
 
         {progress && (
           <div className="mb-6">
-            <ProgressBar
-              completed={progress.completed}
-              total={progress.total}
-              percentage={progress.percentage}
-            />
+            <div className="flex justify-between text-sm text-gray-600 mb-1">
+              <span>Progress</span>
+              <span>{progress.completed} / {progress.total} games</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${progress.percentage}%` }}
+              />
+            </div>
+            <div className="text-right text-sm text-gray-600 mt-1">
+              {progress.percentage.toFixed(1)}%
+            </div>
           </div>
         )}
 

@@ -43,7 +43,6 @@ export interface BenchmarkResult {
 export interface BenchmarkStatus {
   id: string;
   exists: boolean;
-  is_running: boolean;
   progress?: {
     completed: number;
     total: number;
@@ -56,7 +55,6 @@ export interface BenchmarkStatus {
 export interface BenchmarkListItem {
   id: string;
   path: string;
-  is_running: boolean;
   created: number | null;
   has_config: boolean;
 }

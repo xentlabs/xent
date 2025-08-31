@@ -18,6 +18,9 @@ dependencies = [
     "google-genai (>=1.17.0,<2.0.0)",
     "typeguard (>=4.4.2,<5.0.0)",
     "hf-xet>=1.1.5",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
 ]
 packages = [{ from = "src", include = "xega" }]
 
@@ -27,6 +30,15 @@ xega = "xega.cli.main:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src/xega/**/*.py",
+    "src/xega/web/static/**/*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xega"]
 
 [dependency-groups]
 dev = [

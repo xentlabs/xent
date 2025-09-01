@@ -49,6 +49,25 @@ async def list_benchmarks():
         ) from e
 
 
+@app.get("/api/benchmarks/{benchmark_id}")
+async def get_benchmark_results(benchmark_id: str):
+    """Get benchmark results for a specific benchmark ID"""
+    try:
+        storage = DirectoryStorage(STORAGE_DIR)
+        result = await storage.get_result(benchmark_id)
+        
+        if result is None:
+            raise HTTPException(status_code=404, detail=f"Benchmark {benchmark_id} not found")
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch benchmark results: {str(e)}"
+        ) from e
+
+
 @app.post("/api/config")
 async def store_config(request: ConfigRequest):
     try:

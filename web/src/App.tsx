@@ -142,6 +142,10 @@ function App() {
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
   const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
   const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
+  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
+  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState<string | null>(null);
+  const [benchmarkResults, setBenchmarkResults] = useState<any>(null);
+  const [loadingResults, setLoadingResults] = useState<boolean>(false);
 
   useEffect(() => {
     fetchBenchmarks();
@@ -271,6 +275,82 @@ function App() {
     ));
   };
 
+  const fetchBenchmarkResults = async (id: string) => {
+    try {
+      setLoadingResults(true);
+      const response = await fetch(`/api/benchmarks/${id}`);
+      if (response.ok) {
+        const results = await response.json();
+        setBenchmarkResults(results);
+      } else if (response.status === 404) {
+        setBenchmarkResults({ error: 'Benchmark not found or has no results yet' });
+      } else {
+        setBenchmarkResults({ error: 'Failed to fetch benchmark results' });
+      }
+    } catch (error) {
+      console.error('Error fetching benchmark results:', error);
+      setBenchmarkResults({ error: 'Network error fetching benchmark results' });
+    } finally {
+      setLoadingResults(false);
+    }
+  };
+
+  const viewBenchmark = (id: string) => {
+    setSelectedBenchmarkId(id);
+    setCurrentView('detail');
+    setBenchmarkResults(null);
+    fetchBenchmarkResults(id);
+  };
+
+  const backToList = () => {
+    setCurrentView('list');
+    setSelectedBenchmarkId(null);
+    setBenchmarkResults(null);
+  };
+
+  if (currentView === 'detail' && selectedBenchmarkId) {
+    return (
+      <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+        <h1>Benchmark Details</h1>
+        
+        <button
+          onClick={backToList}
+          style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+        >
+          ← Back to List
+        </button>
+
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
+          <h3>Benchmark ID: {selectedBenchmarkId}</h3>
+        </div>
+
+        <div style={{ padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
+          <h3>Results (JSON)</h3>
+          {loadingResults ? (
+            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px', textAlign: 'center' }}>
+              <p style={{ color: '#666' }}>Loading benchmark results...</p>
+            </div>
+          ) : benchmarkResults?.error ? (
+            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px' }}>
+              <p style={{ color: '#dc3545' }}>Error: {benchmarkResults.error}</p>
+              <p style={{ color: '#666', fontSize: '12px', marginTop: '10px' }}>
+                This benchmark may not have been run yet. Use the CLI to run it: <code>xega run {selectedBenchmarkId}</code>
+              </p>
+            </div>
+          ) : benchmarkResults ? (
+            <pre style={{ backgroundColor: 'white', padding: '15px', overflow: 'auto', maxHeight: '600px', fontSize: '12px', borderRadius: '3px' }}>
+              {JSON.stringify(benchmarkResults, null, 2)}
+            </pre>
+          ) : (
+            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px', textAlign: 'center' }}>
+              <p style={{ color: '#666' }}>No data available</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
       <h1>XEGA Benchmarks</h1>
@@ -289,7 +369,7 @@ function App() {
                 <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{id}</span>
                 <button
                   type="button"
-                  onClick={() => console.log('View benchmark:', id)}
+                  onClick={() => viewBenchmark(id)}
                   style={{ padding: '4px 12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
                 >
                   View

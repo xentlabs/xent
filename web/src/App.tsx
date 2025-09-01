@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type PlayerName = "black" | "white" | "alice" | "bob" | "carol" | "env";
 
@@ -140,6 +140,29 @@ function App() {
   const [numMapsPerGame, setNumMapsPerGame] = useState<number>(1);
   const [useCustomGames, setUseCustomGames] = useState<boolean>(false);
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
+  const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
+  const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchBenchmarks();
+  }, []);
+
+  const fetchBenchmarks = async () => {
+    try {
+      setLoadingBenchmarks(true);
+      const response = await fetch('/api/benchmarks');
+      if (response.ok) {
+        const ids = await response.json();
+        setBenchmarkIds(ids);
+      } else {
+        console.error('Failed to fetch benchmarks');
+      }
+    } catch (error) {
+      console.error('Error fetching benchmarks:', error);
+    } finally {
+      setLoadingBenchmarks(false);
+    }
+  };
 
   const buildConfig = (): CondensedXegaBenchmarkConfig => {
     let players: PlayerConfig[];
@@ -192,10 +215,30 @@ function App() {
 
   const config = buildConfig();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Benchmark configuration:', config);
-    alert('Configuration ready! (Backend not yet implemented)');
+    
+    try {
+      const response = await fetch('/api/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ config }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Configuration stored successfully!\nBenchmark ID: ${result.benchmark_id}`);
+        fetchBenchmarks(); // Refresh the list
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.detail || 'Failed to store configuration'}`);
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('Network error: Could not connect to server');
+    }
   };
 
   const addModel = () => {
@@ -230,7 +273,36 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>XEGA Benchmark Configuration</h1>
+      <h1>XEGA Benchmarks</h1>
+
+      {/* Benchmark List Section */}
+      <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
+        <h3>Saved Configurations</h3>
+        {loadingBenchmarks ? (
+          <p style={{ color: '#666' }}>Loading benchmarks...</p>
+        ) : benchmarkIds.length === 0 ? (
+          <p style={{ color: '#666' }}>No saved benchmarks yet. Create one below!</p>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {benchmarkIds.map((id) => (
+              <li key={id} style={{ marginBottom: '8px', padding: '8px', backgroundColor: 'white', borderRadius: '3px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{id}</span>
+                <button
+                  type="button"
+                  onClick={() => console.log('View benchmark:', id)}
+                  style={{ padding: '4px 12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  View
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #dee2e6' }} />
+
+      <h2>Create New Benchmark</h2>
 
       <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>

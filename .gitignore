@@ -18,3 +18,11 @@ __pycache__/
 .claude/
 DEVELOPMENT.md
 leaderboard.md
+
+# Frontend
+web/node_modules/
+web/dist/
+web/package-lock.json
+
+# Generated static files (build output)
+src/xega/web/static/

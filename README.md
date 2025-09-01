@@ -88,7 +88,22 @@ So, now that we have a configuration, how do we run it?
 
 ### Benchmark Execution
 
-To run a benchmark simply `uv run xega run`. But before you do that, here are some notes:
+#### Option 1: Web Interface (For Monitoring)
+
+Xega includes a web interface for monitoring benchmark progress:
+
+```bash
+# Start the web server
+uv run xega serve
+
+# Open your browser to http://localhost:8000
+```
+
+The web interface shows real-time progress and results for benchmarks started via the CLI.
+
+#### Option 2: Command Line Interface
+
+To run a benchmark from the command line, simply use `uv run xega run`. But before you do that, here are some notes:
 
 By default, `xega run` will use `./xega_config.json` as the path to the benchmark configuration. You can change this by doing `uv run xega run --config path/to/config.json`
 

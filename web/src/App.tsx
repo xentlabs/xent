@@ -146,6 +146,8 @@ function App() {
   const [selectedBenchmarkId, setSelectedBenchmarkId] = useState<string | null>(null);
   const [benchmarkResults, setBenchmarkResults] = useState<any>(null);
   const [loadingResults, setLoadingResults] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<boolean>(false);
 
   useEffect(() => {
     fetchBenchmarks();
@@ -299,6 +301,8 @@ function App() {
     setSelectedBenchmarkId(id);
     setCurrentView('detail');
     setBenchmarkResults(null);
+    setIsRunning(false);
+    setDeleteConfirm(false);
     fetchBenchmarkResults(id);
   };
 
@@ -306,7 +310,75 @@ function App() {
     setCurrentView('list');
     setSelectedBenchmarkId(null);
     setBenchmarkResults(null);
+    setIsRunning(false);
+    setDeleteConfirm(false);
   };
+
+  const handleRunBenchmark = async () => {
+    if (!selectedBenchmarkId || isRunning) return;
+    
+    try {
+      setIsRunning(true);
+      const response = await fetch(`/api/benchmarks/${selectedBenchmarkId}/run`, {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        // Keep the running state - don't disable it immediately
+        // The benchmark is now running in the background
+      } else {
+        const error = await response.json();
+        alert(`Error starting benchmark: ${error.detail || 'Unknown error'}`);
+        setIsRunning(false);
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('Network error: Could not start benchmark');
+      setIsRunning(false);
+    }
+  };
+
+  const handleDeleteResults = async () => {
+    if (!selectedBenchmarkId) return;
+
+    if (!deleteConfirm) {
+      setDeleteConfirm(true);
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/benchmarks/${selectedBenchmarkId}/results`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Refresh the benchmark results after deletion
+        await fetchBenchmarkResults(selectedBenchmarkId);
+        setDeleteConfirm(false);
+      } else {
+        const error = await response.json();
+        alert(`Error deleting results: ${error.detail || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Network error:', error);
+      alert('Network error: Could not delete results');
+    } finally {
+      setDeleteConfirm(false);
+    }
+  };
+
+  // Reset delete confirmation when clicking elsewhere
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (deleteConfirm) {
+        setDeleteConfirm(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [deleteConfirm]);
 
   if (currentView === 'detail' && selectedBenchmarkId) {
     return (
@@ -322,6 +394,47 @@ function App() {
 
         <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
           <h3>Benchmark ID: {selectedBenchmarkId}</h3>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
+          <h4>Actions</h4>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <button
+              onClick={handleRunBenchmark}
+              disabled={isRunning}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: isRunning ? '#6c757d' : '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: isRunning ? 'not-allowed' : 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {isRunning ? '⏳ Running...' : 
+               (benchmarkResults?.results?.length > 0 ? '🚀 Continue Benchmark' : '🚀 Start Benchmark')}
+            </button>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteResults();
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: deleteConfirm ? '#dc3545' : '#dc3545',
+                color: 'white',
+                border: 'none',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {deleteConfirm ? '⚠️ Confirm Delete?' : '🗑️ Delete Results'}
+            </button>
+          </div>
         </div>
 
         <div style={{ padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>

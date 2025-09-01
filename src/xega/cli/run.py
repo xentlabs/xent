@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from pathlib import Path
 
 import click
 
@@ -18,8 +19,8 @@ from xega.common.configuration_types import (
 )
 from xega.common.util import log_git_snapshot
 from xega.common.version import get_xega_version, validate_version
-from xega.storage.directory_storage import DirectoryStorage
-from xega.storage.storage_interface import Storage
+from xega.storage.directory_storage import DirectoryBenchmarkStorage
+from xega.storage.storage_interface import BenchmarkStorage
 
 DEFAULT_XEGA_METADATA = XegaMetadata(
     benchmark_id="",
@@ -120,8 +121,8 @@ def run(
 
     check_version(benchmark_config, ignore_version_mismatch)
 
-    storage: Storage = DirectoryStorage(
-        results_dir, benchmark_config["metadata"]["benchmark_id"]
+    storage: BenchmarkStorage = DirectoryBenchmarkStorage(
+        Path(results_dir), benchmark_config["metadata"]["benchmark_id"]
     )
 
     asyncio.run(storage.initialize())

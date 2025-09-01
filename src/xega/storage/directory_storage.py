@@ -1,6 +1,6 @@
 import json
 import logging
-import os
+from pathlib import Path
 
 from xega.common.configuration_types import (
     BenchmarkResult,
@@ -8,47 +8,49 @@ from xega.common.configuration_types import (
     GameMapResults,
 )
 from xega.common.util import dumps, generate_executable_game_maps
-from xega.storage.storage_interface import Storage
+from xega.storage.storage_interface import BenchmarkStorage, Storage
 
 
 # TODO needs exception handling
-class DirectoryStorage(Storage):
-    def __init__(self, storage_dir: str, benchmark_id: str):
+class DirectoryBenchmarkStorage(BenchmarkStorage):
+    def __init__(self, storage_dir: Path, benchmark_id: str):
         super().__init__(benchmark_id)
         self.storage_dir = storage_dir
-        self.results_dir = os.path.join(self.storage_dir, self.benchmark_id)
+        self.results_dir = self.storage_dir / self.benchmark_id
 
     async def initialize(self):
-        os.makedirs(self.results_dir, exist_ok=True)
+        self.results_dir.mkdir(parents=True, exist_ok=True)
 
     async def clear(self):
         logging.info(f"Cleaning results directory: {self.results_dir}")
-        for root, dirs, files in os.walk(self.results_dir, topdown=False):
-            for name in files:
-                os.remove(os.path.join(root, name))
-            for name in dirs:
-                os.rmdir(os.path.join(root, name))
+        if self.results_dir.exists():
+            for item in self.results_dir.rglob("*"):
+                if item.is_file():
+                    item.unlink()
+            for item in sorted(self.results_dir.rglob("*"), reverse=True):
+                if item.is_dir():
+                    item.rmdir()
 
     async def get_config(self) -> ExpandedXegaBenchmarkConfig | None:
-        config_path = os.path.join(self.results_dir, "benchmark_config.json")
-        if os.path.exists(config_path):
+        config_path = self.results_dir / "benchmark_config.json"
+        if config_path.exists():
             with open(config_path) as f:
                 config = json.load(f)
                 return config
         return None
 
     async def store_config(self, config: ExpandedXegaBenchmarkConfig):
-        with open(os.path.join(self.results_dir, "benchmark_config.json"), "w") as f:
+        config_path = self.results_dir / "benchmark_config.json"
+        with open(config_path, "w") as f:
             f.write(dumps(config, indent=4))
 
     async def get_game_map_results(
         self, game_name: str, map_seed: str, player_id: str
     ) -> GameMapResults | None:
-        results_path = os.path.join(
-            self.results_dir,
-            self._game_results_json_filename(game_name, map_seed, player_id),
+        results_path = self.results_dir / self._game_results_json_filename(
+            game_name, map_seed, player_id
         )
-        if os.path.exists(results_path):
+        if results_path.exists():
             with open(results_path) as f:
                 game_results = json.load(f)
                 return game_results
@@ -58,13 +60,10 @@ class DirectoryStorage(Storage):
         player_id = results["player"]["id"]
         game_name = results["game_map"]["name"]
         map_seed = results["game_map"]["map_seed"]
-        with open(
-            os.path.join(
-                self.results_dir,
-                self._game_results_json_filename(game_name, map_seed, player_id),
-            ),
-            "w",
-        ) as f:
+        results_path = self.results_dir / self._game_results_json_filename(
+            game_name, map_seed, player_id
+        )
+        with open(results_path, "w") as f:
             f.write(dumps(results, indent=4))
 
     async def get_benchmark_results(self) -> BenchmarkResult | None:
@@ -88,5 +87,54 @@ class DirectoryStorage(Storage):
 
     def _game_results_json_filename(
         self, game_name: str, map_seed: str, player_id: str
-    ) -> str:
-        return f"game_{game_name}_{map_seed}_{player_id}.json"
+    ) -> Path:
+        return Path(f"game_{game_name}_{map_seed}_{player_id}.json")
+
+
+class DirectoryStorage(Storage):
+    def __init__(self, storage_dir: Path):
+        self.storage_dir = storage_dir
+
+    async def list_configs(self) -> list[ExpandedXegaBenchmarkConfig]:
+        configs: list[ExpandedXegaBenchmarkConfig] = []
+        for item in self.storage_dir.iterdir():
+            if item.is_dir():
+                config_file = item / "benchmark_config.json"
+                if config_file.exists() and config_file.is_file():
+                    try:
+                        with open(config_file) as f:
+                            config_data = json.load(f)
+                            configs.append(config_data)
+                    except (OSError, json.JSONDecodeError) as e:
+                        # Handle potential errors (malformed JSON, read errors)
+                        print(f"Error reading {config_file}: {e}")
+                        continue
+
+        return configs
+
+    async def add_config(self, config: ExpandedXegaBenchmarkConfig):
+        benchmark_storage = DirectoryBenchmarkStorage(
+            self.storage_dir, config["metadata"]["benchmark_id"]
+        )
+        await benchmark_storage.initialize()
+        await benchmark_storage.store_config(config)
+
+    async def list_result_ids(self) -> set[str]:
+        configs = await self.list_configs()
+        valid_result_ids: set[str] = set()
+        for config in configs:
+            benchmark_storage = DirectoryBenchmarkStorage(
+                self.storage_dir, config["metadata"]["benchmark_id"]
+            )
+            await benchmark_storage.initialize()
+            results = await benchmark_storage.get_benchmark_results()
+            if results is not None and len(results["results"]) > 0:
+                valid_result_ids.add(config["metadata"]["benchmark_id"])
+        return valid_result_ids
+
+    async def get_result(self, benchmark_id: str) -> BenchmarkResult | None:
+        benchmark_storage = DirectoryBenchmarkStorage(
+            self.storage_dir, benchmark_id
+        )
+        await benchmark_storage.initialize()
+        return await benchmark_storage.get_benchmark_results()

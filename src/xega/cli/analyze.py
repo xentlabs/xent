@@ -1,11 +1,12 @@
 import asyncio
 import logging
 import os
+from pathlib import Path
 
 import click
 
 from xega.analysis.analyze import analyze as analyze_results
-from xega.storage.directory_storage import DirectoryStorage
+from xega.storage.directory_storage import DirectoryBenchmarkStorage
 
 
 @click.command()
@@ -39,7 +40,7 @@ def analyze(
     if debug:
         log_level = logging.DEBUG
     logging.basicConfig(level=log_level, format=logging_format)
-    storage = DirectoryStorage(storage_dir, benchmark_id)
+    storage = DirectoryBenchmarkStorage(Path(storage_dir), benchmark_id)
     asyncio.run(storage.initialize())
     results = asyncio.run(storage.get_benchmark_results())
     if results is None:

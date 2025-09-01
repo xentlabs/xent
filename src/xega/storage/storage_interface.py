@@ -7,10 +7,29 @@ from xega.common.configuration_types import (
 )
 
 
-# NB: this interface is for a single benchmark_id, so its not really appropriate for
-# browsing multiple benchmark results. That might need to be reconsidered depending on
-# how we want to use the storage system.
 class Storage(ABC):
+    @abstractmethod
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    async def list_configs(self) -> list[ExpandedXegaBenchmarkConfig]:
+        pass
+
+    @abstractmethod
+    async def add_config(self, config: ExpandedXegaBenchmarkConfig):
+        pass
+
+    @abstractmethod
+    async def list_result_ids(self) -> set[str]:
+        pass
+
+    @abstractmethod
+    async def get_result(self, benchmark_id: str) -> BenchmarkResult | None:
+        pass
+
+
+class BenchmarkStorage(ABC):
     def __init__(self, benchmark_id: str):
         self.benchmark_id = benchmark_id
 

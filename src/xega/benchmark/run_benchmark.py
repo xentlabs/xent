@@ -17,7 +17,7 @@ from xega.runtime.judge import Judge
 from xega.runtime.players import make_player
 from xega.runtime.runtime import XegaRuntime
 from xega.runtime.variables import build_globals, build_locals
-from xega.storage.storage_interface import Storage
+from xega.storage.storage_interface import BenchmarkStorage
 
 
 async def run_game(
@@ -116,7 +116,7 @@ def check_version(config: ExpandedXegaBenchmarkConfig):
 
 async def run_benchmark(
     config: ExpandedXegaBenchmarkConfig,
-    storage: Storage,
+    storage: BenchmarkStorage,
     max_concurrent_games: int,
 ) -> BenchmarkResult:
     await storage.store_config(config)

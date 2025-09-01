@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import logging
 import os
+from pathlib import Path
 
 import pytest
 from typeguard import check_type
@@ -26,7 +27,7 @@ from xega.common.configuration_types import (
 )
 from xega.common.util import dumps
 from xega.presentation.executor import get_default_presentation
-from xega.storage.directory_storage import DirectoryStorage
+from xega.storage.directory_storage import DirectoryBenchmarkStorage
 
 
 @pytest.fixture
@@ -114,8 +115,8 @@ def shared_benchmark_results(module_test_data_dir):
     expanded_config = expand_benchmark_config(benchmark_config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
     # Run the benchmark once in the event loop
-    storage = DirectoryStorage(
-        module_test_data_dir, benchmark_config["metadata"]["benchmark_id"]
+    storage = DirectoryBenchmarkStorage(
+        Path(module_test_data_dir), benchmark_config["metadata"]["benchmark_id"]
     )
     asyncio.run(storage.initialize())
     asyncio.run(storage.store_config(expanded_config))
@@ -277,8 +278,8 @@ async def test_minimal_benchmark_smoke(test_data_dir):
     expanded_config = expand_benchmark_config(config)
     check_type(expanded_config, ExpandedXegaBenchmarkConfig)
 
-    storage = DirectoryStorage(
-        test_data_dir, expanded_config["metadata"]["benchmark_id"]
+    storage = DirectoryBenchmarkStorage(
+        Path(test_data_dir), expanded_config["metadata"]["benchmark_id"]
     )
     await storage.initialize()
     await storage.store_config(expanded_config)

@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -74,7 +75,6 @@ async def get_benchmark_results(benchmark_id: str):
 @app.post("/api/benchmarks/{benchmark_id}/run")
 async def run_benchmark_async(benchmark_id: str):
     try:
-        # Get the config to verify benchmark exists
         benchmark_storage = DirectoryBenchmarkStorage(STORAGE_DIR, benchmark_id)
         await benchmark_storage.initialize()
         config = await benchmark_storage.get_config()
@@ -150,7 +150,6 @@ async def get_benchmark_stats(benchmark_id: str):
         benchmark_storage = DirectoryBenchmarkStorage(STORAGE_DIR, benchmark_id)
         await benchmark_storage.initialize()
 
-        # Get config and results
         config = await benchmark_storage.get_config()
         if config is None:
             raise HTTPException(
@@ -159,19 +158,17 @@ async def get_benchmark_stats(benchmark_id: str):
 
         result = await benchmark_storage.get_benchmark_results()
 
-        # Determine benchmark status based on results
         expected_results = len(config["players"]) * len(config["maps"])
         actual_results = len(result["results"]) if result else 0
 
         if actual_results == 0:
-            status = "ready"  # No results yet, ready to start
+            status = "ready"
         elif actual_results >= expected_results:
-            status = "completed"  # All results are in
+            status = "completed"
         else:
-            status = "running"  # Partially complete, benchmark is running
+            status = "running"
 
         if not result or not result["results"]:
-            # Return empty stats if no results yet
             return {
                 "status": status,
                 "overall_scores": {},
@@ -188,30 +185,25 @@ async def get_benchmark_stats(benchmark_id: str):
                 "config": config,
             }
 
-        # Aggregate scores
-        overall_scores: any = {}
-        per_game_scores: any = {}
-        per_game_details: any = {}
+        overall_scores: dict[str, float] = {}
+        per_game_scores: dict[str, dict[str, float]] = {}
+        per_game_details: dict[str, dict[str, Any]] = {}
 
-        # Process each result
         for game_result in result["results"]:
             player_id = game_result["player"]["id"]
             game_name = game_result["game_map"]["name"]
             score = game_result["score"]
 
-            # Add to overall scores
             if player_id not in overall_scores:
                 overall_scores[player_id] = 0
             overall_scores[player_id] += score
 
-            # Add to per-game scores
             if game_name not in per_game_scores:
                 per_game_scores[game_name] = {}
             if player_id not in per_game_scores[game_name]:
                 per_game_scores[game_name][player_id] = 0
             per_game_scores[game_name][player_id] += score
 
-            # Prepare per-game details structure
             if game_name not in per_game_details:
                 per_game_details[game_name] = {
                     "code": game_result["game_map"]["code"],
@@ -225,7 +217,6 @@ async def get_benchmark_stats(benchmark_id: str):
                 per_game_details[game_name]["arms_by_player"][player_id] = []
                 per_game_details[game_name]["round_scores_by_player"][player_id] = []
 
-            # Extract per-round scores for charts
             round_scores = []
             running_max = float("-inf")
             arms_scores = []
@@ -234,7 +225,6 @@ async def get_benchmark_stats(benchmark_id: str):
                 round_score = round_result.get("score", 0)
                 round_scores.append(round_score)
 
-                # Calculate running max (ARMS)
                 if round_score > running_max:
                     running_max = round_score
                 arms_scores.append(running_max)

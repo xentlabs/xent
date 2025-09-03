@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -74,7 +75,6 @@ async def get_benchmark_results(benchmark_id: str):
 @app.post("/api/benchmarks/{benchmark_id}/run")
 async def run_benchmark_async(benchmark_id: str):
     try:
-        # Get the config to verify benchmark exists
         benchmark_storage = DirectoryBenchmarkStorage(STORAGE_DIR, benchmark_id)
         await benchmark_storage.initialize()
         config = await benchmark_storage.get_config()
@@ -140,6 +140,123 @@ async def delete_benchmark_results(benchmark_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to delete benchmark results: {str(e)}"
+        ) from e
+
+
+@app.get("/api/benchmarks/{benchmark_id}/stats")
+async def get_benchmark_stats(benchmark_id: str):
+    """Get aggregated statistics for visualization"""
+    try:
+        benchmark_storage = DirectoryBenchmarkStorage(STORAGE_DIR, benchmark_id)
+        await benchmark_storage.initialize()
+
+        config = await benchmark_storage.get_config()
+        if config is None:
+            raise HTTPException(
+                status_code=404, detail=f"Benchmark {benchmark_id} not found"
+            )
+
+        result = await benchmark_storage.get_benchmark_results()
+
+        expected_results = len(config["players"]) * len(config["maps"])
+        actual_results = len(result["results"]) if result else 0
+
+        if actual_results == 0:
+            status = "ready"
+        elif actual_results >= expected_results:
+            status = "completed"
+        else:
+            status = "running"
+
+        if not result or not result["results"]:
+            return {
+                "status": status,
+                "overall_scores": {},
+                "per_game_scores": {},
+                "per_game_details": {},
+                "metadata": {
+                    "benchmark_id": benchmark_id,
+                    "num_players": len(config["players"]),
+                    "num_games": len(config["games"]),
+                    "num_maps": len(config["maps"]),
+                    "expected_results": expected_results,
+                    "actual_results": actual_results,
+                },
+                "config": config,
+            }
+
+        overall_scores: dict[str, float] = {}
+        per_game_scores: dict[str, dict[str, float]] = {}
+        per_game_details: dict[str, dict[str, Any]] = {}
+
+        for game_result in result["results"]:
+            player_id = game_result["player"]["id"]
+            game_name = game_result["game_map"]["name"]
+            score = game_result["score"]
+
+            if player_id not in overall_scores:
+                overall_scores[player_id] = 0
+            overall_scores[player_id] += score
+
+            if game_name not in per_game_scores:
+                per_game_scores[game_name] = {}
+            if player_id not in per_game_scores[game_name]:
+                per_game_scores[game_name][player_id] = 0
+            per_game_scores[game_name][player_id] += score
+
+            if game_name not in per_game_details:
+                per_game_details[game_name] = {
+                    "code": game_result["game_map"]["code"],
+                    "iterations_by_player": {},
+                    "arms_by_player": {},
+                    "round_scores_by_player": {},
+                }
+
+            if player_id not in per_game_details[game_name]["iterations_by_player"]:
+                per_game_details[game_name]["iterations_by_player"][player_id] = []
+                per_game_details[game_name]["arms_by_player"][player_id] = []
+                per_game_details[game_name]["round_scores_by_player"][player_id] = []
+
+            round_scores = []
+            running_max = float("-inf")
+            arms_scores = []
+
+            for round_result in game_result.get("round_results", []):
+                round_score = round_result.get("score", 0)
+                round_scores.append(round_score)
+
+                if round_score > running_max:
+                    running_max = round_score
+                arms_scores.append(running_max)
+
+            per_game_details[game_name]["iterations_by_player"][player_id].extend(
+                round_scores
+            )
+            per_game_details[game_name]["arms_by_player"][player_id].extend(arms_scores)
+            per_game_details[game_name]["round_scores_by_player"][player_id].extend(
+                round_scores
+            )
+
+        return {
+            "status": status,
+            "overall_scores": overall_scores,
+            "per_game_scores": per_game_scores,
+            "per_game_details": per_game_details,
+            "metadata": {
+                "benchmark_id": benchmark_id,
+                "num_players": len(config["players"]),
+                "num_games": len(config["games"]),
+                "num_maps": len(config["maps"]),
+                "expected_results": expected_results,
+                "actual_results": actual_results,
+            },
+            "config": config,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get benchmark stats: {str(e)}"
         ) from e
 
 

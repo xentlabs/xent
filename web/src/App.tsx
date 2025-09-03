@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import BenchmarkDashboard from './views/BenchmarkDashboard';
 
 type PlayerName = "black" | "white" | "alice" | "bob" | "carol" | "env";
 
@@ -99,7 +100,7 @@ Your response will be used as the prefix to that text and you will be scored on 
 
 function generateBenchmarkId(): string {
   const now = new Date();
-  const dateStr = now.getFullYear() + '-' + 
+  const dateStr = now.getFullYear() + '-' +
     String(now.getMonth() + 1).padStart(2, '0') + '-' +
     String(now.getDate()).padStart(2, '0') + '-' +
     String(now.getHours()).padStart(2, '0') + ':' +
@@ -142,7 +143,7 @@ function App() {
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
   const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
   const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
-  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'dashboard'>('list');
   const [selectedBenchmarkId, setSelectedBenchmarkId] = useState<string | null>(null);
   const [benchmarkResults, setBenchmarkResults] = useState<any>(null);
   const [loadingResults, setLoadingResults] = useState<boolean>(false);
@@ -206,7 +207,7 @@ function App() {
       config_type: "condensed_xega_config",
       metadata: {
         benchmark_id: benchmarkId,
-        xega_version: "1.0.0", // This would be set by backend
+        xega_version: "0.1.0",
         judge_model: judge,
         num_rounds_per_game: numRoundsPerGame,
         seed: seed,
@@ -223,7 +224,7 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -272,7 +273,7 @@ function App() {
   };
 
   const updateCustomGame = (index: number, field: keyof GameConfig, value: string) => {
-    setCustomGames(prev => prev.map((g, i) => 
+    setCustomGames(prev => prev.map((g, i) =>
       i === index ? { ...g, [field]: value } : g
     ));
   };
@@ -297,13 +298,12 @@ function App() {
     }
   };
 
-  const viewBenchmark = (id: string) => {
+  const viewDashboard = (id: string) => {
     setSelectedBenchmarkId(id);
-    setCurrentView('detail');
+    setCurrentView('dashboard');
     setBenchmarkResults(null);
     setIsRunning(false);
     setDeleteConfirm(false);
-    fetchBenchmarkResults(id);
   };
 
   const backToList = () => {
@@ -316,7 +316,7 @@ function App() {
 
   const handleRunBenchmark = async () => {
     if (!selectedBenchmarkId || isRunning) return;
-    
+
     try {
       setIsRunning(true);
       const response = await fetch(`/api/benchmarks/${selectedBenchmarkId}/run`, {
@@ -380,87 +380,12 @@ function App() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [deleteConfirm]);
 
-  if (currentView === 'detail' && selectedBenchmarkId) {
+  if (currentView === 'dashboard' && selectedBenchmarkId) {
     return (
-      <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-        <h1>Benchmark Details</h1>
-        
-        <button
-          onClick={backToList}
-          style={{ marginBottom: '20px', padding: '8px 16px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
-        >
-          ← Back to List
-        </button>
-
-        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
-          <h3>Benchmark ID: {selectedBenchmarkId}</h3>
-        </div>
-
-        {/* Action Buttons */}
-        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
-          <h4>Actions</h4>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button
-              onClick={handleRunBenchmark}
-              disabled={isRunning}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: isRunning ? '#6c757d' : '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: isRunning ? 'not-allowed' : 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              {isRunning ? '⏳ Running...' : 
-               (benchmarkResults?.results?.length > 0 ? '🚀 Continue Benchmark' : '🚀 Start Benchmark')}
-            </button>
-            
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDeleteResults();
-              }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: deleteConfirm ? '#dc3545' : '#dc3545',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              {deleteConfirm ? '⚠️ Confirm Delete?' : '🗑️ Delete Results'}
-            </button>
-          </div>
-        </div>
-
-        <div style={{ padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
-          <h3>Results (JSON)</h3>
-          {loadingResults ? (
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px', textAlign: 'center' }}>
-              <p style={{ color: '#666' }}>Loading benchmark results...</p>
-            </div>
-          ) : benchmarkResults?.error ? (
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px' }}>
-              <p style={{ color: '#dc3545' }}>Error: {benchmarkResults.error}</p>
-              <p style={{ color: '#666', fontSize: '12px', marginTop: '10px' }}>
-                This benchmark may not have been run yet. Use the CLI to run it: <code>xega run {selectedBenchmarkId}</code>
-              </p>
-            </div>
-          ) : benchmarkResults ? (
-            <pre style={{ backgroundColor: 'white', padding: '15px', overflow: 'auto', maxHeight: '600px', fontSize: '12px', borderRadius: '3px' }}>
-              {JSON.stringify(benchmarkResults, null, 2)}
-            </pre>
-          ) : (
-            <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '3px', textAlign: 'center' }}>
-              <p style={{ color: '#666' }}>No data available</p>
-            </div>
-          )}
-        </div>
-      </div>
+      <BenchmarkDashboard
+        benchmarkId={selectedBenchmarkId}
+        onBack={backToList}
+      />
     );
   }
 
@@ -482,10 +407,10 @@ function App() {
                 <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>{id}</span>
                 <button
                   type="button"
-                  onClick={() => viewBenchmark(id)}
-                  style={{ padding: '4px 12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
+                  onClick={() => viewDashboard(id)}
+                  style={{ padding: '4px 12px', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
                 >
-                  View
+                  Dashboard
                 </button>
               </li>
             ))}
@@ -565,7 +490,7 @@ function App() {
 
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>
           <legend><strong>Players</strong></legend>
-          
+
           <div style={{ marginBottom: '15px' }}>
             <label>
               <input
@@ -629,7 +554,7 @@ function App() {
 
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>
           <legend><strong>Games</strong></legend>
-          
+
           <div style={{ marginBottom: '15px' }}>
             <label>
               <input
@@ -674,7 +599,7 @@ function App() {
                       placeholder="e.g., my_custom_game"
                     />
                   </div>
-                  
+
                   <div style={{ marginBottom: '10px' }}>
                     <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Game Code (.xega DSL):</label>
                     <textarea
@@ -744,7 +669,7 @@ function App() {
       <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
         <h3>Configuration Preview (JSON)</h3>
         <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-          This is the condensed configuration that will be sent to the backend. 
+          This is the condensed configuration that will be sent to the backend.
           It matches the output of <code>xega configure</code> CLI command.
         </p>
         <pre style={{ backgroundColor: 'white', padding: '10px', overflow: 'auto', maxHeight: '400px', fontSize: '12px' }}>

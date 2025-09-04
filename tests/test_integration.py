@@ -160,16 +160,25 @@ def test_benchmark_structure(shared_benchmark_results):
 
     game1_iteration = game1_result["round_results"][0]
     assert game1_result["score"] == game1_iteration["score"]
-    assert (
-        len(game1_iteration["history"]) == 5
-    )  # reveal, elicit(req), elicit(resp), reward, reward
+    event_types = [e["type"] for e in game1_iteration["history"]]
+    expected_types = [
+        "round_started",
+        "reveal",
+        "elicit_request",
+        "elicit_response",
+        "reward",
+        "reward",
+        "round_finished",
+    ]
+    assert event_types == expected_types
 
     # Test Game 2 (multi-step)
     game2_result = game_results[1]
     assert len(game2_result["round_results"]) == 1  # Single round
 
     game2_iteration = game2_result["round_results"][0]
-    assert len(game2_iteration["history"]) > 5  # More steps than game 1
+    event_types = [e["type"] for e in game2_iteration["history"]]
+    assert event_types == expected_types * 2
 
 
 @pytest.mark.integration

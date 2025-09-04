@@ -37,7 +37,7 @@ from xega.presentation.sdk import (
     get_event_summary,
 )
 from xega.runtime.default_players import DefaultXGP, MockXGP
-from xega.runtime.execution import eval_line
+from xega.runtime.execution import eval_line, play_game
 from xega.runtime.judge import Judge
 from xega.runtime.runtime import XegaRuntime
 from xega.runtime.variables import build_globals, build_locals
@@ -1628,3 +1628,38 @@ elicit(black, x, 5)""",
         register_states = {"test": XString("test_value")}
         with pytest.raises(XegaConfigurationError):
             move, tokens = await mock_player.make_move("x", register_states)
+
+
+class TestRoundBoundaryEvents:
+    @pytest.mark.asyncio
+    async def test_round_events_emitted_once_at_boundaries(self, xrt):
+        game_code = """
+        assign(s='hello')
+        reveal(black, s)
+        reward(xent('hello world'))
+        """.strip()
+
+        results = await play_game(game_code, xrt, num_rounds=1)
+        assert len(results) == 1
+        history = results[0]["history"]
+
+        types = [e["type"] for e in history]
+        assert types[0] == "round_started"
+        assert types[-1] == "round_finished"
+
+        # Exactly one start and one finish
+        assert types.count("round_started") == 1
+        assert types.count("round_finished") == 1
+
+        start_event = history[0]
+        finish_event = history[-1]
+
+        # Round index present and equal
+        assert isinstance(start_event["round_index"], int)
+        assert isinstance(finish_event["round_index"], int)
+        assert start_event["round_index"] == finish_event["round_index"] == 0
+
+        # Finish payload contains registers and best_score
+        assert "best_score" in finish_event and isinstance(
+            finish_event["best_score"], float
+        )

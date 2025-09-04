@@ -1006,9 +1006,9 @@ class TestCombinedOperations:
 
         player = xrt.player
         # Should have received two reveals + elicit + elicit response
-        assert len(player.event_history) == 4
-        assert "Please enter a word" in str(player.event_history[0])
-        assert "mocked_move" in str(player.event_history[3])
+        assert len(player.event_history) == 6
+        assert "Please enter a word" in str(player.event_history[1])
+        assert "mocked_move" in str(player.event_history[4])
 
     @pytest.mark.asyncio
     async def test_elicit_registers(self, xrt):

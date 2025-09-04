@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { fetchBenchmarkStats, runBenchmark, deleteBenchmarkResults } from '../utils/api';
+import { fetchBenchmarkStats, runBenchmark, deleteBenchmarkResults, addPlayersToBenchmark } from '../utils/api';
 import { BenchmarkStats } from '../types/benchmark';
 import OverallView from './OverallView';
+import Modal from '../components/Modal';
+import PlayerConfigForm, { PlayerConfig } from '../components/PlayerConfigForm';
 
 interface BenchmarkDashboardProps {
   benchmarkId: string;
@@ -16,6 +18,8 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
   const [configExpanded, setConfigExpanded] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [addingPlayers, setAddingPlayers] = useState(false);
 
   // Fetch benchmark stats
   const loadStats = async () => {
@@ -34,7 +38,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
   // Handle running benchmark
   const handleRunBenchmark = async () => {
     if (isRunning) return;
-    
+
     try {
       setIsRunning(true);
       await runBenchmark(benchmarkId);
@@ -63,6 +67,27 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
     } catch (err) {
       alert(`Error deleting results: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
+  };
+
+  // Handle adding players
+  const handleAddPlayers = async (players: PlayerConfig[]) => {
+    try {
+      setAddingPlayers(true);
+      await addPlayersToBenchmark(benchmarkId, players);
+      // Close modal and reload stats
+      setShowAddPlayerModal(false);
+      await loadStats();
+    } catch (err) {
+      alert(`Error adding players: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setAddingPlayers(false);
+    }
+  };
+
+  // Get existing player IDs from config
+  const getExistingPlayerIds = (): string[] => {
+    if (!stats?.config?.players) return [];
+    return stats.config.players.map((p: any) => p.id);
   };
 
   // Load initial data
@@ -98,11 +123,11 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
         <div className="text-center max-w-md mx-auto">
           <div className="w-16 h-16 mx-auto mb-4 text-red-400">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={1.5} 
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
               />
             </svg>
           </div>
@@ -152,7 +177,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               {stats.status === 'running' && (
                 <span className="inline-flex items-center text-sm text-green-600">
@@ -183,26 +208,26 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-2">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                  stats.status === 'completed' 
-                    ? 'bg-green-100 text-green-800' 
+                  stats.status === 'completed'
+                    ? 'bg-green-100 text-green-800'
                     : stats.status === 'running'
                     ? 'bg-yellow-100 text-yellow-800'
                     : 'bg-blue-100 text-blue-800'
                 }`}>
-                  {stats.status === 'completed' ? '✓ Completed' : 
+                  {stats.status === 'completed' ? '✓ Completed' :
                    stats.status === 'running' ? '⏳ Running' : '🚀 Ready to Start'}
                 </span>
                 <span className="text-sm text-gray-600">
                   {stats.metadata.actual_results} / {stats.metadata.expected_results} results
                 </span>
               </div>
-              
+
               {/* Progress Bar */}
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
+                <div
                   className={`h-2 rounded-full transition-all duration-500 ${
-                    stats.status === 'completed' ? 'bg-green-600' : 
-                    stats.status === 'running' ? 'bg-blue-600' : 
+                    stats.status === 'completed' ? 'bg-green-600' :
+                    stats.status === 'running' ? 'bg-blue-600' :
                     'bg-gray-400'
                   }`}
                   style={{ width: `${Math.min(100, (stats.metadata.actual_results / stats.metadata.expected_results) * 100)}%` }}
@@ -221,13 +246,25 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
-                {isRunning ? '⏳ Starting...' : 
+                {isRunning ? '⏳ Starting...' :
                  stats.status === 'ready' ? '🚀 Start Benchmark' :
-                 stats.status === 'running' ? '⏳ Running...' : 
-                 stats.status === 'completed' ? '✅ Finished' : 
+                 stats.status === 'running' ? '⏳ Running...' :
+                 stats.status === 'completed' ? '✅ Finished' :
                  '🚀 Continue Benchmark'}
               </button>
-              
+
+              <button
+                onClick={() => setShowAddPlayerModal(true)}
+                disabled={stats.status === 'running'}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  stats.status === 'running'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+              >
+                ➕ Add Player
+              </button>
+
               <button
                 onClick={handleDeleteResults}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -264,16 +301,16 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                 </span>
               </div>
             </div>
-            <svg 
+            <svg
               className={`w-5 h-5 text-gray-500 transition-transform ${configExpanded ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          
+
           {configExpanded && (
             <div className="pb-4">
               <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
@@ -333,6 +370,20 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
           </div>
         )}
       </div>
+
+      {/* Add Player Modal */}
+      <Modal
+        isOpen={showAddPlayerModal}
+        onClose={() => setShowAddPlayerModal(false)}
+        title="Add Players to Benchmark"
+      >
+        <PlayerConfigForm
+          onSubmit={handleAddPlayers}
+          onCancel={() => setShowAddPlayerModal(false)}
+          existingPlayerIds={getExistingPlayerIds()}
+          submitLabel={addingPlayers ? "Adding..." : "Add Players"}
+        />
+      </Modal>
     </div>
   );
 }

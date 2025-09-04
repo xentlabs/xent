@@ -1,17 +1,6 @@
 import { useState, useEffect } from 'react';
 import BenchmarkDashboard from './views/BenchmarkDashboard';
-
-type PlayerName = "black" | "white" | "alice" | "bob" | "carol" | "env";
-
-interface PlayerConfig {
-  name: PlayerName;
-  id: string;
-  player_type: string;
-  options: {
-    model?: string;
-    provider?: string;
-  };
-}
+import PlayerConfigForm, { PlayerConfig } from './components/PlayerConfigForm';
 
 interface GameConfig {
   name: string;
@@ -110,30 +99,16 @@ function generateBenchmarkId(): string {
   return `${dateStr}-${hashSuffix}`;
 }
 
-function guessProviderFromModel(model: string): string {
-  const modelLower = model.toLowerCase();
-  if (modelLower.includes('gpt') || modelLower.includes('o3') || modelLower.includes('o4')) {
-    return 'openai';
-  } else if (modelLower.includes('claude')) {
-    return 'anthropic';
-  } else if (modelLower.includes('gemini')) {
-    return 'gemini';
-  } else if (modelLower.includes('grok')) {
-    return 'grok';
-  } else if (modelLower.includes('deepseek')) {
-    return 'deepseek';
-  } else if (model.includes('/') && !model.startsWith('ollama/')) {
-    return 'openrouter';
-  } else if (model.startsWith('ollama/')) {
-    return 'ollama';
-  } else {
-    return 'openai'; // default fallback
-  }
-}
-
 function App() {
-  const [models, setModels] = useState<string[]>(['gpt-4o']);
-  const [human, setHuman] = useState<boolean>(false);
+  const [players, setPlayers] = useState<PlayerConfig[]>([{
+    name: 'black',
+    id: 'gpt-4o',
+    player_type: 'default',
+    options: {
+      model: 'gpt-4o',
+      provider: 'openai',
+    },
+  }]);
   const [judge, setJudge] = useState<string>('gpt2');
   const [benchmarkId, setBenchmarkId] = useState<string>(generateBenchmarkId());
   const [seed, setSeed] = useState<string>('notrandom');
@@ -172,26 +147,6 @@ function App() {
   };
 
   const buildConfig = (): CondensedXegaBenchmarkConfig => {
-    let players: PlayerConfig[];
-    if (!human) {
-      players = models.map(model => ({
-        name: "black" as PlayerName,
-        id: model,
-        player_type: "default",
-        options: {
-          model: model,
-          provider: guessProviderFromModel(model),
-        },
-      }));
-    } else {
-      players = [{
-        name: "black" as PlayerName,
-        id: "human",
-        player_type: "human",
-        options: {},
-      }];
-    }
-
     let games: GameConfig[];
     if (!useCustomGames || customGames.length === 0) {
       games = [{
@@ -248,17 +203,6 @@ function App() {
     }
   };
 
-  const addModel = () => {
-    setModels(prev => [...prev, 'gpt-4o-mini']);
-  };
-
-  const removeModel = (index: number) => {
-    setModels(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateModel = (index: number, value: string) => {
-    setModels(prev => prev.map((m, i) => i === index ? value : m));
-  };
 
   const addCustomGame = () => {
     setCustomGames(prev => [...prev, {
@@ -491,65 +435,11 @@ function App() {
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>
           <legend><strong>Players</strong></legend>
 
-          <div style={{ marginBottom: '15px' }}>
-            <label>
-              <input
-                type="checkbox"
-                checked={human}
-                onChange={(e) => setHuman(e.target.checked)}
-                style={{ marginRight: '10px' }}
-              />
-              Human Player (overrides models below)
-            </label>
-          </div>
-
-          {!human && (
-            <div>
-              <h4>Model Players:</h4>
-              {models.map((model, index) => (
-                <div key={index} style={{ marginBottom: '10px', padding: '10px', backgroundColor: '#f5f5f5' }}>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      placeholder="Model name (e.g., gpt-4o, claude-3-sonnet)"
-                      value={model}
-                      onChange={(e) => updateModel(index, e.target.value)}
-                      style={{ flex: 1, padding: '5px' }}
-                    />
-                    <span style={{ fontSize: '12px', color: '#666' }}>
-                      Provider: {guessProviderFromModel(model)}
-                    </span>
-                    {models.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeModel(index)}
-                        style={{ padding: '5px 10px', backgroundColor: '#ff4444', color: 'white', border: 'none', cursor: 'pointer' }}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={addModel}
-                style={{ padding: '5px 15px', backgroundColor: '#4CAF50', color: 'white', border: 'none', cursor: 'pointer' }}
-              >
-                Add Model
-              </button>
-            </div>
-          )}
-
-          {human && (
-            <div style={{ padding: '10px', backgroundColor: '#e8f4fd', border: '1px solid #b3d9ff' }}>
-              <strong>Human Player Mode</strong>
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                A single human player will be configured for interactive testing.
-              </p>
-            </div>
-          )}
+          <PlayerConfigForm
+            embedded={true}
+            value={players}
+            onChange={setPlayers}
+          />
         </fieldset>
 
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>

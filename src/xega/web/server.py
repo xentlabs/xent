@@ -261,6 +261,63 @@ async def get_benchmark_stats(benchmark_id: str):
         ) from e
 
 
+class AddPlayerRequest(BaseModel):
+    players: list[dict[str, Any]]
+
+
+@app.post("/api/benchmarks/{benchmark_id}/add-players")
+async def add_players_to_benchmark(benchmark_id: str, request: AddPlayerRequest):
+    """Add new players to an existing benchmark configuration"""
+    try:
+        benchmark_storage = DirectoryBenchmarkStorage(STORAGE_DIR, benchmark_id)
+        await benchmark_storage.initialize()
+
+        # Get existing config
+        config = await benchmark_storage.get_config()
+        if config is None:
+            raise HTTPException(
+                status_code=404, detail=f"Benchmark {benchmark_id} not found"
+            )
+
+        # Check if benchmark is running
+        is_running = await benchmark_storage.get_running_state()
+        if is_running:
+            raise HTTPException(
+                status_code=400, detail="Cannot add players while benchmark is running"
+            )
+
+        # Validate new players don't duplicate existing ones
+        existing_player_ids = {player["id"] for player in config["players"]}
+        new_player_ids = {player["id"] for player in request.players}
+
+        duplicates = existing_player_ids & new_player_ids
+        if duplicates:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Players with these IDs already exist: {', '.join(duplicates)}",
+            )
+
+        # Add new players to config
+        config["players"].extend(request.players)  # type: ignore[arg-type]
+
+        # Update the configuration in storage
+        await benchmark_storage.store_config(config)
+
+        return {
+            "success": True,
+            "message": f"Successfully added {len(request.players)} player(s)",
+            "benchmark_id": benchmark_id,
+            "total_players": len(config["players"]),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to add players: {str(e)}"
+        ) from e
+
+
 @app.post("/api/config")
 async def store_config(request: ConfigRequest):
     try:

@@ -62,3 +62,12 @@ class BenchmarkStorage(ABC):
     @abstractmethod
     async def get_benchmark_results(self) -> BenchmarkResult | None:
         pass
+
+    @abstractmethod
+    async def get_running_state(self) -> bool:
+        pass
+
+    @abstractmethod
+    async def set_running_state(self, running: bool):
+        pass
+

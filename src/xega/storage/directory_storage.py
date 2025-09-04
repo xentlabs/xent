@@ -85,6 +85,20 @@ class DirectoryBenchmarkStorage(BenchmarkStorage):
 
         return {"expanded_config": config, "results": results}
 
+    async def get_running_state(self) -> bool:
+        run_status_path = self.results_dir / "running_state.txt"
+        if run_status_path.exists() and run_status_path.is_file():
+            with open(config_file) as f:
+                running_contents = f.read()
+                return running_contents == "running"
+        return False
+
+    async def set_running_state(self, running: bool):
+        run_status_path = self.results_dir / "running_state.txt"
+        contents = "running" if running else "stopped"
+        with open(run_status_path, "w") as f:
+            f.write(contents)
+
     def _game_results_json_filename(
         self, game_name: str, map_seed: str, player_id: str
     ) -> Path:

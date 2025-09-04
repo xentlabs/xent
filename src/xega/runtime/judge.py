@@ -18,21 +18,6 @@ from xega.common.token_xent_list import TokenXentList
 from xega.common.x_string import XString
 from xega.runtime.text_generation import generate_text
 
-DEFAULT_CHAT_TEMPLATE_JINJA = (
-    "{% for message in messages %}"
-    "{% if message['role'] == 'user' %}"
-    "{{ 'User: ' + message['content'] + '\n' }}"
-    "{% elif message['role'] == 'assistant' %}"
-    "{{ 'Assistant: ' + message['content'] + '\n' }}"
-    "{% else %}"
-    "{{ message['content'] + '\n' }}"
-    "{% endif %}"
-    "{% endfor %}"
-    "{% if add_generation_prompt %}"
-    "{{ 'Assistant: ' }}"
-    "{% endif %}"
-)
-
 
 class Judge:
     def __init__(self, model_name: str, hf_dir_path: str | None = None) -> None:

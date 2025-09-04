@@ -39,7 +39,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
       setIsRunning(true);
       await runBenchmark(benchmarkId);
       // Start polling for updates
-      setTimeout(loadStats, 2000);
+      setTimeout(loadStats, 5000);
     } catch (err) {
       alert(`Error starting benchmark: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -216,7 +216,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                 onClick={handleRunBenchmark}
                 disabled={isRunning || stats.status === 'running'}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isRunning || stats.status === 'running'
+                  isRunning || stats.status === 'running' || stats.status === 'completed'
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
@@ -224,6 +224,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                 {isRunning ? '⏳ Starting...' : 
                  stats.status === 'ready' ? '🚀 Start Benchmark' :
                  stats.status === 'running' ? '⏳ Running...' : 
+                 stats.status === 'completed' ? '✅ Finished' : 
                  '🚀 Continue Benchmark'}
               </button>
               

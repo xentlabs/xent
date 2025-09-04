@@ -88,7 +88,7 @@ class DirectoryBenchmarkStorage(BenchmarkStorage):
     async def get_running_state(self) -> bool:
         run_status_path = self.results_dir / "running_state.txt"
         if run_status_path.exists() and run_status_path.is_file():
-            with open(config_file) as f:
+            with open(run_status_path) as f:
                 running_contents = f.read()
                 return running_contents == "running"
         return False

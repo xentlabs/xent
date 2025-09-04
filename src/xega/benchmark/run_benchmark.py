@@ -119,66 +119,70 @@ async def run_benchmark(
     storage: BenchmarkStorage,
     max_concurrent_games: int,
 ) -> BenchmarkResult:
+    await storage.set_running_state(True)
     await storage.store_config(config)
+    try:
 
-    check_version(config)
+        check_version(config)
 
-    work_units = generate_executable_game_maps(config)
+        work_units = generate_executable_game_maps(config)
 
-    benchmark_id = config["metadata"]["benchmark_id"]
-    logging.info(f"Starting benchmark with Benchmark ID: {benchmark_id}.")
+        benchmark_id = config["metadata"]["benchmark_id"]
+        logging.info(f"Starting benchmark with Benchmark ID: {benchmark_id}.")
 
-    semaphore = asyncio.Semaphore(max_concurrent_games)
+        semaphore = asyncio.Semaphore(max_concurrent_games)
 
-    async def run_game_or_get_results(
-        executable_game_map: ExecutableGameMap, judge: Judge
-    ) -> GameMapResults | None:
-        game_name = executable_game_map["game_map"]["name"]
-        map_seed = executable_game_map["game_map"]["map_seed"]
-        player_id = executable_game_map["player"]["id"]
-        game_str = f"{game_name} ({map_seed}) with player {player_id}"
+        async def run_game_or_get_results(
+            executable_game_map: ExecutableGameMap, judge: Judge
+        ) -> GameMapResults | None:
+            game_name = executable_game_map["game_map"]["name"]
+            map_seed = executable_game_map["game_map"]["map_seed"]
+            player_id = executable_game_map["player"]["id"]
+            game_str = f"{game_name} ({map_seed}) with player {player_id}"
 
-        async with semaphore:
-            existing = await storage.get_game_map_results(
-                game_name, map_seed, player_id
-            )
-            if existing:
-                print(
-                    f"Found existing results for game {game_str}, skipping execution."
+            async with semaphore:
+                existing = await storage.get_game_map_results(
+                    game_name, map_seed, player_id
                 )
-                return existing
+                if existing:
+                    print(
+                        f"Found existing results for game {game_str}, skipping execution."
+                    )
+                    return existing
 
-            try:
-                print(f"Executing game {game_str}")
-                result = await run_game(executable_game_map, judge)
-                if result:
-                    print(f"Game {game_str} completed successfully")
-                    await storage.store_game_map_results(result)
-                    print_game_history(result)
-                else:
-                    print(f"{game_str} failed to execute")
-                return result
-            except Exception as e:
-                logging.exception(
-                    f"Error running game {game_str}: {e}",
-                    exc_info=True,
-                )
-                return None
+                try:
+                    print(f"Executing game {game_str}")
+                    result = await run_game(executable_game_map, judge)
+                    if result:
+                        print(f"Game {game_str} completed successfully")
+                        await storage.store_game_map_results(result)
+                        print_game_history(result)
+                    else:
+                        print(f"{game_str} failed to execute")
+                    return result
+                except Exception as e:
+                    logging.exception(
+                        f"Error running game {game_str}: {e}",
+                        exc_info=True,
+                    )
+                    return None
 
-    judge = Judge(config["metadata"]["judge_model"])
-    tasks = [
-        run_game_or_get_results(executable_game_map, judge)
-        for executable_game_map in work_units
-    ]
+        judge = Judge(config["metadata"]["judge_model"])
+        tasks = [
+            run_game_or_get_results(executable_game_map, judge)
+            for executable_game_map in work_units
+        ]
 
-    await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=True)
 
-    print(f"Benchmark {benchmark_id} completed")
-    benchmark_result = await storage.get_benchmark_results()
-    if benchmark_result is None:
-        logging.error(f"Could not find benchmark results for {benchmark_id}")
-        raise XegaInternalError("Could not find benchmark results after execution")
+        print(f"Benchmark {benchmark_id} completed")
+        benchmark_result = await storage.get_benchmark_results()
+        if benchmark_result is None:
+            logging.error(f"Could not find benchmark results for {benchmark_id}")
+            raise XegaInternalError("Could not find benchmark results after execution")
 
-    logging.info(f"Benchmark ({benchmark_id}) completed")
-    print(f"Benchmark ({benchmark_id}) completed")
-    return benchmark_result
+        logging.info(f"Benchmark ({benchmark_id}) completed")
+        print(f"Benchmark ({benchmark_id}) completed")
+        return benchmark_result
+    finally:
+        await storage.set_running_state(False)

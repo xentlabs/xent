@@ -161,12 +161,13 @@ async def get_benchmark_stats(benchmark_id: str):
         expected_results = len(config["players"]) * len(config["maps"])
         actual_results = len(result["results"]) if result else 0
 
-        if actual_results == 0:
-            status = "ready"
+        is_running = await benchmark_storage.get_running_state()
+        if is_running:
+            status = "running"
         elif actual_results >= expected_results:
             status = "completed"
         else:
-            status = "running"
+            status = "ready"
 
         if not result or not result["results"]:
             return {

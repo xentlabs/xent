@@ -178,7 +178,17 @@ def test_benchmark_structure(shared_benchmark_results):
 
     game2_iteration = game2_result["round_results"][0]
     event_types = [e["type"] for e in game2_iteration["history"]]
-    assert event_types == expected_types * 2
+    expected_types = [
+        "round_started",
+        "reveal",
+        "elicit_request",
+        "elicit_response",
+        "reward",
+        "reveal",
+        "reward",
+        "round_finished",
+    ]
+    assert event_types == expected_types
 
 
 @pytest.mark.integration

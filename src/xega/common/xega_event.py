@@ -46,10 +46,22 @@ class FailedEnsureEvent(BaseXegaEvent):
     beacon: str
 
 
+class RoundStartedEvent(BaseXegaEvent):
+    type: Literal["round_started"]
+    round_index: int
+
+
+class RoundFinishedEvent(BaseXegaEvent):
+    type: Literal["round_finished"]
+    round_index: int
+
+
 XegaEvent = (
     ElicitRequestEvent
     | ElicitResponseEvent
     | RevealEvent
     | RewardEvent
     | FailedEnsureEvent
+    | RoundStartedEvent
+    | RoundFinishedEvent
 )

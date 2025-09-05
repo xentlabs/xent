@@ -11,6 +11,7 @@ from xega.common.errors import (
     XegaSyntaxError,
 )
 from xega.common.x_flag import XFlag
+from xega.common.xega_event import RoundFinishedEvent, RoundStartedEvent
 from xega.runtime.runtime import XegaRuntime
 
 
@@ -38,7 +39,7 @@ async def play_game(
     round_results: list[GameMapRoundResult] = []
 
     while rounds_played < num_rounds:
-        result = await play_single_game(lines, xrt)
+        result = await play_single_game(lines, xrt, rounds_played)
         if result is None:
             return []  # TODO what to do here?
         rounds_played += 1
@@ -51,8 +52,19 @@ async def play_game(
 
 # TODO need to clean up error handling / none return here
 async def play_single_game(
-    lines: list[str], xrt: XegaRuntime
+    lines: list[str],
+    xrt: XegaRuntime,
+    rounds_played: int,
 ) -> GameMapRoundResult | None:
+    start_event = RoundStartedEvent(
+        type="round_started",
+        round_index=rounds_played,
+        line=lines[0],
+        line_num=1,
+        player=xrt.player.name,
+    )
+    await xrt.send_event(xrt.player, start_event)
+
     line_index = 0
 
     while line_index < len(lines):
@@ -72,6 +84,15 @@ async def play_single_game(
                 raise XegaInternalError(
                     f"Invalid line number {line_index} returned by instruction"
                 )
+
+    finish_event = RoundFinishedEvent(
+        type="round_finished",
+        round_index=rounds_played,
+        line=lines[-1],
+        line_num=len(lines) - 1,
+        player=xrt.player.name,
+    )
+    await xrt.send_event(xrt.player, finish_event)
 
     logging.info("Game round completed successfully")
     results = xrt.get_results_and_reset()

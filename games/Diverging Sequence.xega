@@ -1,18 +1,12 @@
-# s is the start
-# x1 is the new text
-# x2 is the previous text
-# s1 is the fully story (not currently used)
+#TODO: need to update presentation function heavily to reflect these changes
 assign(s=story())
-assign(x1=s)
-assign(t1="After the rain", t2=" comes the sun")
+#TODO: need to decide + finalize the baseline comparison here
+assign(t1="After the rain", t2=" I eat food")
 
-beacon(flag_1)
-
-assign(s1=s1 + x1)
-assign(x2=x1)
 elicit(x1, 5)
-ensure(xed(x1 | x2) >= xed(t2 | t1))
+ensure(xed(x1 | s) >= xed(t2 | t1))
 
-replay(flag_1, 5)
+elicit(x2, 5)
+ensure(xed(x2 | x1 + s) >= xed(t2 | t1))
 
-reward(dex(x1 | s))
+reward(dex(x2 | s))

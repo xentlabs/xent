@@ -3,11 +3,13 @@ from xega.common.errors import XegaConfigurationError
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import DefaultXGP, MockXGP
 from xega.runtime.human_player import HumanXGP
+from xega.runtime.websocket_player import WebsocketXGP
 
 player_constructors = {
     "mock": MockXGP,
     "default": DefaultXGP,
     "human": HumanXGP,
+    "websocket": WebsocketXGP,
 }
 
 

@@ -1,8 +1,9 @@
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -11,6 +12,7 @@ from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.common.configuration_types import CondensedXegaBenchmarkConfig
 from xega.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
+from xega.web.websocket_game_runner import run_websocket_game
 
 app = FastAPI(title="XEGA Web Interface")
 
@@ -333,3 +335,55 @@ async def store_config(request: ConfigRequest):
         raise HTTPException(
             status_code=500, detail=f"Failed to store configuration: {str(e)}"
         ) from e
+
+
+# WebSocket endpoint for interactive game play
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    
+    # Default simple game code (similar to marketing site)
+    SIMPLE_GAME_CODE = """assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
+reveal(black, s)
+elicit(black, t, 10)
+reveal(black, t)
+assign(t1=remove_common_words(t, s))
+reveal(black, t1)
+reward(black, xed(s | t1))"""
+    
+    code = SIMPLE_GAME_CODE
+    
+    try:
+        while True:
+            # Wait for messages from client
+            data = await websocket.receive_text()
+            message = json.loads(data)
+            
+            if not isinstance(message, dict) or "type" not in message:
+                await websocket.send_text("Invalid message format")
+                continue
+                
+            if message["type"] == "xega_configure":
+                # Update game code
+                code = message.get("code", SIMPLE_GAME_CODE)
+                print(f"Configured new game code: {code[:50]}...")
+                
+            elif message["type"] == "xega_control":
+                if message["command"] == "start":
+                    print("Starting interactive Xega game")
+                    try:
+                        await run_websocket_game(websocket, code)
+                        print("Game completed successfully")
+                    except Exception as e:
+                        print(f"Game execution failed: {e}")
+                        # Error already sent to client by run_websocket_game
+                else:
+                    print(f"Unknown command: {message['command']}")
+                    
+            else:
+                # Echo unknown message types for now
+                await websocket.send_text(f"Echo: {data}")
+                
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+        await websocket.close()

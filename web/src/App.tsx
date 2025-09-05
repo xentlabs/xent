@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import BenchmarkDashboard from './views/BenchmarkDashboard';
 import PlayerConfigForm, { PlayerConfig } from './components/PlayerConfigForm';
+import PlayPage from './components/play/PlayPage';
 
 interface GameConfig {
   name: string;
@@ -118,7 +119,7 @@ function App() {
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
   const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
   const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
-  const [currentView, setCurrentView] = useState<'list' | 'dashboard'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'dashboard' | 'play'>('list');
   const [selectedBenchmarkId, setSelectedBenchmarkId] = useState<string | null>(null);
   const [benchmarkResults, setBenchmarkResults] = useState<any>(null);
   const [loadingResults, setLoadingResults] = useState<boolean>(false);
@@ -324,6 +325,10 @@ function App() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [deleteConfirm]);
 
+  if (currentView === 'play') {
+    return <PlayPage onBack={() => setCurrentView('list')} />;
+  }
+
   if (currentView === 'dashboard' && selectedBenchmarkId) {
     return (
       <BenchmarkDashboard
@@ -335,7 +340,24 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>XEGA Benchmarks</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1>XEGA Benchmarks</h1>
+        <button
+          onClick={() => setCurrentView('play')}
+          style={{ 
+            padding: '10px 20px', 
+            backgroundColor: '#9C27B0', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '4px', 
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          🎮 Play Game
+        </button>
+      </div>
 
       {/* Benchmark List Section */}
       <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>

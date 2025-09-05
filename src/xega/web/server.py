@@ -352,6 +352,7 @@ reveal(black, t1)
 reward(black, xed(s | t1))"""
     
     code = SIMPLE_GAME_CODE
+    game_task = None
     
     try:
         while True:
@@ -371,9 +372,23 @@ reward(black, xed(s | t1))"""
             elif message["type"] == "xega_control":
                 if message["command"] == "start":
                     print("Starting interactive Xega game")
+                    
+                    # Cancel any existing game first
+                    if game_task and not game_task.done():
+                        print("Cancelling existing game")
+                        game_task.cancel()
+                        try:
+                            await game_task
+                        except asyncio.CancelledError:
+                            pass
+                    
+                    # Start new game
                     try:
-                        await run_websocket_game(websocket, code)
+                        game_task = asyncio.create_task(run_websocket_game(websocket, code))
+                        await game_task
                         print("Game completed successfully")
+                    except asyncio.CancelledError:
+                        print("Game was cancelled")
                     except Exception as e:
                         print(f"Game execution failed: {e}")
                         # Error already sent to client by run_websocket_game
@@ -386,4 +401,12 @@ reward(black, xed(s | t1))"""
                 
     except Exception as e:
         print(f"WebSocket error: {e}")
-        await websocket.close()
+    finally:
+        # Always cleanup game task when WebSocket closes
+        if game_task and not game_task.done():
+            print("Cleaning up game task on disconnect")
+            game_task.cancel()
+            try:
+                await game_task
+            except asyncio.CancelledError:
+                pass

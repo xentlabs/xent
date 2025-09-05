@@ -26,7 +26,7 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
             "benchmark_id": "interactive_play",
             "xega_version": "0.1.0", 
             "judge_model": "gpt2",
-            "num_rounds_per_game": 1,  # Single round for interactive play
+            "num_rounds_per_game": 999,  # Effectively unlimited rounds for interactive play
             "seed": "websocket_game",
         }
         
@@ -68,14 +68,22 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
         else:
             logging.warning("Game completed but returned no results")
             
+    except asyncio.CancelledError:
+        # Game was cancelled (user disconnected/navigated away)
+        logging.info("Websocket game cancelled - user disconnected")
+        raise  # Re-raise to properly handle cleanup
     except Exception as e:
         logging.error(f"Error running websocket game: {e}")
-        # Send error to client
-        import json
-        await websocket.send_text(json.dumps({
-            "type": "xega_error",
-            "error": str(e)
-        }))
+        # Send error to client if still connected
+        try:
+            import json
+            await websocket.send_text(json.dumps({
+                "type": "xega_error",
+                "error": str(e)
+            }))
+        except Exception:
+            # WebSocket might be closed, ignore send error
+            pass
         raise
 
 

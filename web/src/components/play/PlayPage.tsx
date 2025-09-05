@@ -343,14 +343,27 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
     connectWebSocket();
 
     return () => {
+      // Cleanup on component unmount (SPA navigation)
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (ws.current) {
-        ws.current.close();
+        ws.current.close(1000, "User navigated away");
       }
     };
   }, [connectWebSocket]);
+
+  // Handle browser refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.close(1000, "Page unloading");
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   useEffect(() => {
     setCodeLines(code.split('\n'));

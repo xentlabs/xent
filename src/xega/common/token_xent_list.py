@@ -1,5 +1,5 @@
 def round_xent(value: float) -> float:
-    return round(value)
+    return round(value * 10)
 
 
 class TokenXentList:
@@ -8,7 +8,7 @@ class TokenXentList:
         self.scale = scale
 
     def __str__(self):
-        return " ".join(f"{t[0]}|{round(t[1])}" for t in self.pairs)
+        return " ".join(f"{t[0]}|{round_xent(t[1])}" for t in self.pairs)
 
     def __repr__(self):
         return f"TokenXentList({self.pairs}, scale={self.scale}"
@@ -26,7 +26,7 @@ class TokenXentList:
         return True
 
     def total_xent(self):
-        return self.scale * sum(xent for _, xent in self.pairs)
+        return self.scale * sum(xent for _, xent in self.pairs) * 10
 
     def _apply_scale(self):
         if self.scale == 1.0:

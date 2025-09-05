@@ -334,12 +334,12 @@ class TestTokenXentList:
 
         # Test addition
         result = list0 + list1
-        expected = 15.0  # (1+2) + (2+3) + (3+4) = 3 + 5 + 7 = 15
+        expected = 150.0  # (1+2) + (2+3) + (3+4) = 3 + 5 + 7 = 15
         assert result.total_xent() == expected
 
         # Test subtraction
         result = list1 - list0
-        expected = 3.0  # (2-1) + (3-2) + (4-3) = 1 + 1 + 1 = 3
+        expected = 30.0  # (2-1) + (3-2) + (4-3) = 1 + 1 + 1 = 3
         assert result.total_xent() == expected
 
         # Test multiplication (should raise TypeError)
@@ -352,7 +352,7 @@ class TestTokenXentList:
 
         # Test negation
         result = -list0
-        expected = -6.0  # -(1 + 2 + 3) = -6
+        expected = -60.0  # -(1 + 2 + 3) = -6
         assert result.total_xent() == expected
 
     def test_no_scalar_operations(self):
@@ -465,12 +465,12 @@ class TestTokenXentList:
 
         # Part 2: Test comparisons with scalar values
         # list1 has total = 3.0
-        assert (list1 < 5) is True
-        assert (list1 < 2) is False
-        assert (list1 <= 3) is True
-        assert (list1 > 2) is True
-        assert (list1 > 4) is False
-        assert (list1 >= 3) is True
+        assert (list1 < 50) is True
+        assert (list1 < 20) is False
+        assert (list1 <= 30) is True
+        assert (list1 > 20) is True
+        assert (list1 > 40) is False
+        assert (list1 >= 30) is True
         # Note: == and != with scalars return NotImplemented
 
     def test_validated_bool(self):
@@ -571,7 +571,7 @@ class TestTokenXentList:
 
         # Test __str__ - should round to integer values
         str_rep = str(list1)
-        assert str_rep == "hello|1 world|3"
+        assert str_rep == "hello|12 world|30"
 
         # Test __repr__
         repr_str = repr(list1)
@@ -589,7 +589,7 @@ class TestTokenXentList:
 
         # Single element
         single = TokenXentList([("only", 5.0)])
-        assert single.total_xent() == 5.0
+        assert single.total_xent() == 50.0
 
         # Operations on empty lists
         with pytest.raises(TypeError):
@@ -615,7 +615,7 @@ class TestTokenXentList:
         """Test behavior of scale parameter."""
         # Create with scale
         list1 = TokenXentList([("a", 1.0), ("b", 2.0)], scale=-1.0)
-        assert list1.total_xent() == -1.0 * (1.0 + 2.0)
+        assert list1.total_xent() == -1.0 * (1.0 + 2.0) * 10
 
         # Test that operations preserve scale correctly
         list2 = TokenXentList([("a", 0.5), ("b", 1.5)])

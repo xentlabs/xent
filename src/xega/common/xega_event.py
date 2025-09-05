@@ -11,40 +11,36 @@ class TokenUsage(TypedDict):
 
 
 class BaseXegaEvent(TypedDict):
-    pass
-
-
-class LineXegaEvent(BaseXegaEvent):
     line: str
     line_num: int
     player: str
 
 
-class ElicitRequestEvent(LineXegaEvent):
+class ElicitRequestEvent(BaseXegaEvent):
     type: Literal["elicit_request"]
     var_name: str
     max_len: int
     registers: dict[str, XString]
 
 
-class ElicitResponseEvent(LineXegaEvent):
+class ElicitResponseEvent(BaseXegaEvent):
     type: Literal["elicit_response"]
     response: str
     token_usage: TokenUsage
 
 
-class RevealEvent(LineXegaEvent):
+class RevealEvent(BaseXegaEvent):
     type: Literal["reveal"]
     # Map of variable names to their values.
     values: dict[str, XString]
 
 
-class RewardEvent(LineXegaEvent):
+class RewardEvent(BaseXegaEvent):
     type: Literal["reward"]
     value: TokenXentList
 
 
-class FailedEnsureEvent(LineXegaEvent):
+class FailedEnsureEvent(BaseXegaEvent):
     type: Literal["failed_ensure"]
     ensure_results: list[bool]
     beacon: str
@@ -58,7 +54,6 @@ class RoundStartedEvent(BaseXegaEvent):
 class RoundFinishedEvent(BaseXegaEvent):
     type: Literal["round_finished"]
     round_index: int
-    best_score: float
 
 
 XegaEvent = (

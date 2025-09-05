@@ -56,7 +56,13 @@ async def play_single_game(
     xrt: XegaRuntime,
     rounds_played: int,
 ) -> GameMapRoundResult | None:
-    start_event = RoundStartedEvent(type="round_started", round_index=rounds_played)
+    start_event = RoundStartedEvent(
+        type="round_started",
+        round_index=rounds_played,
+        line=lines[0],
+        line_num=1,
+        player=xrt.player.name,
+    )
     await xrt.send_event(xrt.player, start_event)
 
     line_index = 0
@@ -80,7 +86,11 @@ async def play_single_game(
                 )
 
     finish_event = RoundFinishedEvent(
-        type="round_finished", round_index=rounds_played, best_score=xrt.score
+        type="round_finished",
+        round_index=rounds_played,
+        line=lines[-1],
+        line_num=len(lines) - 1,
+        player=xrt.player.name,
     )
     await xrt.send_event(xrt.player, finish_event)
 

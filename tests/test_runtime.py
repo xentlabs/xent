@@ -1632,7 +1632,7 @@ elicit(black, x, 5)""",
 
 class TestRoundBoundaryEvents:
     @pytest.mark.asyncio
-    async def test_round_events_emitted_once_at_boundaries(self, xrt):
+    async def test_round_start_and_finish_events(self, xrt):
         game_code = """
         assign(s='hello')
         reveal(black, s)
@@ -1655,11 +1655,8 @@ class TestRoundBoundaryEvents:
         finish_event = history[-1]
 
         # Round index present and equal
-        assert isinstance(start_event["round_index"], int)
-        assert isinstance(finish_event["round_index"], int)
         assert start_event["round_index"] == finish_event["round_index"] == 0
 
-        # Finish payload contains registers and best_score
-        assert "best_score" in finish_event and isinstance(
-            finish_event["best_score"], float
-        )
+        # Check that players are strings
+        for event in history:
+            assert isinstance(event["player"], str)

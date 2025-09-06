@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import json
 import logging
 from typing import Any
 
@@ -67,16 +69,10 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
         raise  # Re-raise to properly handle cleanup
     except Exception as e:
         logging.error(f"Error running websocket game: {e}")
-        # Send error to client if still connected
-        try:
-            import json
-
+        with contextlib.suppress(Exception):
             await websocket.send_text(
                 json.dumps({"type": "xega_error", "error": str(e)})
             )
-        except Exception:
-            # WebSocket might be closed, ignore send error
-            pass
         raise
 
 

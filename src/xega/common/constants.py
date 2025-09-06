@@ -10,3 +10,11 @@ ALL_PLAYERS: list[PlayerName] = ["black", "white", "alice", "bob", "carol", "env
 OMNICISCIENT_PLAYERS: list[PlayerName] = ["black", "white", "env"]
 ZERO_SUM_PLAYER_PAIRS: list[tuple[PlayerName, PlayerName]] = [("black", "white")]
 NO_REWARD_PLAYERS: list[PlayerName] = ["env"]
+
+SIMPLE_GAME_CODE = """
+assign(s=story())
+reveal(black, s)
+elicit(black, x, 10)
+assign(x1=remove_common_words(x, s)) # Remove any words in story from input text
+reward(black, xed(s | x1))
+""".strip()

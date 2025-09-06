@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
+import json
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -10,7 +12,9 @@ from pydantic import BaseModel
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.common.configuration_types import CondensedXegaBenchmarkConfig
+from xega.common.constants import SIMPLE_GAME_CODE
 from xega.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
+from xega.web.websocket_game_runner import run_websocket_game
 
 app = FastAPI(title="XEGA Web Interface")
 
@@ -333,3 +337,58 @@ async def store_config(request: ConfigRequest):
         raise HTTPException(
             status_code=500, detail=f"Failed to store configuration: {str(e)}"
         ) from e
+
+
+# WebSocket endpoint for interactive game play
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    code = SIMPLE_GAME_CODE
+    game_task = None
+
+    try:
+        while True:
+            # Wait for messages from client
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            if not isinstance(message, dict) or "type" not in message:
+                await websocket.send_text("Invalid message format")
+                continue
+            elif message["type"] == "xega_control":
+                if message["command"] == "start":
+                    # Use code from message if provided, otherwise fallback to current code
+                    game_code = message.get("code", code)
+                    print(f"Starting interactive Xega game with code: {game_code[:50]}...")
+
+                    # Cancel any existing game first
+                    if game_task and not game_task.done():
+                        print("Cancelling existing game")
+                        game_task.cancel()
+                        with contextlib.suppress(asyncio.CancelledError):
+                            await game_task
+
+                    # Start new game
+                    try:
+                        game_task = asyncio.create_task(
+                            run_websocket_game(websocket, game_code)
+                        )
+                        await game_task
+                        print("Game completed successfully")
+                    except asyncio.CancelledError:
+                        print("Game was cancelled")
+                    except Exception as e:
+                        print(f"Game execution failed: {e}")
+                        # Error already sent to client by run_websocket_game
+                else:
+                    print(f"Unknown command: {message['command']}")
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        # Always cleanup game task when WebSocket closes
+        if game_task and not game_task.done():
+            print("Cleaning up game task on disconnect")
+            game_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await game_task

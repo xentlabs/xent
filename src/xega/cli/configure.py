@@ -14,19 +14,11 @@ from xega.common.configuration_types import (
     PlayerConfig,
     XegaMetadata,
 )
+from xega.common.constants import SIMPLE_GAME_CODE
 from xega.common.util import dumps
 from xega.common.version import get_xega_version
 from xega.presentation.executor import get_default_presentation, get_single_presentation
 from xega.runtime.llm_api_client import guess_provider_from_model
-
-SIMPLE_GAME_CODE = """
-assign(s=story())
-reveal(black, s)
-elicit(black, x, 10)
-assign(x1=remove_common_words(x, s)) # Remove any words in story from input text
-reward(black, xed(s | x1))
-""".strip()
-
 
 DEFAULT_XEGA_METADATA = XegaMetadata(
     benchmark_id="",

@@ -70,36 +70,46 @@ export default function GamePanel({ code, currentLine, registers, currentRound =
           border: '1px solid #ddd', 
           borderRadius: '3px', 
           padding: '10px',
-          minHeight: '80px'
+          minHeight: '40px'
         }}>
-          {Object.keys(registers).length === 0 ? (
-            <div style={{ color: '#666', fontStyle: 'italic' }}>No registers set</div>
-          ) : (
-            <table style={{ width: '100%', fontSize: '12px' }}>
-              <tbody>
-                {Object.entries(registers).map(([key, value]) => (
-                  <tr key={key}>
-                    <td style={{ 
-                      fontWeight: 'bold', 
-                      paddingRight: '15px', 
-                      color: '#2196F3',
-                      verticalAlign: 'top',
-                      width: '60px'
-                    }}>
-                      {key}:
-                    </td>
-                    <td style={{ 
-                      fontFamily: 'monospace',
-                      wordBreak: 'break-word',
-                      whiteSpace: 'pre-wrap'
-                    }}>
-                      {value || '(empty)'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          {(() => {
+            const nonEmptyRegisters = Object.entries(registers).filter(([_, value]) => 
+              value && value.trim() !== ''
+            );
+            
+            if (nonEmptyRegisters.length === 0) {
+              return (
+                <div style={{ color: '#666', fontStyle: 'italic' }}>No registers set</div>
+              );
+            }
+            
+            return (
+              <table style={{ width: '100%', fontSize: '12px' }}>
+                <tbody>
+                  {nonEmptyRegisters.map(([key, value]) => (
+                    <tr key={key}>
+                      <td style={{ 
+                        fontWeight: 'bold', 
+                        paddingRight: '15px', 
+                        color: '#2196F3',
+                        verticalAlign: 'top',
+                        width: '60px'
+                      }}>
+                        {key}:
+                      </td>
+                      <td style={{ 
+                        fontFamily: 'monospace',
+                        wordBreak: 'break-word',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
     </div>

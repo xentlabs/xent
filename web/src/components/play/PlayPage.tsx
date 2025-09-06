@@ -31,37 +31,13 @@ interface XegaEventMessage {
 
 type XegaMessage = XegaInputMessage | XegaConfigureMessage | XegaControlMessage | XegaErrorMessage | XegaEventMessage;
 
-const PRESET_GAMES = {
-  simple: {
-    name: "Simple Story Completion",
-    code: `assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
+const DEFAULT_GAME_CODE = `assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
 reveal(black, s)
 elicit(black, t, 10)
 reveal(black, t)
 assign(t1=remove_common_words(t, s))
 reveal(black, t1)
-reward(black, xed(s | t1))`
-  },
-  interactive: {
-    name: "Interactive Story",
-    code: `assign(s=story())
-reveal(black, s)
-elicit(black, x, 10)
-assign(x1=remove_common_words(x, s))
-reward(black, xed(s | x1))`
-  },
-  multi_turn: {
-    name: "Multi-turn Conversation",
-    code: `assign(prompt="What is your favorite color?")
-reveal(black, prompt)
-elicit(black, color, 5)
-assign(response="Interesting! " + color + " is a nice choice.")
-reveal(black, response)
-reward(black, 0)`
-  }
-};
-
-const DEFAULT_GAME_CODE = PRESET_GAMES.simple.code;
+reward(black, xed(s | t1))`;
 
 export default function PlayPage({ onBack }: { onBack: () => void }) {
   const ws = useRef<WebSocket | null>(null);
@@ -94,12 +70,6 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
 
   const sendInputMessage = (input: string) => {
     sendMessage({ type: 'xega_input', input });
-  };
-
-  const sendConfigureMessage = (newCode: string) => {
-    sendMessage({ type: 'xega_configure', code: newCode });
-    setCode(newCode);
-    setCodeLines(newCode.split('\n'));
   };
 
   const sendStartMessage = () => {
@@ -190,8 +160,9 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
           break;
 
         case 'elicit_request':
-          // Update registers if provided
+          // Always update registers from elicit_request - this is the source of truth
           if (data.registers) {
+            console.log('Updating registers from elicit_request:', data.registers);
             setRegisters(data.registers);
           }
           
@@ -221,26 +192,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
               <strong>Revealed:</strong> {JSON.stringify(data.values)}
             </div>
           );
-          // Update registers based on revealed values
-          if (data.values && Array.isArray(data.values) && data.line) {
-            // Parse the reveal statement to extract variable names
-            // Format: reveal(player, var1, var2, ...)
-            const revealMatch = data.line.match(/reveal\s*\(\s*\w+\s*((?:,\s*\w+\s*)*)\)/);
-            if (revealMatch) {
-              const varsString = revealMatch[1];
-              if (varsString) {
-                const varNames = varsString.split(',').map((v: string) => v.trim()).filter((v: string) => v);
-                varNames.forEach((varName: string, index: number) => {
-                  if (data.values[index] !== undefined) {
-                    setRegisters(prev => ({
-                      ...prev,
-                      [varName]: String(data.values[index])
-                    }));
-                  }
-                });
-              }
-            }
-          }
+          // Note: Registers are updated via elicit_request events which provide the complete state
           break;
 
         case 'reward':
@@ -407,30 +359,32 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>XEGA Interactive Play</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <span style={{ 
-            padding: '5px 10px', 
-            borderRadius: '5px',
-            backgroundColor: connectionStatus === 'connected' ? '#4CAF50' : connectionStatus === 'connecting' ? '#FFA500' : '#f44336',
-            color: 'white',
-            fontSize: '12px'
-          }}>
-            {connectionStatus === 'connected' ? '● Connected' : connectionStatus === 'connecting' ? '● Connecting...' : '● Disconnected'}
-          </span>
           {connectionStatus === 'disconnected' && (
-            <button
-              onClick={connectWebSocket}
-              style={{ 
-                padding: '6px 12px', 
-                backgroundColor: '#2196F3', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '4px', 
-                cursor: 'pointer',
+            <>
+              <span style={{ 
+                padding: '5px 10px', 
+                borderRadius: '5px',
+                backgroundColor: '#f44336',
+                color: 'white',
                 fontSize: '12px'
-              }}
-            >
-              Reconnect
-            </button>
+              }}>
+                ● Disconnected
+              </span>
+              <button
+                onClick={connectWebSocket}
+                style={{ 
+                  padding: '6px 12px', 
+                  backgroundColor: '#2196F3', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '4px', 
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Reconnect
+              </button>
+            </>
           )}
           <button
             onClick={onBack}
@@ -445,31 +399,6 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         {/* Game Code Section */}
         <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
           <h3>Game Code</h3>
-          
-          {/* Preset Games Selector */}
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{ fontSize: '12px', color: '#666', marginRight: '10px' }}>Load preset:</label>
-            <select
-              onChange={(e) => {
-                if (e.target.value && PRESET_GAMES[e.target.value as keyof typeof PRESET_GAMES]) {
-                  setCode(PRESET_GAMES[e.target.value as keyof typeof PRESET_GAMES].code);
-                }
-              }}
-              disabled={isGameRunning}
-              style={{
-                padding: '4px 8px',
-                fontSize: '12px',
-                border: '1px solid #ddd',
-                borderRadius: '3px',
-                cursor: isGameRunning ? 'not-allowed' : 'pointer'
-              }}
-            >
-              <option value="">-- Select Preset --</option>
-              {Object.entries(PRESET_GAMES).map(([key, game]) => (
-                <option key={key} value={key}>{game.name}</option>
-              ))}
-            </select>
-          </div>
           
           <textarea
             value={code}
@@ -486,21 +415,6 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
             disabled={isGameRunning}
           />
           <div style={{ marginTop: '10px', display: 'flex', gap: '10px' }}>
-            <button
-              onClick={() => sendConfigureMessage(code)}
-              disabled={connectionStatus !== 'connected' || isGameRunning}
-              style={{ 
-                padding: '8px 16px', 
-                backgroundColor: '#2196F3', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '4px', 
-                cursor: connectionStatus === 'connected' && !isGameRunning ? 'pointer' : 'not-allowed',
-                opacity: connectionStatus === 'connected' && !isGameRunning ? 1 : 0.6
-              }}
-            >
-              Update Code
-            </button>
             <button
               onClick={sendStartMessage}
               disabled={connectionStatus !== 'connected' || isGameRunning}
@@ -531,24 +445,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
 
       {/* Game Output Section */}
       <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <h3 style={{ margin: 0 }}>Game Output</h3>
-          {outputs.length > 0 && !isGameRunning && (
-            <button
-              onClick={() => setOutputs([])}
-              style={{
-                padding: '4px 8px',
-                backgroundColor: '#ff9800',
-                color: 'white',
-                border: 'none',
-                borderRadius: '3px',
-                cursor: 'pointer',
-                fontSize: '12px'
-              }}
-            >
-              Clear Output
-            </button>
-          )}
         </div>
         <div style={{ 
           backgroundColor: 'white', 

@@ -17,6 +17,7 @@ interface XegaConfigureMessage {
 interface XegaControlMessage {
   type: 'xega_control';
   command: string;
+  code?: string;
 }
 
 interface XegaErrorMessage {
@@ -73,7 +74,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
   };
 
   const sendStartMessage = () => {
-    sendMessage({ type: 'xega_control', command: 'start' });
+    sendMessage({ type: 'xega_control', command: 'start', code: code });
     setIsGameRunning(true);
     setGameCompleted(false);
     setTotalScore(null);
@@ -129,10 +130,10 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         case 'round_started':
           setCurrentRound(data.round_index + 1); // Convert from 0-indexed to 1-indexed for display
           appendOutput(
-            <div key={`output-${++outputIdCounter.current}`} style={{ 
-              marginBottom: '10px', 
-              padding: '8px 12px', 
-              backgroundColor: '#e3f2fd', 
+            <div key={`output-${++outputIdCounter.current}`} style={{
+              marginBottom: '10px',
+              padding: '8px 12px',
+              backgroundColor: '#e3f2fd',
               borderRadius: '4px',
               borderLeft: '4px solid #2196F3',
               fontSize: '14px',
@@ -145,10 +146,10 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
 
         case 'round_finished':
           appendOutput(
-            <div key={`output-${++outputIdCounter.current}`} style={{ 
-              marginBottom: '15px', 
-              padding: '8px 12px', 
-              backgroundColor: '#f3e5f5', 
+            <div key={`output-${++outputIdCounter.current}`} style={{
+              marginBottom: '15px',
+              padding: '8px 12px',
+              backgroundColor: '#f3e5f5',
               borderRadius: '4px',
               borderLeft: '4px solid #9C27B0',
               fontSize: '14px',
@@ -165,7 +166,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
             console.log('Updating registers from elicit_request:', data.registers);
             setRegisters(data.registers);
           }
-          
+
           appendOutput(
             <ElicitRequestHandler
               key={`output-${++outputIdCounter.current}`}
@@ -201,19 +202,13 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
           if (typeof data.value === 'number') {
             score = data.value;
           } else if (data.value && typeof data.value === 'object') {
-            if (data.value.total_xent) {
-              score = typeof data.value.total_xent === 'function' 
-                ? data.value.total_xent() 
-                : data.value.total_xent;
-            } else if (Array.isArray(data.value)) {
-              score = data.value.reduce((sum: number, [_, s]: [string, number]) => sum + s, 0);
-            }
+            score = data.value.pairs.reduce((sum: number, [_, s]: [string, number]) => sum + s, 0);
           }
-          
+
           // Track round score
           setRoundScores(prev => [...prev, { round: currentRound, score }]);
           setTotalScore(score);
-          
+
           // Show token visualization
           appendOutput(
             <TokenVisualization
@@ -221,13 +216,13 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
               perTokenXent={data.value}
             />
           );
-          
+
           // Add subtle round score summary
           appendOutput(
-            <div key={`output-${++outputIdCounter.current}`} style={{ 
-              marginBottom: '15px', 
-              padding: '10px 12px', 
-              backgroundColor: '#e8f5e9', 
+            <div key={`output-${++outputIdCounter.current}`} style={{
+              marginBottom: '15px',
+              padding: '10px 12px',
+              backgroundColor: '#e8f5e9',
               borderRadius: '4px',
               borderLeft: '4px solid #4CAF50',
               fontSize: '14px',
@@ -277,7 +272,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
     }
 
     setConnectionStatus('connecting');
-    
+
     // Connect to WebSocket
     const socket = new WebSocket('ws://localhost:8000/ws');
     ws.current = socket;
@@ -345,7 +340,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         ws.current.close(1000, "Page unloading");
       }
     };
-    
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
@@ -361,8 +356,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {connectionStatus === 'disconnected' && (
             <>
-              <span style={{ 
-                padding: '5px 10px', 
+              <span style={{
+                padding: '5px 10px',
                 borderRadius: '5px',
                 backgroundColor: '#f44336',
                 color: 'white',
@@ -372,12 +367,12 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
               </span>
               <button
                 onClick={connectWebSocket}
-                style={{ 
-                  padding: '6px 12px', 
-                  backgroundColor: '#2196F3', 
-                  color: 'white', 
-                  border: 'none', 
-                  borderRadius: '4px', 
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
                   cursor: 'pointer',
                   fontSize: '12px'
                 }}
@@ -399,14 +394,14 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         {/* Game Code Section */}
         <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
           <h3>Game Code</h3>
-          
+
           <textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            style={{ 
-              width: '100%', 
-              minHeight: '200px', 
-              fontFamily: 'monospace', 
+            style={{
+              width: '100%',
+              minHeight: '200px',
+              fontFamily: 'monospace',
               fontSize: '12px',
               padding: '10px',
               border: '1px solid #ddd',
@@ -418,12 +413,12 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
             <button
               onClick={sendStartMessage}
               disabled={connectionStatus !== 'connected' || isGameRunning}
-              style={{ 
-                padding: '8px 16px', 
-                backgroundColor: '#4CAF50', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '4px', 
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
                 cursor: connectionStatus === 'connected' && !isGameRunning ? 'pointer' : 'not-allowed',
                 opacity: connectionStatus === 'connected' && !isGameRunning ? 1 : 0.6
               }}
@@ -448,10 +443,10 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         <div style={{ marginBottom: '10px' }}>
           <h3 style={{ margin: 0 }}>Game Output</h3>
         </div>
-        <div style={{ 
-          backgroundColor: 'white', 
-          border: '1px solid #ddd', 
-          borderRadius: '3px', 
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #ddd',
+          borderRadius: '3px',
           padding: '15px',
           minHeight: '200px',
           maxHeight: '400px',

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from xega.benchmark.expand_benchmark import expand_benchmark_config
 from xega.benchmark.run_benchmark import run_benchmark
 from xega.common.configuration_types import CondensedXegaBenchmarkConfig
+from xega.common.constants import SIMPLE_GAME_CODE
 from xega.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
 from xega.web.websocket_game_runner import run_websocket_game
 
@@ -341,50 +343,37 @@ async def store_config(request: ConfigRequest):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    
-    # Default simple game code (similar to marketing site)
-    SIMPLE_GAME_CODE = """assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
-reveal(black, s)
-elicit(black, t, 10)
-reveal(black, t)
-assign(t1=remove_common_words(t, s))
-reveal(black, t1)
-reward(black, xed(s | t1))"""
-    
+
     code = SIMPLE_GAME_CODE
     game_task = None
-    
+
     try:
         while True:
             # Wait for messages from client
             data = await websocket.receive_text()
             message = json.loads(data)
-            
+
             if not isinstance(message, dict) or "type" not in message:
                 await websocket.send_text("Invalid message format")
                 continue
-                
-            if message["type"] == "xega_configure":
-                # Update game code
-                code = message.get("code", SIMPLE_GAME_CODE)
-                print(f"Configured new game code: {code[:50]}...")
-                
             elif message["type"] == "xega_control":
                 if message["command"] == "start":
-                    print("Starting interactive Xega game")
-                    
+                    # Use code from message if provided, otherwise fallback to current code
+                    game_code = message.get("code", code)
+                    print(f"Starting interactive Xega game with code: {game_code[:50]}...")
+
                     # Cancel any existing game first
                     if game_task and not game_task.done():
                         print("Cancelling existing game")
                         game_task.cancel()
-                        try:
+                        with contextlib.suppress(asyncio.CancelledError):
                             await game_task
-                        except asyncio.CancelledError:
-                            pass
-                    
+
                     # Start new game
                     try:
-                        game_task = asyncio.create_task(run_websocket_game(websocket, code))
+                        game_task = asyncio.create_task(
+                            run_websocket_game(websocket, game_code)
+                        )
                         await game_task
                         print("Game completed successfully")
                     except asyncio.CancelledError:
@@ -394,11 +383,6 @@ reward(black, xed(s | t1))"""
                         # Error already sent to client by run_websocket_game
                 else:
                     print(f"Unknown command: {message['command']}")
-                    
-            else:
-                # Echo unknown message types for now
-                await websocket.send_text(f"Echo: {data}")
-                
     except Exception as e:
         print(f"WebSocket error: {e}")
     finally:
@@ -406,7 +390,5 @@ reward(black, xed(s | t1))"""
         if game_task and not game_task.done():
             print("Cleaning up game task on disconnect")
             game_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await game_task
-            except asyncio.CancelledError:
-                pass

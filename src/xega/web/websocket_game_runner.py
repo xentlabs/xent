@@ -9,65 +9,58 @@ from xega.common.configuration_types import (
     PlayerConfig,
     XegaMetadata,
 )
+from xega.common.version import get_xega_version
 from xega.runtime.judge import Judge
 
 
 async def run_websocket_game(websocket: Any, game_code: str) -> None:
-    """
-    Run a single game with a websocket player.
-    
-    Args:
-        websocket: The websocket connection
-        game_code: The Xega game code to execute
-    """
     try:
-        # Create minimal configuration for interactive play
         metadata: XegaMetadata = {
             "benchmark_id": "interactive_play",
-            "xega_version": "0.1.0", 
+            "xega_version": get_xega_version(),
             "judge_model": "gpt2",
-            "num_rounds_per_game": 999,  # Effectively unlimited rounds for interactive play
+            "num_rounds_per_game": 999,
             "seed": "websocket_game",
         }
-        
+
         player_config: PlayerConfig = {
             "name": "black",
             "id": "websocket_player",
             "player_type": "websocket",
             "options": {"websocket": websocket},
         }
-        
+
         game_map_config: GameMapConfig = {
             "name": "Interactive Game",
             "code": game_code,
             "presentation_function": _get_default_presentation_function(),
             "map_seed": "interactive",
         }
-        
+
         executable_game_map: ExecutableGameMap = {
             "metadata": metadata,
             "player": player_config,
             "game_map": game_map_config,
         }
-        
+
         # Create judge
         judge = Judge(metadata["judge_model"])
         judge.set_seed(metadata["seed"], "")
-        
+
         logging.info("Starting websocket game execution")
-        
+
         # Run the game
         result = await run_game(
             executable_game_map=executable_game_map,
             judge=judge,
             raise_on_error=True,
         )
-        
+
         if result:
             logging.info(f"Game completed successfully. Final score: {result['score']}")
         else:
             logging.warning("Game completed but returned no results")
-            
+
     except asyncio.CancelledError:
         # Game was cancelled (user disconnected/navigated away)
         logging.info("Websocket game cancelled - user disconnected")
@@ -77,10 +70,10 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
         # Send error to client if still connected
         try:
             import json
-            await websocket.send_text(json.dumps({
-                "type": "xega_error",
-                "error": str(e)
-            }))
+
+            await websocket.send_text(
+                json.dumps({"type": "xega_error", "error": str(e)})
+            )
         except Exception:
             # WebSocket might be closed, ignore send error
             pass

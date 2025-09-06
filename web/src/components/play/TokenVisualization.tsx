@@ -10,28 +10,10 @@ const formatNumber = (num: number): string => {
 
 export default function TokenVisualization({ perTokenXent }: TokenVisualizationProps) {
   const [hoveredToken, setHoveredToken] = useState<number | null>(null);
-  
-  // Handle different formats of perTokenXent
-  let tokens: Array<[string, number]> = [];
-  let totalScore = 0;
 
-  if (Array.isArray(perTokenXent)) {
-    // If it's already an array of [token, score] pairs
-    tokens = perTokenXent;
-    totalScore = tokens.reduce((sum, [_, score]) => sum + score, 0);
-  } else if (perTokenXent && typeof perTokenXent === 'object') {
-    // If it has a total_xent method or property
-    if (perTokenXent.total_xent) {
-      totalScore = typeof perTokenXent.total_xent === 'function' 
-        ? perTokenXent.total_xent() 
-        : perTokenXent.total_xent;
-    }
-    if (perTokenXent.pairs) {
-      tokens = perTokenXent.pairs;
-    }
-  } else if (typeof perTokenXent === 'number') {
-    totalScore = perTokenXent;
-  }
+  // Handle different formats of perTokenXent
+  const tokens: Array<[string, number]> = perTokenXent.pairs;
+  const totalScore = tokens.reduce((sum, [_, score]) => sum + score, 0);
 
   // NextJS-style color calculation with tanh normalization
   const getColorStyle = (score: number): React.CSSProperties => {
@@ -68,10 +50,10 @@ export default function TokenVisualization({ perTokenXent }: TokenVisualizationP
       <span style={{ fontSize: '12px', color: '#666', marginBottom: '8px', display: 'block' }}>
         Reward: {formatNumber(totalScore)}
       </span>
-      
-      <div style={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
+
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
         gap: '4px',
         position: 'relative'
       }}>
@@ -99,7 +81,7 @@ export default function TokenVisualization({ perTokenXent }: TokenVisualizationP
             >
               {token || '⎵'}
             </span>
-            
+
             {/* Custom tooltip */}
             {hoveredToken === index && (
               <div
@@ -120,7 +102,7 @@ export default function TokenVisualization({ perTokenXent }: TokenVisualizationP
                 }}
               >
                 Score: {formatNumber(score)}
-                
+
                 {/* Tooltip arrow */}
                 <div
                   style={{

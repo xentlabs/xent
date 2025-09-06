@@ -2,12 +2,28 @@ interface GamePanelProps {
   code: string[];
   currentLine: number;
   registers: Record<string, string>;
+  currentRound?: number;
+  totalRounds?: number;
 }
 
-export default function GamePanel({ code, currentLine, registers }: GamePanelProps) {
+export default function GamePanel({ code, currentLine, registers, currentRound = 0, totalRounds = 0 }: GamePanelProps) {
   return (
     <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
-      <h3>Game State</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3 style={{ margin: 0 }}>Game State</h3>
+        {currentRound > 0 && (
+          <div style={{ 
+            fontSize: '14px', 
+            color: '#666',
+            backgroundColor: '#e3f2fd',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            border: '1px solid #bbdefb'
+          }}>
+            Round: {currentRound} | Completed: {totalRounds}
+          </div>
+        )}
+      </div>
       
       {/* Code Execution Display */}
       <div style={{ marginBottom: '15px' }}>

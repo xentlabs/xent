@@ -74,6 +74,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
   const [isGameRunning, setIsGameRunning] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [totalScore, setTotalScore] = useState<number | null>(null);
+  const [currentRound, setCurrentRound] = useState<number>(0);
+  const [roundScores, setRoundScores] = useState<Array<{round: number, score: number}>>([]);
   const outputIdCounter = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -105,6 +107,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
     setIsGameRunning(true);
     setGameCompleted(false);
     setTotalScore(null);
+    setCurrentRound(0);
+    setRoundScores([]);
     setOutputs([]);
     setRegisters({});
     setCurrentLine(-1);
@@ -114,6 +118,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
     setIsGameRunning(false);
     setGameCompleted(false);
     setTotalScore(null);
+    setCurrentRound(0);
+    setRoundScores([]);
     setOutputs([]);
     setRegisters({});
     setCurrentLine(-1);
@@ -150,6 +156,39 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
       }
 
       switch (data.type) {
+        case 'round_started':
+          setCurrentRound(data.round_index + 1); // Convert from 0-indexed to 1-indexed for display
+          appendOutput(
+            <div key={`output-${++outputIdCounter.current}`} style={{ 
+              marginBottom: '10px', 
+              padding: '8px 12px', 
+              backgroundColor: '#e3f2fd', 
+              borderRadius: '4px',
+              borderLeft: '4px solid #2196F3',
+              fontSize: '14px',
+              color: '#1976D2'
+            }}>
+              <strong>Round {data.round_index + 1} started</strong>
+            </div>
+          );
+          break;
+
+        case 'round_finished':
+          appendOutput(
+            <div key={`output-${++outputIdCounter.current}`} style={{ 
+              marginBottom: '15px', 
+              padding: '8px 12px', 
+              backgroundColor: '#f3e5f5', 
+              borderRadius: '4px',
+              borderLeft: '4px solid #9C27B0',
+              fontSize: '14px',
+              color: '#7B1FA2'
+            }}>
+              <strong>Round {data.round_index + 1} completed</strong>
+            </div>
+          );
+          break;
+
         case 'elicit_request':
           // Update registers if provided
           if (data.registers) {
@@ -205,7 +244,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
           break;
 
         case 'reward':
-          // Extract total score
+          // Extract score
           let score = 0;
           if (typeof data.value === 'number') {
             score = data.value;
@@ -219,10 +258,11 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
             }
           }
           
+          // Track round score
+          setRoundScores(prev => [...prev, { round: currentRound, score }]);
           setTotalScore(score);
-          setGameCompleted(true);
-          setIsGameRunning(false);
           
+          // Show token visualization
           appendOutput(
             <TokenVisualization
               key={`output-${++outputIdCounter.current}`}
@@ -230,34 +270,27 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
             />
           );
           
-          // Add completion message
+          // Add subtle round score summary
           appendOutput(
             <div key={`output-${++outputIdCounter.current}`} style={{ 
-              marginTop: '20px', 
-              padding: '15px', 
+              marginBottom: '15px', 
+              padding: '10px 12px', 
               backgroundColor: '#e8f5e9', 
-              borderRadius: '5px',
-              border: '2px solid #4CAF50',
-              textAlign: 'center'
+              borderRadius: '4px',
+              borderLeft: '4px solid #4CAF50',
+              fontSize: '14px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
-              <h3 style={{ color: '#2e7d32', margin: '0 0 10px 0' }}>🎉 Game Complete!</h3>
-              <p style={{ margin: '5px 0', fontSize: '18px', fontWeight: 'bold' }}>
-                Final Score: {score.toFixed(2)}
-              </p>
-              <button
-                onClick={resetGame}
-                style={{
-                  marginTop: '10px',
-                  padding: '8px 16px',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Play Again
-              </button>
+              <span>
+                <strong>Round {currentRound} Score:</strong> {score.toFixed(2)}
+              </span>
+              {roundScores.length > 0 && (
+                <span style={{ fontSize: '12px', color: '#666' }}>
+                  Total rounds: {roundScores.length + 1}
+                </span>
+              )}
             </div>
           );
           break;
@@ -491,6 +524,8 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
           code={codeLines}
           currentLine={currentLine}
           registers={registers}
+          currentRound={currentRound}
+          totalRounds={roundScores.length}
         />
       </div>
 

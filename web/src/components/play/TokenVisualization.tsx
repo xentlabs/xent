@@ -1,8 +1,16 @@
+import { useState } from 'react';
+
 interface TokenVisualizationProps {
   perTokenXent: any; // This can be a complex structure from the backend
 }
 
+const formatNumber = (num: number): string => {
+  return num.toFixed(4);
+};
+
 export default function TokenVisualization({ perTokenXent }: TokenVisualizationProps) {
+  const [hoveredToken, setHoveredToken] = useState<number | null>(null);
+  
   // Handle different formats of perTokenXent
   let tokens: Array<[string, number]> = [];
   let totalScore = 0;
@@ -25,63 +33,112 @@ export default function TokenVisualization({ perTokenXent }: TokenVisualizationP
     totalScore = perTokenXent;
   }
 
-  // Color scale for scores (lower is better for cross-entropy)
-  const getColorForScore = (score: number): string => {
-    if (score < 2) return '#4CAF50';      // Green - very good
-    if (score < 4) return '#8BC34A';      // Light green - good
-    if (score < 6) return '#FFC107';      // Yellow - okay
-    if (score < 8) return '#FF9800';      // Orange - poor
-    return '#f44336';                      // Red - very poor
+  // NextJS-style color calculation with tanh normalization
+  const getColorStyle = (score: number): React.CSSProperties => {
+    let normalizedScore = Math.tanh(score / 5);
+    const opacity = Math.abs(normalizedScore);
+
+    // Use blue/cyan colors for positive scores (higher cross-entropy)
+    if (score >= 0) {
+      const blueRgb = "37, 99, 235"; // blue[6]
+      return {
+        backgroundColor: `rgba(${blueRgb}, ${opacity})`,
+      };
+    } else {
+      // Use red colors for negative scores (should be rare for cross-entropy)
+      const redRgb = "239, 68, 68"; // red[5]
+      return {
+        backgroundColor: `rgba(${redRgb}, ${opacity})`,
+      };
+    }
   };
 
-  return (
-    <div style={{ 
-      marginBottom: '15px', 
-      padding: '15px', 
-      backgroundColor: '#e3f2fd', 
-      borderRadius: '5px',
-      border: '1px solid #2196F3'
-    }}>
-      <div style={{ marginBottom: '10px' }}>
-        <strong>🎯 Reward - Total Score: {totalScore.toFixed(2)}</strong>
+  if (!tokens || tokens.length === 0) {
+    return (
+      <div style={{ marginBottom: '15px' }}>
+        <span style={{ fontSize: '12px', color: '#666' }}>
+          Reward: {formatNumber(totalScore)}
+        </span>
       </div>
+    );
+  }
+
+  return (
+    <div style={{ marginBottom: '15px' }}>
+      <span style={{ fontSize: '12px', color: '#666', marginBottom: '8px', display: 'block' }}>
+        Reward: {formatNumber(totalScore)}
+      </span>
       
-      {tokens.length > 0 && (
-        <div>
-          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-            Per-token cross-entropy:
-          </div>
-          <div style={{ 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            gap: '5px',
-            fontFamily: 'monospace',
-            fontSize: '12px'
-          }}>
-            {tokens.map(([token, score], index) => (
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '4px',
+        position: 'relative'
+      }}>
+        {tokens.map(([token, score], index) => (
+          <span
+            key={index}
+            style={{
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              padding: '2px 4px',
+              borderRadius: '3px',
+              display: 'inline-block',
+              position: 'relative',
+              cursor: 'default',
+              ...getColorStyle(score)
+            }}
+            onMouseEnter={() => setHoveredToken(index)}
+            onMouseLeave={() => setHoveredToken(null)}
+          >
+            <span
+              style={{
+                mixBlendMode: 'difference',
+                color: 'white',
+              }}
+            >
+              {token || '⎵'}
+            </span>
+            
+            {/* Custom tooltip */}
+            {hoveredToken === index && (
               <div
-                key={index}
                 style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  marginBottom: '8px',
                   padding: '4px 8px',
-                  backgroundColor: getColorForScore(score),
+                  backgroundColor: '#374151',
                   color: 'white',
-                  borderRadius: '3px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center'
+                  fontSize: '12px',
+                  borderRadius: '4px',
+                  whiteSpace: 'nowrap',
+                  zIndex: 1000,
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                 }}
-                title={`Token: "${token}", Score: ${score.toFixed(2)}`}
               >
-                <div style={{ fontWeight: 'bold' }}>{token || '⎵'}</div>
-                <div style={{ fontSize: '10px' }}>{score.toFixed(2)}</div>
+                Score: {formatNumber(score)}
+                
+                {/* Tooltip arrow */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 0,
+                    height: 0,
+                    borderLeft: '4px solid transparent',
+                    borderRight: '4px solid transparent',
+                    borderTop: '4px solid #374151',
+                  }}
+                />
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      <div style={{ marginTop: '10px', fontSize: '11px', color: '#666' }}>
-        Lower scores are better (indicates lower cross-entropy)
+            )}
+          </span>
+        ))}
       </div>
     </div>
   );

@@ -89,7 +89,7 @@ async def play_single_game(
         type="round_finished",
         round_index=rounds_played,
         line=lines[-1],
-        line_num=len(lines) - 1,
+        line_num=len(lines),
         player=xrt.player.name,
     )
     await xrt.send_event(xrt.player, finish_event)

@@ -1644,8 +1644,6 @@ class TestRoundBoundaryEvents:
         history = results[0]["history"]
 
         types = [e["type"] for e in history]
-        assert types[0] == "round_started"
-        assert types[-1] == "round_finished"
 
         # Exactly one start and one finish
         assert types.count("round_started") == 1
@@ -1655,7 +1653,13 @@ class TestRoundBoundaryEvents:
         finish_event = history[-1]
 
         # Round index present and equal
+        assert finish_event["type"] == "round_finished"
+        assert start_event["type"] == "round_started"
         assert start_event["round_index"] == finish_event["round_index"] == 0
+
+        # Check that line nums are correct
+        assert start_event["line_num"] == 1, "Start event should be line number 1"
+        assert finish_event["line_num"] == 3, "Finish event should be line number 3"
 
         # Check that players are strings
         for event in history:

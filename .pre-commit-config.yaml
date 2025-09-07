@@ -20,7 +20,9 @@ repos:
           openai,
           google-genai,
           ollama,
-          typeguard
+          typeguard,
+          uvicorn,
+          fastapi
         ]
         exclude: ^games/
         pass_filenames: false

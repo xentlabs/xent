@@ -94,7 +94,7 @@ class PresentationFunction:
             raise XegaInternalError(f"Presentation function syntax error: {e}") from e
 
         # Allow full Python imports - presentations are trusted code
-        self.namespace = {}
+        self.namespace: Any = {}
 
         try:
             exec(self.compiled_code, self.namespace)

@@ -13,16 +13,15 @@ def present(state, history):
     header = f"""You are playing a game. 
 
 <gameRules>
-You will be given a start text. You are going to construct a sequence of 5 short texts which follow that start text. Each of the texts must make sense and be likely to come after the previous text. Your score will be how unlikely the last text is given the first.
+You will be given a start text `S`. You are going to construct a sequence of 2 short texts, `t1` which follows `S` and `t2` which follows the concatenation `S+t1`. `t1` must make sense and be likely to come after `S`. `t2` must make sense and be likely to come after `S+t2`. Your score will be how unlikely `t2` is given `S`.
 
 So the idea is to make a series of texts which, in sequence, are likely and predictable. But the first and last text are extremely unlikely.
 
-The likelyhood is judged by an LLM. If we are looking at the likelyhook of a text `s` given a text `t`, we will compute that as -1 * cross-entropy(s | t). So the more that `t` helps predict `s`, the higher the score.
+The likelyhood is judged by an LLM. If we are looking at the likelyhood of a text `t` given a text `s`, we will compute that as -1 * cross-entropy(t | s). So the more that `s` helps predict `t`, the higher the likelyhood.
 
+To determine whether `t1` and `t2` are predictable in sequence, we will use a baseline comparison of cross-entropy(" I eat food" | "After the rain"). So `t1` is valid if -1 * cross-entropy(t1 | S) > -1 * cross-entropy(" I eat food" | "After the rain") and `t2` is valid if -1 * cross-entropy(t2 | S+t1) > -1 * cross-entropy(" I eat food" | "After the rain").
 
-The score is judged in the same way. So if you have a start text `s` and a final text `x`, then your score will be cross-entropy(x | s). The more unlikely x is given s, the higher your score.
-
-To determine whether each text is predictable in sequence, we will use a baseline comparison of cross-entropy(" comes the sun" | "After the rain"). So if you have `x1` and `x2` as two texts in your sequence, then those are valid if cross-entropy(x1 | x2) < cross-entropy(" comes the sun" | "After the rain").
+The score is judged in the same way. So if you have a start text `S` and a final text `t2`, then your score will be cross-entropy(t2 | s). The more unlikely `t2` is given `S,` the higher your score - but keep in mind the constraints of likelihood on `t1` and `t2`.
 
 Each text you provide can be at most 5 tokens long, anything beyond that will be truncated. Provide your move in <move></move> tags. Any other text in your response will be ignored.
 </gameRules>

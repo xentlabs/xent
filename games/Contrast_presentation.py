@@ -1,52 +1,25 @@
+from xega.presentation.sdk import (
+    PresentationBuilder,
+    extract_rewards,
+    format_token_xent_list,
+    split_rounds,
+)
+
+
 def present(state, history):
+    # Extract game state
     s1 = state["s1"]
     s2 = state["s2"]
 
-    # Parse history into rounds
-    rounds = []
-    current_round_data = {}
-    round_number = 1
+    # Parse history and track best score
+    rounds = split_rounds(history)
     best_contrast_score = None
+    completed_round_count = 0
 
-    reward_count = 0
-    story_scores = []
+    # Build presentation
+    builder = PresentationBuilder()
 
-    for event in history:
-        if event["type"] == "elicit_response":
-            current_round_data = {
-                "number": round_number,
-                "prefix": event["response"],
-                "story1_score": None,
-                "story2_score": None,
-            }
-            reward_count = 0
-            story_scores = []
-        elif event["type"] == "reward":
-            score = round(event["value"].total_xent(), 3)
-            story_scores.append({"score": score, "per_token": str(event["value"])})
-            reward_count += 1
-
-            # After receiving both rewards, complete the round
-            if reward_count == 2:
-                current_round_data["story1_score"] = story_scores[0]
-                current_round_data["story2_score"] = story_scores[1]
-                contrast_score = round(
-                    story_scores[0]["score"] + story_scores[1]["score"], 3
-                )
-                current_round_data["contrast_score"] = contrast_score
-                rounds.append(current_round_data)
-
-                if best_contrast_score is None or contrast_score > best_contrast_score:
-                    best_contrast_score = contrast_score
-
-                round_number += 1
-                current_round_data = {}
-                story_scores = []
-
-    # Build the presentation
-    output_lines = []
-
-    # Game description header - flowing narrative
+    # Game header
     header = """You are playing a contrast game. You will be given two short stories, and your task is to find a prefix that creates maximum contrast between them - a prefix that helps predict the first story while making the second story LESS predictable.
 
 The scoring measures this contrast effect:
@@ -60,66 +33,81 @@ After each attempt, you'll see individual scores showing how well you're helping
 
 You cannot use any words that appear in either story (regardless of case or punctuation). Your prefix is limited to 10 tokens maximum.
 
-Provide your prefix in <move></move> tags. Any other text in your response will be ignored.
-"""
-    output_lines.append(header)
-    output_lines.append("")
+Provide your prefix in <move></move> tags. Any other text in your response will be ignored."""
 
-    # Present the two stories with clear labels
-    output_lines.append("The two stories to contrast:")
-    output_lines.append(f"<story1>Make this predictable: {s1}</story1>")
-    output_lines.append(f"<story2>Make this surprising: {s2}</story2>")
+    builder.add_header(header)
+    builder.add_line("")
 
-    # Game history
+    # Present the two stories
+    builder.add_line("The two stories to contrast:")
+    builder.add_line(f"Make this predictable: <story1>{s1}</story1>")
+    builder.add_line(f"Make this surprising: <story2>{s2}</story2>")
+
     if not rounds:
-        output_lines.append("")
-        output_lines.append(f"Round {round_number} starting.")
+        builder.add_line("")
+        builder.add_line("Round 1 starting.")
     else:
-        output_lines.append("")
-        output_lines.append("--- Play History ---")
-        output_lines.append("")
-        output_lines.append("<gameHistory>")
+        builder.add_line("")
+        builder.add_line("--- Play History ---")
+        builder.add_line("")
+        builder.start_section("gameHistory")
 
-        for round_data in rounds:
-            output_lines.append(f"  <round{round_data['number']}>")
-            output_lines.append(f"    <prefix>{round_data['prefix']}</prefix>")
-            output_lines.append("    <scores>")
+        for round_num, round_events in enumerate(rounds, 1):
+            rewards = extract_rewards(round_events)
+            completed_round_count += 1
+
+            # Get the response for this round
+            response_event = next(
+                e for e in round_events if e["type"] == "elicit_response"
+            )
+
+            # Calculate scores
+            story1_score = round(rewards[0]["value"].total_xent(), 3)
+            story2_score = round(rewards[1]["value"].total_xent(), 3)
+            contrast_score = round(story1_score + story2_score, 3)
+
+            # Track best score
+            if best_contrast_score is None or contrast_score > best_contrast_score:
+                best_contrast_score = contrast_score
+
+            # Render this round immediately
+            builder.start_section(f"round{round_num}")
+            builder.add_line(f"<prefix>{response_event['response']}</prefix>")
+            builder.start_section("scores")
 
             # Story 1 score (predictability boost)
-            output_lines.append("      <story1_predictability>")
-            output_lines.append(f"        Score: {round_data['story1_score']['score']}")
-            output_lines.append(
-                f"        Per-token: {round_data['story1_score']['per_token']}"
+            builder.start_section("story1_predictability")
+            builder.add_line(f"Score: {story1_score}")
+            builder.add_line(
+                f"Per-token: {format_token_xent_list(rewards[0]['value'])}"
             )
-            output_lines.append("      </story1_predictability>")
+            builder.end_section()
 
             # Story 2 score (surprise factor)
-            output_lines.append("      <story2_surprise>")
-            output_lines.append(f"        Score: {round_data['story2_score']['score']}")
-            output_lines.append(
-                f"        Per-token: {round_data['story2_score']['per_token']}"
+            builder.start_section("story2_surprise")
+            builder.add_line(f"Score: {story2_score}")
+            builder.add_line(
+                f"Per-token: {format_token_xent_list(rewards[1]['value'])}"
             )
-            output_lines.append("      </story2_surprise>")
+            builder.end_section()
 
             # Combined contrast score
-            output_lines.append(
-                f"      <contrastScore>{round_data['contrast_score']}</contrastScore>"
-            )
-            output_lines.append("    </scores>")
-            output_lines.append(f"  </round{round_data['number']}>")
+            builder.add_line(f"<contrastScore>{contrast_score}</contrastScore>")
+            builder.end_section()
+            builder.end_section()
 
         # Current round marker
-        output_lines.append(f"  <round{round_number}>")
-        output_lines.append("    <current/>")
-        output_lines.append(f"  </round{round_number}>")
-        output_lines.append("</gameHistory>")
-        output_lines.append("")
-        output_lines.append(f"Best contrast score achieved: {best_contrast_score}")
-        output_lines.append(
-            "Remember: MAXIMIZE your score by helping story 1 while hindering story 2!"
-        )
-        output_lines.append("")
+        builder.add_current_round_marker(completed_round_count + 1)
+        builder.end_section()
 
-    output_lines.append("Provide your prefix in <move></move> tags.")
+        builder.add_line("")
+        if best_contrast_score is not None:
+            builder.add_line(f"Best contrast score achieved: {best_contrast_score}")
+            builder.add_line(
+                "Remember: MAXIMIZE your score by helping story 1 while hindering story 2!"
+            )
+        builder.add_line("")
 
-    return "\n".join(output_lines)
+    builder.add_line("Provide your prefix in <move></move> tags.")
+
+    return builder.render()

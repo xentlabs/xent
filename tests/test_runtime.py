@@ -569,10 +569,6 @@ class TestTokenXentList:
         """Test __repr__ and __str__ methods."""
         list1 = TokenXentList([("hello", 1.234567), ("world", 2.987654)])
 
-        # Test __str__ - should round to integer values
-        str_rep = str(list1)
-        assert str_rep == "hello|1 world|3"
-
         # Test __repr__
         repr_str = repr(list1)
         assert "TokenXentList" in repr_str
@@ -580,12 +576,15 @@ class TestTokenXentList:
         assert "hello" in repr_str
         assert "world" in repr_str
 
+        # Test __str__ - should match __repr__
+        str_rep = str(list1)
+        assert str_rep == repr_str
+
     def test_edge_cases(self):
         """Test edge cases like empty lists and single elements."""
         # Empty list
         empty = TokenXentList([])
         assert empty.total_xent() == 0.0
-        assert str(empty) == ""
 
         # Single element
         single = TokenXentList([("only", 5.0)])

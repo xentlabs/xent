@@ -360,7 +360,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 if message["command"] == "start":
                     # Use code from message if provided, otherwise fallback to current code
                     game_code = message.get("code", code)
-                    print(f"Starting interactive Xega game with code: {game_code[:50]}...")
+                    print(
+                        f"Starting interactive Xega game with code: {game_code[:50]}..."
+                    )
 
                     # Cancel any existing game first
                     if game_task and not game_task.done():

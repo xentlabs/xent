@@ -101,7 +101,9 @@ Provide your symbol sequence in <move></move> tags. Any other text in your respo
 
                 output_lines.append("    <score>")
                 output_lines.append(f"      Total: {total:.3f}")
-                output_lines.append(f"      Per-token: {str(score_val)}")
+                output_lines.append(
+                    f"      Per-token: {format_token_xent_list(score_val)}"
+                )
                 output_lines.append("    </score>")
 
                 best_score = max(best_score, total)

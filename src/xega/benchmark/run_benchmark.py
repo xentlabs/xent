@@ -122,7 +122,6 @@ async def run_benchmark(
     await storage.set_running_state(True)
     await storage.store_config(config)
     try:
-
         check_version(config)
 
         work_units = generate_executable_game_maps(config)

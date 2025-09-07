@@ -147,8 +147,6 @@ class DirectoryStorage(Storage):
         return valid_result_ids
 
     async def get_result(self, benchmark_id: str) -> BenchmarkResult | None:
-        benchmark_storage = DirectoryBenchmarkStorage(
-            self.storage_dir, benchmark_id
-        )
+        benchmark_storage = DirectoryBenchmarkStorage(self.storage_dir, benchmark_id)
         await benchmark_storage.initialize()
         return await benchmark_storage.get_benchmark_results()

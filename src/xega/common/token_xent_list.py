@@ -8,7 +8,7 @@ class TokenXentList:
         self.scale = scale
 
     def __str__(self):
-        return " ".join(f"{t[0]}|{round(t[1])}" for t in self.pairs)
+        return self.__repr__()
 
     def __repr__(self):
         return f"TokenXentList({self.pairs}, scale={self.scale}"

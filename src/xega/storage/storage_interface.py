@@ -70,4 +70,3 @@ class BenchmarkStorage(ABC):
     @abstractmethod
     async def set_running_state(self, running: bool):
         pass
-

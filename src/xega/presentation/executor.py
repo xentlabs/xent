@@ -4,9 +4,16 @@ from typing import Any
 
 from xega.common.configuration_types import XegaEvent
 from xega.common.errors import XegaConfigurationError, XegaInternalError
-from xega.presentation import sdk
 
 DEFAULT_PRESENTATION = '''
+from xega.presentation.sdk import (
+    format_elicit_request,
+    format_elicit_response,
+    format_reveal,
+    format_reward,
+    format_failed_ensure,
+)
+
 def present(state, history):
     """Default presentation matching current system output"""
     output = []
@@ -18,7 +25,8 @@ def present(state, history):
         elif event['type'] == 'reveal':
             output.append(format_reveal(event))
         elif event['type'] == 'reward':
-            output.append(format_reward(event))
+            formatted, _ = format_reward(event)
+            output.append(formatted)
         elif event['type'] == 'failed_ensure':
             output.append(format_failed_ensure(event))
         else:
@@ -85,44 +93,8 @@ class PresentationFunction:
         except SyntaxError as e:
             raise XegaInternalError(f"Presentation function syntax error: {e}") from e
 
-        self.namespace = {
-            "__builtins__": {
-                "str": str,
-                "int": int,
-                "float": float,
-                "bool": bool,
-                "len": len,
-                "range": range,
-                "enumerate": enumerate,
-                "zip": zip,
-                "list": list,
-                "dict": dict,
-                "tuple": tuple,
-                "set": set,
-                "min": min,
-                "max": max,
-                "sum": sum,
-                "sorted": sorted,
-                "reversed": reversed,
-                "any": any,
-                "all": all,
-                "abs": abs,
-                "round": round,
-                "ValueError": ValueError,
-                "TypeError": TypeError,
-                "KeyError": KeyError,
-                "IndexError": IndexError,
-            },
-            # SDK functions available to presentation code
-            "format_reveal": sdk.format_reveal,
-            "format_elicit_request": sdk.format_elicit_request,
-            "format_elicit_response": sdk.format_elicit_response,
-            "format_reward": sdk.format_reward,
-            "format_failed_ensure": sdk.format_failed_ensure,
-            "get_event_summary": sdk.get_event_summary,
-            "get_current_registers": sdk.get_current_registers,
-            "format_registers_display": sdk.format_registers_display,
-        }
+        # Allow full Python imports - presentations are trusted code
+        self.namespace = {}
 
         try:
             exec(self.compiled_code, self.namespace)

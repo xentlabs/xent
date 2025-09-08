@@ -1,5 +1,6 @@
 from xega.presentation.sdk import (
     PresentationBuilder,
+    extract_reveals,
     extract_rewards,
     format_token_xent_list,
     get_scores_by_round,
@@ -43,7 +44,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line(f"<story3>{s3}</story3>")
 
     # Process history and build output in single pass
-    if not scores_by_round:
+    if len(scores_by_round) == 1:
         builder.add_line("")
         builder.add_line("Round 1 starting.")
     else:
@@ -62,14 +63,20 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             ):  # Only show complete rounds with all 3 stories
                 # Get the response for this round
                 round_events = rounds[i]
-                response_event = next(
+                response = next(
                     e for e in round_events if e["type"] == "elicit_response"
-                )
+                )["response"]
+                prefix = extract_reveals(round_events)[0]["values"]["x1"]
+
                 rewards = extract_rewards(round_events)
 
                 # Render this round immediately - no manual calculation needed!
                 builder.start_section(f"round{score_data['round']}")
-                builder.add_line(f"<prefix>{response_event['response']}</prefix>")
+                if response == prefix:
+                    builder.add_line(f"<prefix>{response}</prefix>")
+                else:
+                    builder.add_line(f"<move>{response}</move>")
+                    builder.add_line(f"<prefix>{prefix}</prefix>")
                 builder.start_section("scores")
 
                 # Individual story scores - inline the rendering
@@ -89,7 +96,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
                 builder.end_section()
 
         # Current round marker
-        builder.add_current_round_marker(len(scores_by_round) + 1)
+        builder.add_current_round_marker(len(scores_by_round) - 1)
         builder.end_section()
 
         builder.add_line("")

@@ -1,6 +1,7 @@
 assign(s1=story(), s2=story(), s3=story())
 elicit(x, 10)
 assign(x1=remove_common_words(x, s1 + s2 + s3))
+reveal(x1)
 reward(xed(s1 | x1))
 reward(xed(s2 | x1))
 reward(xed(s3 | x1))

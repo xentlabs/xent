@@ -1,5 +1,6 @@
 from xega.presentation.sdk import (
     PresentationBuilder,
+    extract_reveals,
     extract_rewards,
     format_token_xent_list,
     split_rounds,
@@ -43,7 +44,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line(f"Make this predictable: <story1>{s1}</story1>")
     builder.add_line(f"Make this surprising: <story2>{s2}</story2>")
 
-    if not rounds:
+    if len(rounds) == 1:
         builder.add_line("")
         builder.add_line("Round 1 starting.")
     else:
@@ -52,14 +53,16 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         builder.add_line("")
         builder.start_section("gameHistory")
 
-        for round_num, round_events in enumerate(rounds, 1):
+        for round_num in range(len(rounds) - 1):
+            round_events = rounds[round_num]
             rewards = extract_rewards(round_events)
             completed_round_count += 1
 
             # Get the response for this round
-            response_event = next(
-                e for e in round_events if e["type"] == "elicit_response"
-            )
+            response = next(e for e in round_events if e["type"] == "elicit_response")[
+                "response"
+            ]
+            prefix = extract_reveals(round_events)[0]["values"]["x1"]
 
             # Calculate scores
             story1_score = round(rewards[0]["value"].total_xent(), 3)
@@ -72,7 +75,11 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
 
             # Render this round immediately
             builder.start_section(f"round{round_num}")
-            builder.add_line(f"<prefix>{response_event['response']}</prefix>")
+            if response == prefix:
+                builder.add_line(f"<prefix>{response}</prefix>")
+            else:
+                builder.add_line(f"<prefix>{response}</prefix>")
+                builder.add_line(f"<prefix>{prefix}</prefix>")
             builder.start_section("scores")
 
             # Story 1 score (predictability boost)
@@ -97,7 +104,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             builder.end_section()
 
         # Current round marker
-        builder.add_current_round_marker(completed_round_count + 1)
+        builder.add_current_round_marker(completed_round_count)
         builder.end_section()
 
         builder.add_line("")

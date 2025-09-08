@@ -44,6 +44,10 @@ def extract_rewards(events: list[XegaEvent]) -> list[RewardEvent]:
     return [event for event in events if event["type"] == "reward"]
 
 
+def extract_reveals(events: list[XegaEvent]) -> list[RevealEvent]:
+    return [event for event in events if event["type"] == "reveal"]
+
+
 def extract_attempts(events: list[XegaEvent]) -> list[dict[str, Any]]:
     attempts = []
 
@@ -88,7 +92,7 @@ def get_scores_by_round(history: list[XegaEvent]) -> list[dict[str, Any]]:
     rounds = split_rounds(history)
     scores_by_round = []
 
-    for i, round_events in enumerate(rounds, 1):
+    for i, round_events in enumerate(rounds):
         rewards = extract_rewards(round_events)
         scores = [r["value"].total_xent() for r in rewards]
 
@@ -306,7 +310,7 @@ class PresentationBuilder:
         rounds: list[list[XegaEvent]],
         formatter: Callable[[int, list[XegaEvent]], str] | None = None,
     ) -> "PresentationBuilder":
-        for i, round_events in enumerate(rounds, 1):
+        for i, round_events in enumerate(rounds):
             if formatter:
                 self.add_line(formatter(i, round_events))
             else:

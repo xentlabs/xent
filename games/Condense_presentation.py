@@ -1,6 +1,7 @@
 from xega.presentation.sdk import (
     PresentationBuilder,
     extract_attempts,
+    extract_reveals,
     extract_rewards,
     format_token_xent_list,
     get_max_score,
@@ -46,26 +47,27 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         # Process each completed round
         for i, round_events in enumerate(rounds, 1):
             rewards = extract_rewards(round_events)
-            if rewards:
-                # Get the successful attempt
-                attempts = extract_attempts(round_events)
-                successful = [a for a in attempts if not a["failed"]]
+            response = extract_attempts(round_events)[0]["response"]
+            reveal = extract_reveals(round_events)[0]["values"][0]
 
-                if successful:
-                    builder.start_section(f"round{i}")
-                    builder.add_line(f"<prefix>{successful[-1]['response']}</prefix>")
+            builder.start_section(f"round{i}")
+            if response == reveal:
+                builder.add_line(f"<prefix>{response}</prefix>")
+            else:
+                builder.add_line(f"<move>{response}</move>")
+                builder.add_line(f"<prefix>{reveal}</prefix>")
 
-                    # Format the score
-                    score_val = rewards[0]["value"]
-                    total = round(score_val.total_xent(), 3)
-                    per_token = format_token_xent_list(score_val)
+            # Format the score
+            score_val = rewards[0]["value"]
+            total = round(score_val.total_xent(), 3)
+            per_token = format_token_xent_list(score_val)
 
-                    builder.start_section("score")
-                    builder.add_line(f"Total: {total}")
-                    builder.add_line(f"Per-token: {per_token}")
-                    builder.end_section()
+            builder.start_section("score")
+            builder.add_line(f"Total: {total}")
+            builder.add_line(f"Per-token: {per_token}")
+            builder.end_section()
 
-                    builder.end_section()
+            builder.end_section()
 
         # Current round marker
         builder.add_current_round_marker(round_number)
@@ -74,9 +76,8 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         builder.add_line("")
         if best_score is not None:
             builder.add_line(f"Best score achieved: {best_score:.3f}")
-            builder.add_line(
-                "Remember: You want to MAXIMIZE your score. Higher is better!"
-            )
+
+        builder.add_line("Remember: You want to MAXIMIZE your score. Higher is better!")
         builder.add_line("")
 
     builder.add_line("Provide your prefix in <move></move> tags.")

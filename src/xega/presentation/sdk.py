@@ -44,6 +44,10 @@ def extract_rewards(events: list[XegaEvent]) -> list[RewardEvent]:
     return [event for event in events if event["type"] == "reward"]
 
 
+def extract_reveals(events: list[XegaEvent]) -> list[RevealEvent]:
+    return [event for event in events if event["type"] == "reveal"]
+
+
 def extract_attempts(events: list[XegaEvent]) -> list[dict[str, Any]]:
     attempts = []
 

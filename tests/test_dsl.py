@@ -153,7 +153,7 @@ class TestAssignInstruction:
         game_code = """
         assign(s1='hello', s2='world')
         assign(s3=s1 + ' ' + s2)
-        reveal(black, s3)
+        reveal(s3)
         """
 
         game_results = await play_game(game_code, xrt, num_rounds=1)
@@ -169,26 +169,21 @@ class TestRevealInstruction:
 
     @pytest.mark.asyncio
     async def test_reveal_basic(self, xrt):
-        """Test basic reveal operation to default player fails"""
-        await eval_line("assign(s='test message')", 1, xrt)
-        with pytest.raises(XegaSyntaxError):
-            await eval_line("reveal(s)", 2, xrt)
-
-    @pytest.mark.asyncio
-    async def test_reveal_explicit_player(self, xrt):
         """Test reveal with explicit player specification."""
         await eval_line("assign(s='message for black')", 1, xrt)
-        await eval_line("reveal(black, s)", 2, xrt)
+        await eval_line("reveal(s)", 2, xrt)
 
         player = xrt.player
         assert len(player.event_history) == 1
+        print(player)
+        print(player.event_history)
         assert "message for black" in str(player.event_history[0])
 
     @pytest.mark.asyncio
     async def test_reveal_multiple_values(self, xrt):
         """Test revealing multiple values at once."""
         await eval_line("assign(s1='first', s2='second', s3='third')", 1, xrt)
-        await eval_line("reveal(black, s1, s2, s3)", 2, xrt)
+        await eval_line("reveal(s1, s2, s3)", 2, xrt)
 
         player = xrt.player
         assert len(player.event_history) == 1
@@ -201,7 +196,7 @@ class TestRevealInstruction:
     async def test_reveal_empty_string(self, xrt):
         """Test revealing empty strings."""
         await eval_line("assign(s='')", 1, xrt)
-        await eval_line("reveal(black, s)", 2, xrt)
+        await eval_line("reveal(s)", 2, xrt)
 
         player = xrt.player
         assert len(player.event_history) == 1
@@ -211,7 +206,7 @@ class TestRevealInstruction:
     async def test_reveal_computed_values(self, xrt):
         """Test revealing computed values."""
         await eval_line("assign(s1='hello', s2='world')", 1, xrt)
-        await eval_line("reveal(black, s1 + ' ' + s2)", 2, xrt)
+        await eval_line("reveal(s1 + ' ' + s2)", 2, xrt)
 
         player = xrt.player
         assert len(player.event_history) == 1
@@ -224,7 +219,7 @@ class TestRevealInstruction:
 
         # This should fail because reveal doesn't accept keyword arguments
         with pytest.raises(XegaSyntaxError):
-            await eval_line("reveal(player=black, value=s)", 2, xrt)
+            await eval_line("reveal(value=s)", 2, xrt)
 
 
 class TestElicitInstruction:
@@ -372,7 +367,7 @@ class TestRewardInstruction:
         """Test reward in a complete game context."""
         game_code = """
         assign(s='My favorite breakfast is huevos rancheros')
-        reveal(black, s)
+        reveal(s)
         elicit(s1, 20)
         reward(black, xed(s | s1))
         """
@@ -623,10 +618,10 @@ class TestBeaconReplayInstructions:
         """Test that replay counters are tracked per line."""
         game_code = """
         beacon(flag_1)
-        reveal(black, 'loop')
+        reveal('loop')
         replay(flag_1, 2)
         beacon(flag_2)
-        reveal(black, 'inner')
+        reveal('inner')
         replay(flag_1, 1)
         """
 
@@ -662,7 +657,7 @@ class TestBeaconReplayInstructions:
         """Test that multi round configuration creates an implicit replay at the end."""
         game_code = """
         assign(s='hello')
-        reveal(black, s)
+        reveal(s)
         reward(xent('hello world'))
         """.strip()
 
@@ -915,7 +910,7 @@ class TestErrorCases:
 
         # reveal with keyword args
         with pytest.raises(XegaSyntaxError):
-            await eval_line("reveal(player=black, value='test')", 1, xrt)
+            await eval_line("reveal(value='test')", 1, xrt)
 
         # ensure with keyword args
         with pytest.raises(XegaSyntaxError):
@@ -962,7 +957,7 @@ class TestErrorCases:
 
         # Using undefined register in reveal
         with pytest.raises(XegaGameError):
-            await eval_line("reveal(black, undefined_var)", 1, xrt)
+            await eval_line("reveal(undefined_var)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_undefined_functions(self, xrt):
@@ -997,9 +992,9 @@ class TestCombinedOperations:
         """Test interaction between reveal and elicit."""
         game_code = """
         assign(s='Please enter a word')
-        reveal(black, s)
+        reveal(s)
         elicit(s1, 10)
-        reveal(black, s1)
+        reveal(s1)
         """
 
         await play_game(game_code, xrt, num_rounds=1)

@@ -69,7 +69,7 @@ def create_test_benchmark_config() -> CondensedXegaBenchmarkConfig:
                 name="test_single",
                 code="""
                     assign(s1="At the book club, I ran into this girl, Neila, who claims to only read books backwards: starting from the bottom-right corner of the last page and reading all the words in reverse order until the beginning, finishing with the title. Doesn't it spoil the fun of the story? Apparently not, she told me. The suspense is just distributed somewhat differently (some books' beginnings are apparently all too predictable), and some books get better or worse if you read them in one direction or another. She started reading backwards at age seven. Her name was sort of a predisposition.", s2="Hello, it is today a lovely day to use my skills in differential geometry and in the calculus of variation to estimate how much grass I will be able to eat. I aim to produce a lot of milk and to write a lot of theorems for my children, because that's what the beauty of life is about, dear physicists and cheese-makers. Have a great day!")
-                    reveal(black, s1, s2)
+                    reveal(s1, s2)
                     elicit(black, x, 20)
                     reward(xent(x | s1))
                     reward(-xent(s2 | (s1+x)))
@@ -81,10 +81,10 @@ def create_test_benchmark_config() -> CondensedXegaBenchmarkConfig:
                 name="test_multi",
                 code="""
                     assign(t1="At the book club, I ran into this girl, Neila, who claims to only read books backwards: starting from the bottom-right corner of the last page and reading all the words in reverse order until the beginning, finishing with the title. Doesn't it spoil the fun of the story? Apparently not, she told me. The suspense is just distributed somewhat differently (some books' beginnings are apparently all too predictable), and some books get better or worse if you read them in one direction or another. She started reading backwards at age seven. Her name was sort of a predisposition.", t2="Hello, it is today a lovely day to use my skills in differential geometry and in the calculus of variation to estimate how much grass I will be able to eat. I aim to produce a lot of milk and to write a lot of theorems for my children, because that's what the beauty of life is about, dear physicists and cheese-makers. Have a great day!")
-                    reveal(black, t1)
+                    reveal(t1)
                     elicit(black, y, 15)
                     reward(xent(y | t1))
-                    reveal(black, t2)
+                    reveal(t2)
                     reward(-xent(t2 | y))
                 """,
                 presentation_function=get_default_presentation(),
@@ -280,7 +280,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
         games=[
             GameConfig(
                 name="smoke",
-                code="assign(s=story())\nreveal(black, s)\nelicit(black, x, 5)\nreward(xent(x | s))",
+                code="assign(s=story())\nreveal(s)\nelicit(black, x, 5)\nreward(xent(x | s))",
                 presentation_function=get_default_presentation(),
             ),
         ],

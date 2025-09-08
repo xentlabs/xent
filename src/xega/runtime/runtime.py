@@ -1,3 +1,7 @@
+# NB: This code has gone back-and-forth from supporting multi-player and not. Currently,
+# it does not support multi-player games. Extending it should be relatively simple.
+# There is some amount of cruft due to this back-and-forth that should eventually be
+# removed, or fully updated to work properly in multi-player conditions.
 import logging
 import re
 from typing import Any
@@ -269,15 +273,15 @@ class XegaRuntime:
         self.assert_no_kwargs(kwargs, "reveal")
         if len(args) == 0:
             raise XegaSyntaxError(
-                "Reveal requires at least two positional argument, got none"
+                "Reveal requires at least one positional argument, got none"
             )
 
-        player = args[0]
+        player = self.local_vars.get("black")
         if not isinstance(player, XGP):
-            raise XegaSyntaxError("First argument of reveal must be a player")
+            raise XegaInternalError("No player identified for reward")
 
         var_names = extract_reveal_parameters(line)
-        rest_of_args = args[1:]
+        rest_of_args = args[0:]
         reveal_event = RevealEvent(
             type="reveal",
             line=line,
@@ -440,4 +444,4 @@ def extract_reveal_parameters(input_str: str) -> list[str]:
     if not match:
         return []
     params = [param.strip() for param in match.group(1).split(",")]
-    return params[1:]
+    return params

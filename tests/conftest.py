@@ -1,4 +1,7 @@
+import os
+
 import pytest
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from xega.common.configuration_types import ExecutableGameMap
 from xega.common.version import get_xega_version
@@ -29,6 +32,74 @@ FAKE_GAME_MAP: ExecutableGameMap = {
         "options": {"model": "gpt-4o", "provider": "openai"},
     },
 }
+
+
+def pytest_addoption(parser):
+    """Add command line options for test configuration"""
+    parser.addoption(
+        "--skip-model-cache",
+        action="store_true",
+        default=False,
+        help="Skip pre-caching of ML models before tests run",
+    )
+
+
+def pytest_configure(config):
+    """Pre-cache models before tests run, then enable offline mode"""
+    if config.getoption("--skip-model-cache"):
+        print("⏭️  Skipping model pre-caching (--skip-model-cache enabled)")
+        return
+
+    # Models used in tests
+    models_to_cache = ["gpt2", "Qwen/Qwen3-0.6B-Base"]
+
+    print("🔄 Pre-caching models for tests...")
+    cached_models = []
+
+    for model_name in models_to_cache:
+        try:
+            print(f"   Caching {model_name}...")
+            # Cache with network access, then verify local cache works
+            AutoTokenizer.from_pretrained(model_name)
+            AutoModelForCausalLM.from_pretrained(model_name)
+
+            # Test that local-only loading works
+            AutoTokenizer.from_pretrained(model_name, local_files_only=True)
+            AutoModelForCausalLM.from_pretrained(model_name, local_files_only=True)
+
+            cached_models.append(model_name)
+            print(f"   ✅ {model_name} cached and verified for local-only access")
+        except Exception as e:
+            print(f"   ❌ Failed to cache {model_name}: {e}")
+            print("   ⚠️  Tests may make network requests for this model")
+
+    # Enable offline mode if we successfully cached models
+    if cached_models:
+        # Set multiple environment variables for comprehensive offline mode
+        os.environ["HF_HUB_OFFLINE"] = "1"
+        os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        print(f"🔒 Enabled offline mode for tests ({len(cached_models)} models cached)")
+    else:
+        print("⚠️  No models were cached - tests will run with network access")
+
+
+def pytest_unconfigure(config):
+    """Clean up after tests"""
+    env_vars_to_clean = [
+        "HF_HUB_OFFLINE",
+        "TRANSFORMERS_OFFLINE",
+        "HF_HUB_DISABLE_TELEMETRY",
+    ]
+    cleaned = []
+
+    for var in env_vars_to_clean:
+        if var in os.environ:
+            del os.environ[var]
+            cleaned.append(var)
+
+    if cleaned:
+        print(f"🔓 Disabled offline mode ({', '.join(cleaned)})")
 
 
 @pytest.fixture

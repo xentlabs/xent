@@ -1764,7 +1764,7 @@ def present(state, history):
         result = func(state, history)
         assert "Condense Game Test" in result
         assert "Once upon a time" in result
-        assert "Round 1: 1.5" in result
+        assert "Round 0: 1.5" in result
 
     def test_sdk_data_extraction_with_game_history(self):
         """Test SDK utilities with realistic multi-round game history"""

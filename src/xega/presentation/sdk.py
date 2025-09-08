@@ -48,7 +48,7 @@ def extract_reveals(events: list[XegaEvent]) -> list[RevealEvent]:
     return [event for event in events if event["type"] == "reveal"]
 
 
-def extract_attempts(events: list[XegaEvent]) -> list[dict[str, Any]]:
+def extract_attempts(events: list[XegaEvent], reason: str = "") -> list[dict[str, Any]]:
     attempts = []
 
     for i, event in enumerate(events):
@@ -115,55 +115,6 @@ def count_all_events(events: list[XegaEvent]) -> dict[str, int]:
     return counts
 
 
-def find_round_boundaries(
-    history: list[XegaEvent],
-    start_event: str = "elicit_response",
-    end_event: str = "reward",
-) -> list[dict[str, Any]]:
-    boundaries = []
-    start_idx = None
-
-    for i, event in enumerate(history):
-        if event["type"] == start_event:
-            start_idx = i
-        elif event["type"] == end_event and start_idx is not None:
-            boundaries.append(
-                {
-                    "start_idx": start_idx,
-                    "end_idx": i,
-                    "events": history[start_idx : i + 1],
-                }
-            )
-            start_idx = None
-
-    return boundaries
-
-
-def extract_story_scores(
-    events: list[XegaEvent], num_stories: int
-) -> list[list[float]]:
-    rounds = split_rounds(events)
-    story_scores = []
-
-    for round_events in rounds:
-        rewards = extract_rewards(round_events)
-        if len(rewards) >= num_stories:
-            round_scores = [r["value"].total_xent() for r in rewards[:num_stories]]
-            story_scores.append(round_scores)
-
-    return story_scores
-
-
-def check_word_overlap(text1: str, text2: str, ignore_case: bool = True) -> set[str]:
-    if ignore_case:
-        text1, text2 = text1.lower(), text2.lower()
-
-    words1 = set(text1.split())
-    words2 = set(text2.split())
-
-    return words1.intersection(words2)
-
-
 def format_token_xent_list(txl: TokenXentList, scaled: bool = True) -> str:
     pairs = txl.pairs
     scale = txl.scale * (PRESENTATION_SCORE_SCALE if scaled else 1)
@@ -191,13 +142,13 @@ def format_failed_ensure(event: FailedEnsureEvent) -> str:
 
 
 def format_attempt(
-    response: str, failed: bool = False, reason: str | None = None
+    response: str, failed: bool = False, failure_reason: str | None = None
 ) -> str:
     if failed:
-        if reason:
-            return f"<invalidAttempt>{response}</invalidAttempt> ({reason})"
-        return f"<invalidAttempt>{response}</invalidAttempt>"
-    return f"<attempt>{response}</attempt>"
+        if failure_reason:
+            return f"<invalidMove>{response}</invalidMove> ({failure_reason})"
+        return f"<invalidMove>{response}</invalidMove>"
+    return f"<move>{response}</move>"
 
 
 def format_score_comparison(
@@ -303,50 +254,6 @@ class PresentationBuilder:
         tag, _ = self.section_stack.pop()
         self.current_indent = max(0, self.current_indent - 1)
         self.add_line(f"</{tag}>")
-        return self
-
-    def add_rounds(
-        self,
-        rounds: list[list[XegaEvent]],
-        formatter: Callable[[int, list[XegaEvent]], str] | None = None,
-    ) -> "PresentationBuilder":
-        for i, round_events in enumerate(rounds):
-            if formatter:
-                self.add_line(formatter(i, round_events))
-            else:
-                # Default formatting
-                self.start_section(f"round{i}")
-
-                attempts = extract_attempts(round_events)
-                for attempt in attempts:
-                    self.add_line(
-                        format_attempt(attempt["response"], attempt["failed"])
-                    )
-
-                rewards = extract_rewards(round_events)
-                if rewards:
-                    formatted, score = format_reward(rewards[0])
-                    self.add_line(formatted)
-
-                self.end_section()
-
-        return self
-
-    def add_score_breakdown(
-        self,
-        score_value: TokenXentList | float,
-        label: str = "Score",
-        scaled: bool = True,
-    ) -> "PresentationBuilder":
-        if isinstance(score_value, TokenXentList):
-            total = round_xent(score_value.total_xent(), scaled=scaled)
-            per_token = format_token_xent_list(score_value, scaled=scaled)
-            self.add_line(f"{label}:")
-            self.add_line(f"  Total: {total}")
-            self.add_line(f"  Per-token: {per_token}")
-        else:
-            self.add_line(f"{label}: {score_value:.3f}")
-
         return self
 
     def add_game_state(self, **state_vars: Any) -> "PresentationBuilder":

@@ -44,7 +44,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line(f"Make this predictable: <story1>{s1}</story1>")
     builder.add_line(f"Make this surprising: <story2>{s2}</story2>")
 
-    if not rounds:
+    if len(rounds) == 1:
         builder.add_line("")
         builder.add_line("Round 1 starting.")
     else:
@@ -53,7 +53,8 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         builder.add_line("")
         builder.start_section("gameHistory")
 
-        for round_num, round_events in enumerate(rounds, 1):
+        for round_num in range(len(rounds) - 1):
+            round_events = rounds[round_num]
             rewards = extract_rewards(round_events)
             completed_round_count += 1
 
@@ -61,7 +62,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             response = next(e for e in round_events if e["type"] == "elicit_response")[
                 "response"
             ]
-            prefix = extract_reveals(round_events)[0]["values"][0]
+            prefix = extract_reveals(round_events)[0]["values"]["x1"]
 
             # Calculate scores
             story1_score = round(rewards[0]["value"].total_xent(), 3)
@@ -103,7 +104,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             builder.end_section()
 
         # Current round marker
-        builder.add_current_round_marker(completed_round_count + 1)
+        builder.add_current_round_marker(completed_round_count)
         builder.end_section()
 
         builder.add_line("")

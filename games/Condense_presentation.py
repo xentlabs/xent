@@ -39,16 +39,17 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line(f"The story: <story>{state['s']}</story>")
 
     # Game history
-    if not rounds or not extract_rewards(rounds[-1] if rounds else []):
-        builder.add_line(f"Round {round_number} starting.")
+    if len(rounds) == 1:
+        builder.add_line("First round starting.")
     else:
         builder.start_section("gameHistory")
 
         # Process each completed round
-        for i, round_events in enumerate(rounds, 1):
+        for i in range(len(rounds) - 1):
+            round_events = rounds[i]
             rewards = extract_rewards(round_events)
             response = extract_attempts(round_events)[0]["response"]
-            reveal = extract_reveals(round_events)[0]["values"][0]
+            reveal = extract_reveals(round_events)[0]["values"]["x1"]
 
             builder.start_section(f"round{i}")
             if response == reveal:

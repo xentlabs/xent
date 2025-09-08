@@ -44,7 +44,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line(f"<story3>{s3}</story3>")
 
     # Process history and build output in single pass
-    if not scores_by_round:
+    if len(scores_by_round) == 1:
         builder.add_line("")
         builder.add_line("Round 1 starting.")
     else:
@@ -66,7 +66,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
                 response = next(
                     e for e in round_events if e["type"] == "elicit_response"
                 )["response"]
-                prefix = extract_reveals(round_events)[0]["values"][0]
+                prefix = extract_reveals(round_events)[0]["values"]["x1"]
 
                 rewards = extract_rewards(round_events)
 
@@ -96,7 +96,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
                 builder.end_section()
 
         # Current round marker
-        builder.add_current_round_marker(len(scores_by_round) + 1)
+        builder.add_current_round_marker(len(scores_by_round) - 1)
         builder.end_section()
 
         builder.add_line("")

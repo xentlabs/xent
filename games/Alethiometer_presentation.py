@@ -1,6 +1,10 @@
 from xega.presentation.sdk import (
     PresentationBuilder,
+    extract_attempts,
+    extract_rewards,
+    format_attempt,
     format_token_xent_list,
+    split_rounds,
 )
 
 
@@ -8,11 +12,6 @@ def present(state, history):
     # Extract game state
     story = state["s"]
     valid_symbols = state["s1"]
-
-    # Track best score and current round info
-    best_score = None
-    completed_rounds = 0
-    current_round_attempts = []
 
     # Build presentation
     builder = PresentationBuilder()
@@ -48,87 +47,118 @@ Provide your symbol sequence in <move></move> tags. Any other text in your respo
     builder.add_line("<validSymbols>")
     builder.add_line(str(valid_symbols))
     builder.add_line("</validSymbols>")
+
+    # Split history into rounds
+    rounds = split_rounds(history)
+
+    # Track best score
+    best_score = None
+
+    # Process and display history
     builder.add_line("")
-    builder.add_line("--- Play History ---")
+    builder.add_line("A history of your play so far:")
     builder.add_line("")
 
-    # Process history in single pass, building output as we go
-    if not history:
-        builder.add_line("Round 1 starting.")
+    if not rounds or (len(rounds) == 1 and not rounds[0]):
+        builder.add_line("First round starting.")
     else:
-        builder.start_section("gameHistory")
+        builder.start_section("fullHistory")
 
-        # Process history events and render immediately
-        round_number = 1
-        temp_failed_attempts = []
+        # Process each round
+        for i in range(len(rounds) - 1):
+            # This is a completed round
+            round_score = render_complete_round(rounds[i], builder, i + 1)
+            if round_score is not None and (
+                best_score is None or round_score > best_score
+            ):
+                best_score = round_score
 
-        for i, event in enumerate(history):
-            if event["type"] == "elicit_response":
-                # Check if this attempt failed
-                is_failure = (i + 1) < len(history) and history[i + 1][
-                    "type"
-                ] == "failed_ensure"
+        # Handle current round (if it has any attempts)
+        current_round = rounds[-1] if rounds else []
+        current_attempts = extract_attempts(
+            current_round, reason="Contains invalid symbols not in the allowed set"
+        )
 
-                if is_failure:
-                    # Add to failed attempts for current round
-                    temp_failed_attempts.append(event["response"])
-                else:
-                    # Success - this completes a round
-                    completed_rounds += 1
-
-                    # Start rendering this round
-                    builder.start_section(f"round{round_number}")
-
-                    # Show failed attempts if any
-                    for attempt in temp_failed_attempts:
-                        builder.add_line(f"<invalidAttempt>{attempt}</invalidAttempt>")
-
-                    # Show successful attempt
-                    builder.add_line(f"<symbols>{event['response']}</symbols>")
-
-                    # Look for the reward event to get score
-                    for j in range(i + 1, min(i + 5, len(history))):
-                        if history[j]["type"] == "reward":
-                            score_val = history[j]["value"]
-                            total = score_val.total_xent()
-
-                            # Track best score
-                            if best_score is None or total > best_score:
-                                best_score = total
-
-                            # Show score with per-token breakdown
-                            builder.start_section("score")
-                            builder.add_line(f"Total: {total:.3f}")
-                            builder.add_line(
-                                f"Per-token: {format_token_xent_list(score_val)}"
-                            )
-                            builder.end_section()
-                            break
-
-                    builder.end_section()
-
-                    # Reset for next round
-                    temp_failed_attempts = []
-                    round_number += 1
-
-        # Track any pending failed attempts for current incomplete round
-        current_round_attempts = temp_failed_attempts
-
-        # Show current round if there are attempts or we're past round 1
-        if current_round_attempts or completed_rounds > 0:
-            builder.start_section(f"round{completed_rounds + 1}")
-            for attempt in current_round_attempts:
-                builder.add_line(f"<invalidAttempt>{attempt}</invalidAttempt>")
-            builder.add_line("<current/>")
-            builder.end_section()
+        if current_attempts or len(rounds) > 1:
+            # We have attempts in current round or we're past round 1
+            render_current_round(current_round, builder, len(rounds))
 
         builder.end_section()
-        builder.add_line("")
 
-        if best_score is not None:
-            builder.add_line(f"Best score so far: {best_score:.3f}")
-            builder.add_line("")
+    # Show current game status
+    builder.add_line("")
+    builder.add_line("Current game status:")
+    builder.add_line(f"Target story: {story}")
 
+    if best_score is not None:
+        builder.add_line(f"Best score achieved: {best_score:.1f}")
+
+    builder.add_line("")
+    builder.add_line(
+        "Remember: Use only the valid symbols shown above. Each symbol can appear multiple times."
+    )
+    builder.add_line("")
     builder.add_line("Provide your symbol sequence in <move></move> tags.")
 
     return builder.render()
+
+
+def render_complete_round(round_events, builder, round_num):
+    """Render a completed round with all attempts and final score"""
+
+    # Extract attempts with failure tracking
+    attempts = extract_attempts(
+        round_events, reason="Contains invalid symbols not in the allowed set"
+    )
+
+    if not attempts:
+        return None
+
+    builder.start_section(f"round{round_num}")
+    builder.start_section("symbolSelection")
+
+    # Show all attempts
+    for attempt in attempts:
+        builder.add_line(format_attempt(**attempt))
+
+    builder.end_section()
+
+    # Get and display score
+    rewards = extract_rewards(round_events)
+    if rewards:
+        reward = rewards[0]
+        score = reward["value"].total_xent()
+
+        builder.start_section("score")
+        builder.add_line(f"Total: {score:.1f}")
+        builder.add_line(f"Per-token: {format_token_xent_list(reward['value'])}")
+        builder.end_section()
+
+        builder.end_section()
+        return score
+
+    builder.end_section()
+    return None
+
+
+def render_current_round(round_events, builder, round_num):
+    """Render the current incomplete round"""
+
+    # Extract attempts
+    attempts = extract_attempts(
+        round_events, reason="Contains invalid symbols not in the allowed set"
+    )
+
+    builder.start_section(f"round{round_num}")
+    builder.start_section("symbolSelection")
+
+    # Show any failed attempts
+    for attempt in attempts:
+        if attempt["failed"]:
+            builder.add_line(format_attempt(**attempt))
+
+    # Show where we are
+    builder.add_line("You are HERE. Provide a valid symbol sequence.")
+
+    builder.end_section()
+    builder.end_section()

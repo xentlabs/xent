@@ -1150,7 +1150,7 @@ class TestSDKFunctions:
         result, score = format_reward(event)  # format_reward now returns tuple
         assert "Total:" in result
         assert "Per-token:" in result
-        assert score == 2  # rounded total
+        assert score == 20  # rounded total
 
     def test_format_failed_ensure(self):
         event: FailedEnsureEvent = {
@@ -1374,10 +1374,10 @@ def present(state, history):
         func = PresentationFunction(code)
         result = func({}, [])
 
-        assert "hello|2 world|2" in result  # rounded values
+        assert "hello|15 world|20" in result  # rounded values
         assert "Total:" in result
         assert "Per-token:" in result
-        assert "Score: 4" in result  # rounded by round_xent
+        assert "Score: 35" in result  # rounded by round_xent
 
 
 @pytest.fixture

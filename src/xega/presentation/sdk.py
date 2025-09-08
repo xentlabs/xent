@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from xega.common.token_xent_list import TokenXentList, round_xent
+from xega.common.token_xent_list import TokenXentList
 from xega.common.xega_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
@@ -10,6 +10,14 @@ from xega.common.xega_event import (
     RewardEvent,
     XegaEvent,
 )
+
+PRESENTATION_SCORE_SCALE = 10
+
+
+def round_xent(value: float, scaled: bool = True) -> float:
+    if scaled:
+        return round(value * PRESENTATION_SCORE_SCALE)
+    return round(value)
 
 
 def split_rounds(
@@ -151,19 +159,19 @@ def check_word_overlap(text1: str, text2: str, ignore_case: bool = True) -> set[
     return words1.intersection(words2)
 
 
-def format_token_xent_list(txl: TokenXentList) -> str:
+def format_token_xent_list(txl: TokenXentList, scaled: bool = True) -> str:
     pairs = txl.pairs
-    scale = txl.scale
+    scale = txl.scale * (PRESENTATION_SCORE_SCALE if scaled else 1)
     return " ".join(f"{t[0]}|{round(t[1] * scale)}" for t in pairs)
 
 
 def format_reward(
-    reward_event: RewardEvent, include_breakdown: bool = True
+    reward_event: RewardEvent, include_breakdown: bool = True, scaled: bool = True
 ) -> tuple[str, float]:
-    total = round_xent(reward_event["value"].total_xent())
+    total = round_xent(reward_event["value"].total_xent(), scaled=scaled)
 
     if include_breakdown:
-        per_token = format_token_xent_list(reward_event["value"])
+        per_token = format_token_xent_list(reward_event["value"], scaled=scaled)
         formatted = f"Total: {total}\nPer-token: {per_token}"
     else:
         formatted = f"Total: {total}"
@@ -320,11 +328,14 @@ class PresentationBuilder:
         return self
 
     def add_score_breakdown(
-        self, score_value: TokenXentList | float, label: str = "Score"
+        self,
+        score_value: TokenXentList | float,
+        label: str = "Score",
+        scaled: bool = True,
     ) -> "PresentationBuilder":
         if isinstance(score_value, TokenXentList):
-            total = round_xent(score_value.total_xent())
-            per_token = format_token_xent_list(score_value)
+            total = round_xent(score_value.total_xent(), scaled=scaled)
+            per_token = format_token_xent_list(score_value, scaled=scaled)
             self.add_line(f"{label}:")
             self.add_line(f"  Total: {total}")
             self.add_line(f"  Per-token: {per_token}")

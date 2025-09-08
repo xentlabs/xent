@@ -1,7 +1,3 @@
-def round_xent(value: float) -> float:
-    return round(value)
-
-
 class TokenXentList:
     def __init__(self, token_xent_pairs: list[tuple[str, float]], scale=1.0):
         self.pairs = token_xent_pairs

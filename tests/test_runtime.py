@@ -1314,10 +1314,10 @@ def present(state, history):
         from xega.common.token_xent_list import TokenXentList
 
         history: list[XegaEvent] = [
-            {"type": "elicit_response", "response": "test1"},
-            {"type": "reward", "value": TokenXentList([("token1", 1.0)])},
-            {"type": "elicit_response", "response": "test2"},
-            {"type": "reward", "value": TokenXentList([("token2", 2.0)])},
+            {"type": "elicit_response", "response": "test1"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("token1", 1.0)])},  # type: ignore
+            {"type": "elicit_response", "response": "test2"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("token2", 2.0)])},  # type: ignore
         ]
 
         result = func({}, history)
@@ -1755,8 +1755,8 @@ def present(state, history):
 
         state = {"s": "Once upon a time"}
         history: list[XegaEvent] = [
-            {"type": "elicit_response", "response": "magical"},
-            {"type": "reward", "value": TokenXentList([("test", 1.5)])},
+            {"type": "elicit_response", "response": "magical"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("test", 1.5)])},  # type: ignore
         ]
 
         result = func(state, history)
@@ -1793,14 +1793,14 @@ def present(state, history):
 
         history: list[XegaEvent] = [
             # Round 1
-            {"type": "elicit_response", "response": "attempt1"},
-            {"type": "reward", "value": TokenXentList([("token1", 2.0)])},
+            {"type": "elicit_response", "response": "attempt1"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("token1", 2.0)])},  # type: ignore
             # Round 2
-            {"type": "elicit_response", "response": "attempt2"},
-            {"type": "reward", "value": TokenXentList([("token2", 3.5)])},
+            {"type": "elicit_response", "response": "attempt2"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("token2", 3.5)])},  # type: ignore
             # Round 3
-            {"type": "elicit_response", "response": "attempt3"},
-            {"type": "reward", "value": TokenXentList([("token3", 1.2)])},
+            {"type": "elicit_response", "response": "attempt3"},  # type: ignore
+            {"type": "reward", "value": TokenXentList([("token3", 1.2)])},  # type: ignore
         ]
 
         result = func({}, history)

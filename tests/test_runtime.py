@@ -1311,13 +1311,15 @@ def present(state, history):
         func = PresentationFunction(code)
 
         # Create test history with multiple rounds
-        from xega.common.token_xent_list import TokenXentList
-
         history: list[XegaEvent] = [
+            {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "test1"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token1", 1.0)])},  # type: ignore
+            {"type": "round_finished", "round_index": 0},  # type: ignore
+            {"type": "round_started", "round_index": 1},  # type: ignore
             {"type": "elicit_response", "response": "test2"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token2", 2.0)])},  # type: ignore
+            {"type": "round_finished", "round_index": 2},  # type: ignore
         ]
 
         result = func({}, history)
@@ -1793,14 +1795,20 @@ def present(state, history):
 
         history: list[XegaEvent] = [
             # Round 1
+            {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "attempt1"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token1", 2.0)])},  # type: ignore
+            {"type": "round_finished", "round_index": 0},  # type: ignore
             # Round 2
+            {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "attempt2"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token2", 3.5)])},  # type: ignore
+            {"type": "round_finished", "round_index": 0},  # type: ignore
             # Round 3
+            {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "attempt3"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token3", 1.2)])},  # type: ignore
+            {"type": "round_finished", "round_index": 0},  # type: ignore
         ]
 
         result = func({}, history)

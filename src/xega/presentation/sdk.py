@@ -20,20 +20,21 @@ def round_xent(value: float, scaled: bool = True) -> float:
     return round(value)
 
 
-def split_rounds(
-    history: list[XegaEvent], round_marker: str = "elicit_response"
-) -> list[list[XegaEvent]]:
+def split_rounds(history: list[XegaEvent]) -> list[list[XegaEvent]]:
     rounds: list[list[XegaEvent]] = []
     current_round: list[XegaEvent] = []
 
     for event in history:
-        if event["type"] == round_marker and current_round:
-            rounds.append(current_round)
+        if event["type"] == "round_started":
             current_round = [event]
+        elif event["type"] == "round_finished":
+            current_round.append(event)
+            rounds.append(current_round)
+            current_round = []
         else:
             current_round.append(event)
 
-    if current_round:
+    if len(current_round) > 0:
         rounds.append(current_round)
 
     return rounds

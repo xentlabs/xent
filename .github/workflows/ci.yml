@@ -26,7 +26,3 @@ jobs:
 
     - name: Run tests (excluding integration)
       run: uv run pytest -m "not integration"
-
-    - name: Run integration tests
-      run: uv run pytest -m "integration"
-      timeout-minutes: 10

@@ -1111,7 +1111,7 @@ class TestSDKFunctions:
             "registers": {},
         }
         result = format_elicit_request(event)
-        assert result == "05-<elicit>: move (max 10 tokens)"
+        assert result == "Request: move (max 10 tokens)"
 
     def test_format_elicit_response(self):
         event: ElicitResponseEvent = {
@@ -1123,7 +1123,7 @@ class TestSDKFunctions:
             "token_usage": {"input_tokens": 10, "output_tokens": 5},
         }
         result = format_elicit_response(event)
-        assert result == "05-<elicit response>: my move"
+        assert result == "Response: my move"
 
     def test_format_reveal(self):
         values = {"var1": XString("value1"), "var2": XString("value2")}
@@ -1135,7 +1135,7 @@ class TestSDKFunctions:
             "values": values,
         }
         result = format_reveal(event)
-        expected = "03-<reveal>: ['var1: \"value1\"', 'var2: \"value2\"']"
+        expected = 'Revealed: var1: "value1", var2: "value2"'
         assert result == expected
 
     def test_format_reward(self):
@@ -1147,9 +1147,10 @@ class TestSDKFunctions:
             "player": "alice",
             "value": reward_value,
         }
-        result = format_reward(event)
-        assert "08-<reward>:" in result
-        assert "Total reward:" in result
+        result, score = format_reward(event)  # format_reward now returns tuple
+        assert "Total:" in result
+        assert "Per-token:" in result
+        assert score == 2  # rounded total
 
     def test_format_failed_ensure(self):
         event: FailedEnsureEvent = {
@@ -1161,7 +1162,7 @@ class TestSDKFunctions:
             "beacon": "previous_elicit",
         }
         result = format_failed_ensure(event)
-        expected = "10-<ensure>: Failed ensure. Argument 0 result: True, Argument 1 result: False, Argument 2 result: True. Moving code execution to beacon: previous_elicit"
+        expected = "Failed ensure: Argument 0: True, Argument 1: False, Argument 2: True. Moving to beacon: previous_elicit"
         assert result == expected
 
     def test_get_event_summary(self):
@@ -1237,6 +1238,8 @@ def present(state, history):
 
     def test_presentation_with_sdk_functions(self):
         code = """
+from xega.presentation.sdk import format_elicit_request, format_reveal
+
 def present(state, history):
     if not history:
         return "No events yet"
@@ -1265,7 +1268,7 @@ def present(state, history):
         ]
 
         result = func({}, events)
-        assert "01-<elicit>: move (max 10 tokens)" in result
+        assert "Request: move (max 10 tokens)" in result
 
     def test_presentation_function_validation(self):
         valid_code = """
@@ -1286,6 +1289,95 @@ def present(state, history):
     def test_non_callable_present(self):
         with pytest.raises(XegaInternalError):
             PresentationFunction("present = 'not a function'")
+
+    def test_sdk_utilities_with_imports(self):
+        """Test that SDK utilities work correctly when imported"""
+        code = """
+from xega.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
+from xega.common.token_xent_list import TokenXentList
+
+def present(state, history):
+    # Test split_rounds
+    rounds = split_rounds(history)
+
+    # Test extract_rewards
+    all_rewards = extract_rewards(history)
+
+    # Test get_scores_by_round
+    scores = get_scores_by_round(history)
+
+    return f"Rounds: {len(rounds)}, Rewards: {len(all_rewards)}, Scores: {len(scores)}"
+"""
+        func = PresentationFunction(code)
+
+        # Create test history with multiple rounds
+        from xega.common.token_xent_list import TokenXentList
+
+        history: list[XegaEvent] = [
+            {"type": "elicit_response", "response": "test1"},
+            {"type": "reward", "value": TokenXentList([("token1", 1.0)])},
+            {"type": "elicit_response", "response": "test2"},
+            {"type": "reward", "value": TokenXentList([("token2", 2.0)])},
+        ]
+
+        result = func({}, history)
+        assert "Rounds: 2" in result
+        assert "Rewards: 2" in result
+        assert "Scores: 2" in result
+
+    def test_presentation_builder(self):
+        """Test PresentationBuilder functionality"""
+        code = """
+from xega.presentation.sdk import PresentationBuilder
+
+def present(state, history):
+    builder = PresentationBuilder()
+    builder.add_header("Test Header")
+    builder.add_line("Test Line")
+    builder.start_section("testSection")
+    builder.add_line("Inside Section")
+    builder.end_section()
+    builder.start_section("withAttr", key="value")
+    builder.add_line("With Attributes")
+    # Test auto-close on render
+    return builder.render()
+"""
+        func = PresentationFunction(code)
+        result = func({}, [])
+
+        assert "Test Header" in result
+        assert "Test Line" in result
+        assert "<testSection>" in result
+        assert "Inside Section" in result
+        assert "</testSection>" in result
+        assert '<withAttr key="value">' in result
+        assert "With Attributes" in result
+        assert "</withAttr>" in result
+
+    def test_format_functions(self):
+        """Test SDK formatting functions"""
+        code = """
+from xega.presentation.sdk import format_token_xent_list, format_reward
+from xega.common.token_xent_list import TokenXentList
+
+def present(state, history):
+    # Test format_token_xent_list
+    txl = TokenXentList([("hello", 1.5), ("world", 2.0)])
+    formatted = format_token_xent_list(txl)
+
+    # Test format_reward (returns tuple)
+    reward_event = {"value": txl}
+    reward_text, reward_score = format_reward(reward_event)
+
+    return f"Formatted: {formatted}\\nReward: {reward_text}\\nScore: {reward_score}"
+"""
+        func = PresentationFunction(code)
+        result = func({}, [])
+
+        assert "hello|2 world|2" in result  # rounded values
+        assert "Total:" in result
+        assert "Per-token:" in result
+        assert "Score: 4" in result  # rounded by round_xent
 
 
 @pytest.fixture
@@ -1446,10 +1538,10 @@ def present(state, history):
         history: list[XegaEvent] = [reveal_event, elicit_event]
         result = func({}, history)
 
-        # Should match the format produced by event_to_message
+        # Should match the format produced by SDK functions
         expected_lines = [
-            "01-<reveal>: ['x: \"test_value\"']",
-            "02-<elicit>: y (max 10 tokens)",
+            'Revealed: x: "test_value"',
+            "Request: y (max 10 tokens)",
         ]
 
         for expected_line in expected_lines:
@@ -1627,6 +1719,97 @@ elicit(black, x, 5)""",
         register_states = {"test": XString("test_value")}
         with pytest.raises(XegaConfigurationError):
             move, tokens = await mock_player.make_move("x", register_states)
+
+    def test_real_game_presentation_with_sdk(self):
+        """Test that a real game presentation works with SDK imports"""
+        # Simplified version of Condense presentation using SDK
+        condense_presentation = """
+from xega.presentation.sdk import (
+    PresentationBuilder,
+    extract_rewards,
+    get_scores_by_round,
+    split_rounds,
+)
+
+def present(state, history):
+    builder = PresentationBuilder()
+    builder.add_header("Condense Game Test")
+    builder.add_game_state(story=state.get("s", "test story"))
+
+    scores_by_round = get_scores_by_round(history)
+    if scores_by_round:
+        builder.start_section("history")
+        for score_data in scores_by_round:
+            builder.add_line(f"Round {score_data['round']}: {score_data['total']:.3f}")
+        builder.end_section()
+    else:
+        builder.add_line("No history yet")
+
+    return builder.render()
+"""
+
+        func = PresentationFunction(condense_presentation)
+
+        # Test with realistic game state and history
+        from xega.common.token_xent_list import TokenXentList
+
+        state = {"s": "Once upon a time"}
+        history: list[XegaEvent] = [
+            {"type": "elicit_response", "response": "magical"},
+            {"type": "reward", "value": TokenXentList([("test", 1.5)])},
+        ]
+
+        result = func(state, history)
+        assert "Condense Game Test" in result
+        assert "Once upon a time" in result
+        assert "Round 1: 1.5" in result
+
+    def test_sdk_data_extraction_with_game_history(self):
+        """Test SDK utilities with realistic multi-round game history"""
+        test_presentation = """
+from xega.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
+
+def present(state, history):
+    rounds = split_rounds(history)
+    scores = get_scores_by_round(history)
+    all_rewards = extract_rewards(history)
+
+    lines = [f"Total rounds: {len(rounds)}"]
+    lines.append(f"Total rewards: {len(all_rewards)}")
+    lines.append(f"Scores calculated: {len(scores)}")
+
+    if scores:
+        total_scores = [s['total'] for s in scores]
+        lines.append(f"Best score: {max(total_scores):.3f}")
+        lines.append(f"Worst score: {min(total_scores):.3f}")
+
+    return "\\n".join(lines)
+"""
+
+        func = PresentationFunction(test_presentation)
+
+        # Create realistic multi-round history
+        from xega.common.token_xent_list import TokenXentList
+
+        history: list[XegaEvent] = [
+            # Round 1
+            {"type": "elicit_response", "response": "attempt1"},
+            {"type": "reward", "value": TokenXentList([("token1", 2.0)])},
+            # Round 2
+            {"type": "elicit_response", "response": "attempt2"},
+            {"type": "reward", "value": TokenXentList([("token2", 3.5)])},
+            # Round 3
+            {"type": "elicit_response", "response": "attempt3"},
+            {"type": "reward", "value": TokenXentList([("token3", 1.2)])},
+        ]
+
+        result = func({}, history)
+
+        assert "Total rounds: 3" in result
+        assert "Total rewards: 3" in result
+        assert "Scores calculated: 3" in result
+        assert "Best score: 3.5" in result
+        assert "Worst score: 1.2" in result
 
 
 class TestRoundBoundaryEvents:

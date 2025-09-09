@@ -121,6 +121,8 @@ def run(
 
     check_version(benchmark_config, ignore_version_mismatch)
 
+    scoped_results_dir = Path(results_dir) / benchmark_id
+
     storage: BenchmarkStorage = DirectoryBenchmarkStorage(
         Path(results_dir), benchmark_config["metadata"]["benchmark_id"]
     )
@@ -130,7 +132,7 @@ def run(
         asyncio.run(storage.clear())
 
     # TODO how to handle this with non-directory storage?
-    log_file_path = os.path.join(results_dir, "log.txt")
+    log_file_path = os.path.join(scoped_results_dir, "log.txt")
     file_handler = logging.FileHandler(log_file_path)
 
     # File handler should always log INFO, or DEBUG if verbosity is high
@@ -149,7 +151,7 @@ def run(
     )
     if not dont_analyze:
         logging.info("Performing analysis on benchmark results")
-        analyze.analyze(benchmark_result, results_dir)
+        analyze.analyze(benchmark_result, scoped_results_dir)
 
 
 def check_version(

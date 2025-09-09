@@ -22,7 +22,17 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a text prefix game. You will be given a short story, and your task is to provide a prefix that makes that story as predictable as possible. Think of it as providing context that helps predict what comes next.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+elicit(x, 10)
+assign(x1=remove_common_words(x, s))
+reveal(x1)
+reward(xed(s | x1))
+</gameCode>
+
+You will be given a short story, and your task is to provide a prefix that makes that story as predictable as possible. Think of it as providing context that helps predict what comes next.
 
 The scoring measures how much information your prefix provides about the story. Specifically, your score is the difference between the story's baseline cross-entropy and its cross-entropy given your prefix: `Score = crossEntropy(story) - crossEntropy(story | prefix)`. Your goal is to maximize this score. So you want to find a prefix that will most help an LLM predict the story.
 

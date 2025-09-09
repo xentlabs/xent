@@ -15,7 +15,19 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a game. In this game you are given 2 short texts A and C. Your goal is to create a bridge text B such that the text ABC makes sense and CBA also makes sense.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s1=story(), s2=story())
+assign(s="I have a fun story to tell you:")
+elicit(t, 10)
+reward(nex(s2 | s + s1 + t))
+reward(nex(s1 | s + s2 + t))
+reward(xent(s2 | s + s1))
+reward(xent(s1 | s + s2))
+</gameCode>
+
+In this game you are given 2 short texts A and C. Your goal is to create a bridge text B such that the text ABC makes sense and CBA also makes sense.
 
 The scoring will be computed using the cross entropy of C given AB plus the cross entropy of A given CB. Specifically `-1 * (crossEntropy(C | AB) + crossEntropy(A | CB))`. So the more likely you can make the text in both directions, the higher your score will be.
 

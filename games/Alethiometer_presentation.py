@@ -17,12 +17,23 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Rich header with complete game explanation
-    header = """You are playing the Alethiometer game. In this game, you are given a target story and a set of mystical symbols. Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+assign(s1="alpha-omega anchor angel ant apple baby beehive bird bread bull camel candle cauldron chameleon compass cornucopia crocodile dolphin elephant globe griffin helmet horse hourglass lute madonna marionette moon owl serpent sun sword thunderbolt tree walled-garden wild-man")
+elicit(x, 40)
+ensure(only_uses_words(s1, x))
+assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
+reward(xed(s | x1))
+</gameCode>
+
+In this game, you are given a target story and a set of mystical symbols. Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
 
 Think of this as reverse prompt engineering: you know the output (the story) and must craft the optimal input (symbol sequence) to make that output most likely.
 
 Your symbols will be inserted into this template:
-"Lyra bent over her Alethiometer. The dial spun to these symbols: \"[YOUR_SYMBOLS]\". Lyra looked up and said \"it tells me this:"
+"Lyra bent over her Alethiometer. The dial spun to these symbols: \"[YOUR_SYMBOLS]\". Lyra looked up and said \"it tells me this\":"
 
 The game then measures how predictable the story becomes after this prompt. The scoring formula is:
 Score = crossEntropy(story) - crossEntropy(story | prompt_with_your_symbols)

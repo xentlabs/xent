@@ -15,7 +15,16 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = f"""You are playing a game.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+assign(s1="alpha-omega anchor angel ant apple baby beehive bird bread bull camel candle cauldron chameleon compass cornucopia crocodile dolphin elephant globe griffin helmet horse hourglass lute madonna marionette moon owl serpent sun sword thunderbolt tree walled-garden wild-man")
+elicit(x, 40)
+ensure(only_uses_words(s1, x))
+assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
+reward(xed(s | x1))
+</gameCode>
 
 <gameRules>
 You will be given a start text `t0`. You are going to construct a sequence of 2 short texts, `t1` which follows `t0`, and `t2` which follows the concatenation `t0+t1`. `t1` must make sense and be likely to come after `t0`. `t2` must make sense and be likely to come after `t0+t1`. Your score will be how unlikely `t2` is given `t0`.

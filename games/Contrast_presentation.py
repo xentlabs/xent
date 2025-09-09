@@ -21,7 +21,17 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a contrast game. You will be given two short stories, and your task is to find a prefix that creates maximum contrast between them - a prefix that helps predict the first story while making the second story LESS predictable.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+elicit(x, 10)
+assign(x1=remove_common_words(x, s))
+reveal(x1)
+reward(xed(s | x1))
+</gameCode>
+
+You will be given two short stories, and your task is to find a prefix that creates maximum contrast between them - a prefix that helps predict the first story while making the second story less predictable.
 
 The scoring measures this contrast effect:
 - For story 1: Your score measures how much your prefix helps predict it (higher = better)

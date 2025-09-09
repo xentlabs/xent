@@ -12,7 +12,19 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a multi-text synthesis game. You will be given three short stories, and your task is to find a single prefix that works well for ALL three stories - a prefix that helps predict each of them.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s1=story(), s2=story(), s3=story())
+elicit(x, 10)
+assign(x1=remove_common_words(x, s1 + s2 + s3))
+reveal(x1)
+reward(xed(s1 | x1))
+reward(xed(s2 | x1))
+reward(xed(s3 | x1))
+</gameCode>
+
+You will be given three short stories, and your task is to find a single prefix that works well for ALL three stories - a prefix that helps predict each of them.
 
 The scoring measures how much information your prefix provides about each story. For each story, your score is the difference between its baseline cross-entropy and its cross-entropy given your prefix. Your total score is the sum across all three stories: `Total Score = [xent(story1) - xent(story1 | prefix)] + [xent(story2) - xent(story2 | prefix)] + [xent(story3) - xent(story3 | prefix)]`.
 

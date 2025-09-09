@@ -53,14 +53,10 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     best_round_score = None
     rounds = split_rounds(history)
 
-    if len(rounds) == 1:
-        builder.add_line("")
-        builder.add_line("Round 1 starting.")
-    else:
-        builder.add_line("")
-        builder.add_line("--- Play History ---")
-        builder.add_line("")
-        builder.start_section("gameHistory")
+    builder.add_line("")
+    builder.add_line("--- Play History ---")
+    builder.add_line("")
+    builder.start_section("gameHistory")
 
     for i in range(len(rounds) - 1):
         round_events = rounds[i]
@@ -96,16 +92,16 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         builder.end_section()
         builder.end_section()
 
-        # Current round marker
-        builder.add_current_round_marker(len(rounds) - 1)
-        builder.end_section()
+    # Current round marker
+    builder.add_current_round_marker(len(rounds) - 1)
+    builder.end_section()
 
-        builder.add_line("")
-        if best_round_score is not None:
-            builder.add_line(f"Best total score achieved: {best_round_score}")
-            builder.add_line(
-                "Remember: You want to maximize your total score across all three stories!"
-            )
+    builder.add_line("")
+    if best_round_score is not None:
+        builder.add_line(f"Best total score achieved: {best_round_score}")
+        builder.add_line(
+            "Remember: You want to maximize your total score across all three stories!"
+        )
         builder.add_line("")
 
     builder.add_line("Provide your prefix in <move></move> tags.")

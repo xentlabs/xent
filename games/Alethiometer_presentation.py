@@ -17,7 +17,7 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Rich header with complete game explanation
-    header = """You are playing the Alethiometer game. In this game, you are given a target story and a set of mystical symbols (emojis). Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
+    header = """You are playing the Alethiometer game. In this game, you are given a target story and a set of mystical symbols. Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
 
 Think of this as reverse prompt engineering: you know the output (the story) and must craft the optimal input (symbol sequence) to make that output most likely.
 
@@ -27,9 +27,9 @@ Your symbols will be inserted into this template:
 The game then measures how predictable the story becomes after this prompt. The scoring formula is:
 Score = crossEntropy(story) - crossEntropy(story | prompt_with_your_symbols)
 
-A HIGHER score means your symbols create a better prompt that makes the story more predictable. The baseline is just the story without any prompt context.
+A higher score means your symbols create a better prompt that makes the story more predictable. The baseline is just the story without any prompt context.
 
-Your goal is to MAXIMIZE your score by finding the symbol combination that best connects to the story's themes, characters, or events. Each symbol can carry multiple meanings - like the actual Alethiometer from His Dark Materials.
+Your goal is to maximize your score by finding the symbol combination that best connects to the story's themes, characters, or events. Each symbol can carry multiple meanings - like the actual Alethiometer from His Dark Materials.
 
 You have multiple rounds to optimize your score. After each attempt, you'll see:
 - Your total score (higher is better)

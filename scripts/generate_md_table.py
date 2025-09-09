@@ -41,12 +41,18 @@ def get_player_id_score_sum(grouped_data) -> PlayerScores:
     player_id_score_sum: PlayerScores = {}
 
     for player_id, games in grouped_data.items():
-        total_score = 0.0
+        per_game_sums = []
         for game_results in games.values():
+            game_sum = 0.0
             for game_result in game_results:
-                total_score += game_result.get("scores", {}).get("black", 0.0)
+                game_sum += game_result.get("scores", {}).get("black", 0.0)
+            per_game_sums.append(game_sum / len(game_results))
 
-        player_id_score_sum[player_id] = total_score
+        total_average = 0.0
+        for per_game_sum in per_game_sums:
+            total_average += per_game_sum
+        total_average = total_average / len(per_game_sums)
+        player_id_score_sum[player_id] = total_average * 100.0
 
     return player_id_score_sum
 

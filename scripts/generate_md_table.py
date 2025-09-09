@@ -3,22 +3,16 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from xega.common.configuration_types import XegaBenchmarkResult, XegaGameResult
-
 PlayerId = str
 GameName = str
 PlayerScores = dict[PlayerId, float]
 
-GroupedData = dict[PlayerId, dict[GameName, list[XegaGameResult]]]
 
-
-def group_game_results_by_player_and_game(
-    benchmark_result: XegaBenchmarkResult,
-) -> GroupedData:
+def group_game_results_by_player_and_game(benchmark_result):
     """
     Groups game results first by player ID and then by game name.
     """
-    games_by_player: dict[str, list[XegaGameResult]] = defaultdict(list)
+    games_by_player = defaultdict(list)
 
     for game_result in benchmark_result.get("game_results", []):
         players = game_result.get("game", {}).get("players", [])
@@ -27,9 +21,9 @@ def group_game_results_by_player_and_game(
             if player_id:
                 games_by_player[player_id].append(game_result)
 
-    result: GroupedData = {}
+    result = {}
     for player_id, game_results in games_by_player.items():
-        games_by_name: dict[str, list[XegaGameResult]] = defaultdict(list)
+        games_by_name = defaultdict(list)
         for game_result in game_results:
             game_name = game_result.get("game", {}).get("game", {}).get("name")
             if game_name:
@@ -40,7 +34,7 @@ def group_game_results_by_player_and_game(
     return result
 
 
-def get_player_id_score_sum(grouped_data: GroupedData) -> PlayerScores:
+def get_player_id_score_sum(grouped_data) -> PlayerScores:
     """
     Calculates the total score for each player across all their games.
     """

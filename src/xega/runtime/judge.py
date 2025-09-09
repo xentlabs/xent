@@ -76,7 +76,7 @@ class Judge:
         preprompt: str = "",
     ) -> TokenXentList:
         raw_string: str = str(string)
-        prefix: str = str(string.prefix + preprompt)
+        prefix: str = str(preprompt + string.prefix)
 
         tokenized_prefix: torch.Tensor = self.tokenize(prefix).to(torch.int64)
         tokenized_string: torch.Tensor = self.tokenize(raw_string).to(torch.int64)

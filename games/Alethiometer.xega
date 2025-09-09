@@ -1,3 +1,7 @@
+# Should be lowercased
+# spaces -> hypens
+
+
 # Alpha & Omega: 🔤
 # Anchor: ⚓
 # Angel: 😇
@@ -39,5 +43,5 @@ assign(s=story())
 assign(s1="🔤⚓😇🐜🍎👶🐝🐦🥖🐮🐫🕯️⚗️🦎🧭🧺🐊🐬🐘🌎🐲🪖🐴⏳🪕🍼🎎🌙🦉🐍☀️⚔️⚡🌳🏰🧌 ")
 elicit(x, 40)
 ensure(only_uses_chars(s1, x))
-assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this:")
-reward(xed(s | x1)) 
+assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
+reward(xed(s | x1))

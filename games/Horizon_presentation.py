@@ -73,7 +73,7 @@ You will be able to play multiple rounds of this game. You will see your choices
 
 
 def render_complete_round(round, builder):
-    first_elicit_items = [item for item in round if item["line_num"] < 7]
+    first_elicit_items = [item for item in round if item["line_num"] < 6]
     first_elicit_attempts = extract_attempts(
         first_elicit_items,
         reason="Failed to beat baseline comparison for likelihood of `t1`",
@@ -84,7 +84,7 @@ def render_complete_round(round, builder):
     builder.end_section()
 
     builder.start_section("t2_selection")
-    second_elicit_items = [item for item in round if item["line_num"] >= 7]
+    second_elicit_items = [item for item in round if item["line_num"] >= 6]
     second_elicit_attempts = extract_attempts(
         second_elicit_items,
         reason="Failed to beat baseline comparison for likelihood of `t2`",

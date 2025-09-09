@@ -45,7 +45,8 @@ Your goal is to maximize your score by finding the symbol combination that best 
 You have multiple rounds to optimize your score. After each attempt, you'll see:
 - Your total score (higher is better)
 - Per-token cross-entropy showing which parts of the story responded best to your symbols
-Use this feedback to refine your symbol choices in subsequent rounds.
+Use this feedback to refine your symbol choices in subsequent rounds. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+
 
 Your symbol sequence can be up to 40 characters long. You MUST use only the valid symbols provided below. Any invalid symbols will cause your attempt to be rejected.
 

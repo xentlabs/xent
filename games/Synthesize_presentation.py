@@ -30,7 +30,8 @@ The scoring measures how much information your prefix provides about each story.
 
 Your goal is to maximize this total score. You want to find a prefix that simultaneously helps an LLM predict all three stories - a synthesis that captures what they have in common.
 
-After each attempt, you'll see individual scores for each story and your total score. You can play multiple rounds to continuously improve your approach.
+After each attempt, you'll see individual scores for each story and your total score. You can play multiple rounds to continuously improve your approach. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+
 
 You cannot use any words that appear in any of the three stories (regardless of case or punctuation). Your prefix is limited to 10 tokens maximum.
 

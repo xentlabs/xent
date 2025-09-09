@@ -45,7 +45,8 @@ Here is the start text `t0` for this game:
 {story}
 </startText>
 
-You will be able to play multiple rounds of this game. You will see your choices and attempts from all previous rounds. Use the history of your previous attempts to inform better choices and decisions in current play.
+You will be able to play multiple rounds of this game. You will see your choices and attempts from all previous rounds. Use the history of your previous attempts to inform better choices and decisions in current play. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+
 """
 
     builder.add_header(header)

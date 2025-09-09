@@ -33,7 +33,8 @@ The scoring will be computed using the cross entropy of C given AB plus the cros
 
 Your goal is to optimize your score. So try to provide bridge text B (max 10 tokens) such that A→B→C flows naturally and C→B→A also flows naturally.
 
-You will have multiple attempts to improve your score. After each attempt, you will be given the per-token cross entropy of the scored text. Use this information to improve your score on the next round.
+You will have multiple attempts to improve your score. After each attempt, you will be given the per-token cross entropy of the scored text. Use this information to improve your score on the next round. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+
 
 Your move can only be 10 tokens long in total. Anything beyond that will be truncated. Provide your move in <move></move> tags. Any other text in your response will be ignored."""
 

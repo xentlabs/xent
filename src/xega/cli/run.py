@@ -121,7 +121,9 @@ def run(
 
     check_version(benchmark_config, ignore_version_mismatch)
 
-    scoped_results_dir = Path(results_dir) / benchmark_id
+    scoped_results_dir = os.path.join(
+        results_dir, benchmark_config["metadata"]["benchmark_id"]
+    )
 
     storage: BenchmarkStorage = DirectoryBenchmarkStorage(
         Path(results_dir), benchmark_config["metadata"]["benchmark_id"]
@@ -150,7 +152,7 @@ def run(
         run_benchmark(benchmark_config, storage, parallel_games)
     )
 
-    with open(scoped_results_dir / "benchmark_results.json", "w") as f:
+    with open(os.path.join(scoped_results_dir, "benchmark_results.json"), "w") as f:
         f.write(dumps(benchmark_result, indent=4))
 
     if not dont_analyze:

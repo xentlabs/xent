@@ -17,7 +17,7 @@ from xega.common.configuration_types import (
     ExpansionConfig,
     XegaMetadata,
 )
-from xega.common.util import log_git_snapshot
+from xega.common.util import dumps, log_git_snapshot
 from xega.common.version import get_xega_version, validate_version
 from xega.storage.directory_storage import DirectoryBenchmarkStorage
 from xega.storage.storage_interface import BenchmarkStorage
@@ -149,6 +149,10 @@ def run(
     benchmark_result = asyncio.run(
         run_benchmark(benchmark_config, storage, parallel_games)
     )
+
+    with open(scoped_results_dir / "benchmark_results.json", "w") as f:
+        f.write(dumps(benchmark_result, indent=4))
+
     if not dont_analyze:
         logging.info("Performing analysis on benchmark results")
         analyze.analyze(benchmark_result, scoped_results_dir)

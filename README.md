@@ -31,25 +31,21 @@ See more in depth results at [xent.tech](https://xent.tech/leaderboard)
 
 | Rank | Player ID | Score |
 |:----:|:----------|------:|
-| 1 | o3 | 47.65 |
-| 2 | grok-4-0709 | 44.06 |
-| 3 | gpt-5 | 40.56 |
-| 4 | gemini-2.5-pro | 39.71 |
-| 5 | deepseek-reasoner | 38.02 |
-| 6 | gemini-2.5-flash | 35.59 |
-| 7 | claude-opus-4-1-20250805 | 33.28 |
-| 8 | claude-sonnet-4-20250514 | 32.85 |
-| 9 | claude-3-7-sonnet-20250219 | 32.58 |
-| 10 | claude-opus-4-20250514 | 32.06 |
-| 11 | o4-mini | 30.74 |
-| 12 | gpt-5-mini | 30.32 |
-| 13 | claude-3-5-sonnet-20241022 | 27.76 |
-| 14 | gpt-4.1 | 25.96 |
-| 15 | grok-3 | 25.12 |
-| 16 | deepseek-chat | 23.25 |
-| 17 | gpt-4o | 22.84 |
-| 18 | grok-3-mini | 21.35 |
-| 19 | gpt-5-nano | 11.51 |
+| 1 | o3 | 2224.82 |
+| 2 | grok-4-0709 | 2020.63 |
+| 3 | deepseek-reasoner | 1785.18 |
+| 4 | claude-sonnet-4-20250514 | 1621.19 |
+| 5 | gemini-2.5-flash | 1608.86 |
+| 6 | claude-opus-4-20250514 | 1599.26 |
+| 7 | claude-3-7-sonnet-20250219 | 1574.04 |
+| 8 | o4-mini | 1470.44 |
+| 9 | claude-3-5-sonnet-20241022 | 1359.36 |
+| 10 | gpt-4.1 | 1308.66 |
+| 11 | gemini-2.5-pro | 1304.17 |
+| 12 | grok-3 | 1234.02 |
+| 13 | deepseek-chat | 1204.86 |
+| 14 | gpt-4o | 1178.54 |
+| 15 | grok-3-mini | 1072.38 |
 
 
 

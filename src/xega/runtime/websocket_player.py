@@ -1,18 +1,33 @@
 import json
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 from xega.common.configuration_types import (
     ExecutableGameMap,
     PlayerName,
     PlayerOptions,
 )
-from xega.common.errors import XegaApiError, XegaInternalError
+from xega.common.errors import XegaApiError, XegaConfigurationError, XegaInternalError
 from xega.common.util import dumps
 from xega.common.x_string import XString
 from xega.common.xega_event import TokenUsage, XegaEvent
 from xega.runtime.base_player import XGP
 from xega.runtime.default_players import get_presentation_function
+
+
+class WebsocketXGPOptions(TypedDict):
+    websocket: Any
+
+
+def check_websocket_xgp_options(options: PlayerOptions | None) -> WebsocketXGPOptions:
+    if options is None:
+        raise XegaConfigurationError(
+            "Player options for websocket player type cannot be None. Please provide valid options."
+        )
+    websocket = options.get("websocket")
+    if websocket is None:
+        raise XegaConfigurationError("No websocket set for websocket player options")
+    return {"websocket": websocket}
 
 
 class WebsocketXGP(XGP):
@@ -26,13 +41,8 @@ class WebsocketXGP(XGP):
         super().__init__(name, id, options, executable_game_map)
         self.event_history: list[XegaEvent] = []
         self.presentation_function = get_presentation_function(executable_game_map)
-
-        # Get websocket from options
-        if options is None:
-            raise ValueError("WebsocketXGP requires 'websocket' in options")
-        self.websocket: Any = options.get("websocket")
-        if self.websocket is None:
-            raise ValueError("WebsocketXGP requires 'websocket' in options")
+        validated_options = check_websocket_xgp_options(options)
+        self.websocket = validated_options["websocket"]
 
     def add_score(self, score: float | int) -> None:
         self.score += score

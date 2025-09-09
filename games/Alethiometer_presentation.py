@@ -3,7 +3,7 @@ from xega.presentation.sdk import (
     extract_attempts,
     extract_rewards,
     format_attempt,
-    format_token_xent_list,
+    format_reward,
     split_rounds,
 )
 
@@ -17,19 +17,30 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Rich header with complete game explanation
-    header = """You are playing the Alethiometer game. In this game, you are given a target story and a set of mystical symbols (emojis). Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+assign(s1="alpha-omega anchor angel ant apple baby beehive bird bread bull camel candle cauldron chameleon compass cornucopia crocodile dolphin elephant globe griffin helmet horse hourglass lute madonna marionette moon owl serpent sun sword thunderbolt tree walled-garden wild-man")
+elicit(x, 40)
+ensure(only_uses_words(s1, x))
+assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
+reward(xed(s | x1))
+</gameCode>
+
+In this game, you are given a target story and a set of mystical symbols. Your goal is to select and arrange symbols that, when read through Lyra's Alethiometer, best predict the given story.
 
 Think of this as reverse prompt engineering: you know the output (the story) and must craft the optimal input (symbol sequence) to make that output most likely.
 
 Your symbols will be inserted into this template:
-"Lyra bent over her Alethiometer. The dial spun to these symbols: \"[YOUR_SYMBOLS]\". Lyra looked up and said \"it tells me this:"
+"Lyra bent over her Alethiometer. The dial spun to these symbols: \"[YOUR_SYMBOLS]\". Lyra looked up and said \"it tells me this\":"
 
 The game then measures how predictable the story becomes after this prompt. The scoring formula is:
 Score = crossEntropy(story) - crossEntropy(story | prompt_with_your_symbols)
 
-A HIGHER score means your symbols create a better prompt that makes the story more predictable. The baseline is just the story without any prompt context.
+A higher score means your symbols create a better prompt that makes the story more predictable. The baseline is just the story without any prompt context.
 
-Your goal is to MAXIMIZE your score by finding the symbol combination that best connects to the story's themes, characters, or events. Each symbol can carry multiple meanings - like the actual Alethiometer from His Dark Materials.
+Your goal is to maximize your score by finding the symbol combination that best connects to the story's themes, characters, or events. Each symbol can carry multiple meanings - like the actual Alethiometer from His Dark Materials.
 
 You have multiple rounds to optimize your score. After each attempt, you'll see:
 - Your total score (higher is better)
@@ -58,32 +69,20 @@ Provide your symbol sequence in <move></move> tags. Any other text in your respo
     builder.add_line("")
     builder.add_line("A history of your play so far:")
     builder.add_line("")
+    builder.start_section("fullHistory")
 
-    if not rounds or (len(rounds) == 1 and not rounds[0]):
-        builder.add_line("First round starting.")
-    else:
-        builder.start_section("fullHistory")
+    # Process each round
+    for i in range(len(rounds) - 1):
+        # This is a completed round
+        round_score = render_complete_round(rounds[i], builder, i + 1)
+        if round_score is not None and (best_score is None or round_score > best_score):
+            best_score = round_score
 
-        # Process each round
-        for i in range(len(rounds) - 1):
-            # This is a completed round
-            round_score = render_complete_round(rounds[i], builder, i + 1)
-            if round_score is not None and (
-                best_score is None or round_score > best_score
-            ):
-                best_score = round_score
+    # Handle current round (if it has any attempts)
+    current_round = rounds[-1]
+    render_current_round(current_round, builder, len(rounds))
 
-        # Handle current round (if it has any attempts)
-        current_round = rounds[-1] if rounds else []
-        current_attempts = extract_attempts(
-            current_round, reason="Contains invalid symbols not in the allowed set"
-        )
-
-        if current_attempts or len(rounds) > 1:
-            # We have attempts in current round or we're past round 1
-            render_current_round(current_round, builder, len(rounds))
-
-        builder.end_section()
+    builder.end_section()
 
     # Show current game status
     builder.add_line("")
@@ -127,15 +126,13 @@ def render_complete_round(round_events, builder, round_num):
     rewards = extract_rewards(round_events)
     if rewards:
         reward = rewards[0]
-        score = reward["value"].total_xent()
-
+        reward_str, reward_score = format_reward(reward)
         builder.start_section("score")
-        builder.add_line(f"Total: {score:.1f}")
-        builder.add_line(f"Per-token: {format_token_xent_list(reward['value'])}")
+        builder.add_lines(reward_str)
         builder.end_section()
 
         builder.end_section()
-        return score
+        return reward_score
 
     builder.end_section()
     return None

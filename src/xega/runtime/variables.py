@@ -49,6 +49,7 @@ def build_globals(judge: Judge):
         common_word_set=common_word_set,
         remove_common_words=remove_common_words,
         only_uses_chars=only_uses_chars,
+        only_uses_words=only_uses_words,
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -123,3 +124,12 @@ def only_uses_chars(allowed_chars: str | XString, text: str | XString) -> bool:
 
     allowed_set = set(allowed_chars)
     return all(char in allowed_set for char in text)
+
+
+def only_uses_words(allowed_words: str | XString, text: str | XString) -> bool:
+    if isinstance(allowed_words, XString):
+        allowed_words = str(allowed_words)
+    if isinstance(text, XString):
+        text = str(text)
+
+    return all(word in allowed_words for word in text.split(" "))

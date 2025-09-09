@@ -15,14 +15,23 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = f"""You are playing a game.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+assign(s1="alpha-omega anchor angel ant apple baby beehive bird bread bull camel candle cauldron chameleon compass cornucopia crocodile dolphin elephant globe griffin helmet horse hourglass lute madonna marionette moon owl serpent sun sword thunderbolt tree walled-garden wild-man")
+elicit(x, 40)
+ensure(only_uses_words(s1, x))
+assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
+reward(xed(s | x1))
+</gameCode>
 
 <gameRules>
 You will be given a start text `t0`. You are going to construct a sequence of 2 short texts, `t1` which follows `t0`, and `t2` which follows the concatenation `t0+t1`. `t1` must make sense and be likely to come after `t0`. `t2` must make sense and be likely to come after `t0+t1`. Your score will be how unlikely `t2` is given `t0`.
 
 So the idea is to make a series of texts t0 t1 t2 which are each likely and predictable in sequence. But then have t2 be very unlikely when following t0.
 
-The likelyhood is judged by an LLM. If we are looking at the likelyhood of a text `t1` given `t0`, we will compute that as -1 * cross-entropy(t1 | t0). So the more that `t0` helps predict `t1`, the higher the likelyhood.
+The likelihood is judged by an LLM. If we are looking at the likelihood of a text `t1` given `t0`, we will compute that as -1 * cross-entropy(t1 | t0). So the more that `t0` helps predict `t1`, the higher the likelihood.
 
 To determine whether `t1` and `t2` are predictable in sequence, we will use a baseline comparison of cross-entropy(" I eat food" | "After the rain"). So `t1` is valid if cross-entropy(t1 | t0) < cross-entropy(" I eat food" | "After the rain") and `t2` is valid if cross-entropy(t2 | t0+t1) < cross-entropy(" I eat food" | "After the rain").
 
@@ -64,10 +73,10 @@ You will be able to play multiple rounds of this game. You will see your choices
 
 
 def render_complete_round(round, builder):
-    first_elicit_items = [item for item in round if item["line_num"] < 7]
+    first_elicit_items = [item for item in round if item["line_num"] < 6]
     first_elicit_attempts = extract_attempts(
         first_elicit_items,
-        reason="Failed to beat baseline comparison for likelyhood of `t1`",
+        reason="Failed to beat baseline comparison for likelihood of `t1`",
     )
     builder.start_section("t1_selection")
     for attempt in first_elicit_attempts:
@@ -75,10 +84,10 @@ def render_complete_round(round, builder):
     builder.end_section()
 
     builder.start_section("t2_selection")
-    second_elicit_items = [item for item in round if item["line_num"] >= 7]
+    second_elicit_items = [item for item in round if item["line_num"] >= 6]
     second_elicit_attempts = extract_attempts(
         second_elicit_items,
-        reason="Failed to beat baseline comparison for likelyhood of `t2`",
+        reason="Failed to beat baseline comparison for likelihood of `t2`",
     )
     for attempt in second_elicit_attempts:
         builder.add_line(format_attempt(**attempt))
@@ -94,7 +103,7 @@ def render_current_round(round, builder):
     first_elicit_items = [item for item in round if item["line_num"] < 7]
     first_elicit_attempts = extract_attempts(
         first_elicit_items,
-        reason="Failed to beat baseline comparison for likelyhood of `t1`",
+        reason="Failed to beat baseline comparison for likelihood of `t1`",
     )
     builder.start_section("t1_selection")
     success = False
@@ -114,7 +123,7 @@ def render_current_round(round, builder):
     second_elicit_items = [item for item in round if item["line_num"] >= 7]
     second_elicit_attempts = extract_attempts(
         second_elicit_items,
-        reason="Failed to beat baseline comparison for likelyhood of `t2`",
+        reason="Failed to beat baseline comparison for likelihood of `t2`",
     )
     for attempt in second_elicit_attempts:
         builder.add_line(format_attempt(**attempt))

@@ -63,9 +63,12 @@ def extract_attempts(events: list[XegaEvent], reason: str = "") -> list[dict[str
             if i + 1 < len(events) and events[i + 1]["type"] == "failed_ensure":
                 attempt["failed"] = True
                 failure_event: FailedEnsureEvent = events[i + 1]  # type: ignore
-                attempt["failure_reason"] = (
-                    f"Failed ensure at beacon {failure_event['beacon']}"
+                failure_reason = (
+                    reason
+                    if reason
+                    else f"Failed ensure at beacon {failure_event['beacon']}"
                 )
+                attempt["failure_reason"] = failure_reason
 
             attempts.append(attempt)
 
@@ -73,12 +76,17 @@ def extract_attempts(events: list[XegaEvent], reason: str = "") -> list[dict[str
 
 
 def get_max_score(
-    events: list[XegaEvent], score_fn: Callable[[RewardEvent], float] | None = None
+    events: list[XegaEvent],
+    scaled: bool = True,
+    score_fn: Callable[[RewardEvent], float] | None = None,
 ) -> tuple[float, RewardEvent | None]:
     if score_fn is None:
 
         def score_fn(r):
-            return r["value"].total_xent()
+            val = r["value"].total_xent()
+            if scaled:
+                val = val * PRESENTATION_SCORE_SCALE
+            return val
 
     rewards = extract_rewards(events)
     if not rewards:
@@ -233,6 +241,11 @@ class PresentationBuilder:
 
         indented = "  " * indent + text if indent > 0 else text
         self.sections.append(indented)
+        return self
+
+    def add_lines(self, text: str, indent: int | None = None) -> "PresentationBuilder":
+        for line in text.splitlines():
+            self.add_line(line, indent)
         return self
 
     def start_section(self, tag: str, **attrs: Any) -> "PresentationBuilder":

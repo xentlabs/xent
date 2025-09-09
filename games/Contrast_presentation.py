@@ -2,7 +2,7 @@ from xega.presentation.sdk import (
     PresentationBuilder,
     extract_reveals,
     extract_rewards,
-    format_token_xent_list,
+    format_reward,
     split_rounds,
 )
 
@@ -21,14 +21,24 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a contrast game. You will be given two short stories, and your task is to find a prefix that creates maximum contrast between them - a prefix that helps predict the first story while making the second story LESS predictable.
+    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+
+<gameCode>
+assign(s=story())
+elicit(x, 10)
+assign(x1=remove_common_words(x, s))
+reveal(x1)
+reward(xed(s | x1))
+</gameCode>
+
+You will be given two short stories, and your task is to find a prefix that creates maximum contrast between them - a prefix that helps predict the first story while making the second story less predictable.
 
 The scoring measures this contrast effect:
 - For story 1: Your score measures how much your prefix helps predict it (higher = better)
 - For story 2: Your score measures how much your prefix makes it diverge from expectations (higher = better contrast)
 - Combined score: `Total Score = [xent(story1) - xent(story1 | prefix)] + [xent(story2 | prefix) - xent(story2)]`
 
-Your goal is to MAXIMIZE this total score. You want a prefix that simultaneously helps predict story 1 while making story 2 surprising - creating maximum contrast between the two stories.
+Your goal is to maximize this total score. You want a prefix that simultaneously helps predict story 1 while making story 2 surprising - creating maximum contrast between the two stories.
 
 After each attempt, you'll see individual scores showing how well you're helping story 1 and hindering story 2, plus your combined contrast score. You can play multiple rounds to continuously improve your approach.
 
@@ -65,8 +75,8 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             prefix = extract_reveals(round_events)[0]["values"]["x1"]
 
             # Calculate scores
-            story1_score = round(rewards[0]["value"].total_xent(), 3)
-            story2_score = round(rewards[1]["value"].total_xent(), 3)
+            (story1_score_str, story1_score) = format_reward(rewards[0])
+            (story2_score_str, story2_score) = format_reward(rewards[1])
             contrast_score = round(story1_score + story2_score, 3)
 
             # Track best score
@@ -78,24 +88,18 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
             if response == prefix:
                 builder.add_line(f"<prefix>{response}</prefix>")
             else:
-                builder.add_line(f"<prefix>{response}</prefix>")
+                builder.add_line(f"<move>{response}</move>")
                 builder.add_line(f"<prefix>{prefix}</prefix>")
             builder.start_section("scores")
 
             # Story 1 score (predictability boost)
             builder.start_section("story1_predictability")
-            builder.add_line(f"Score: {story1_score}")
-            builder.add_line(
-                f"Per-token: {format_token_xent_list(rewards[0]['value'])}"
-            )
+            builder.add_lines(story1_score_str)
             builder.end_section()
 
             # Story 2 score (surprise factor)
             builder.start_section("story2_surprise")
-            builder.add_line(f"Score: {story2_score}")
-            builder.add_line(
-                f"Per-token: {format_token_xent_list(rewards[1]['value'])}"
-            )
+            builder.add_lines(story2_score_str)
             builder.end_section()
 
             # Combined contrast score
@@ -111,7 +115,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
         if best_contrast_score is not None:
             builder.add_line(f"Best contrast score achieved: {best_contrast_score}")
             builder.add_line(
-                "Remember: MAXIMIZE your score by helping story 1 while hindering story 2!"
+                "Remember: maximize your score by helping story 1 while hindering story 2!"
             )
         builder.add_line("")
 

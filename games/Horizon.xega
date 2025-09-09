@@ -1,0 +1,10 @@
+assign(s=story())
+assign(t1="After the rain", t2=" I eat food")
+
+elicit(x1, 5)
+ensure(xed(x1 | s) >= xed(t2 | t1))
+
+elicit(x2, 5)
+ensure(xed(x2 | s + x1) >= xed(t2 | t1))
+
+reward(dex(x2 | s))

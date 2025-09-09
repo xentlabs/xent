@@ -16,7 +16,7 @@ def present(state, history):
     best_score, _ = get_max_score(all_rewards) if all_rewards else (None, None)
 
     # Calculate current round number
-    round_number = len([r for r in rounds if extract_rewards(r)])
+    round_number = len(rounds) - 1
 
     # Build presentation using the builder
     builder = PresentationBuilder()
@@ -46,7 +46,10 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line("")
 
     # Current story
-    builder.add_line(f"The story: <story>{state['s']}</story>")
+    builder.add_line("The story:")
+    builder.start_section("story")
+    builder.add_line(str(state["s"]))
+    builder.end_section()
 
     # Game history
     if len(rounds) == 1:
@@ -70,7 +73,7 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
 
             # Format the score
             builder.start_section("score")
-            builder.add_lines(format_reward(rewards[0]))
+            builder.add_lines(format_reward(rewards[0])[0])
             builder.end_section()
 
             builder.end_section()

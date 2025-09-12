@@ -35,7 +35,7 @@ elicit(black, x, 10)
 assign(x1=remove_common_words(x, s)) # Remove any words in story from input text
 reward(black, xed(s | x1))`;
 
-const DEFAULT_PRESENTATION = `def present(state, history):
+const DEFAULT_PRESENTATION = `def present(state, history, metadata):
     """Default presentation matching current system output"""
     output = []
     for event in history:
@@ -54,7 +54,7 @@ const DEFAULT_PRESENTATION = `def present(state, history):
             output.append(f"Unknown event: {event}")
     return '\\n'.join(output)`;
 
-const SINGLE_PRESENTATION = `def present(state, history):
+const SINGLE_PRESENTATION = `def present(state, history, metadata):
     story = state["s"]
     game_overview = f"""I am going to give you a short text. Your job is to provide a string that will prefix that text. Your goal is to minimize the cross-entropy of the text given the prefix you provide. You should respond with what will make the text as likely as possible.
 
@@ -344,12 +344,12 @@ function App() {
         <h1>XEGA Benchmarks</h1>
         <button
           onClick={() => setCurrentView('play')}
-          style={{ 
-            padding: '10px 20px', 
-            backgroundColor: '#9C27B0', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '4px', 
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#9C27B0',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: 'bold'
@@ -528,7 +528,7 @@ function App() {
                       value={game.presentation_function}
                       onChange={(e) => updateCustomGame(index, 'presentation_function', e.target.value)}
                       style={{ width: '100%', padding: '10px', minHeight: '150px', fontFamily: 'monospace' }}
-                      placeholder="def present(state, history):..."
+                      placeholder="def present(state, history, metadata):..."
                     />
                   </div>
 

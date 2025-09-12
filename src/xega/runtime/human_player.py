@@ -22,6 +22,7 @@ class HumanXGP(XGP):
         super().__init__(name, id, options, executable_game_map)
         self.event_history: list[XegaEvent] = []
         self.presentation_function = get_presentation_function(executable_game_map)
+        self.metadata = executable_game_map["metadata"]
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -36,7 +37,9 @@ class HumanXGP(XGP):
         self, var_name: str, register_states: dict[str, XString]
     ) -> tuple[str, TokenUsage]:
         print("************************************************")
-        message = self.presentation_function(register_states, self.event_history)
+        message = self.presentation_function(
+            register_states, self.event_history, self.metadata
+        )
         print(message)
         print("************************************************")
         move = input(

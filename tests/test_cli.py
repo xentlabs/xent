@@ -174,7 +174,7 @@ class TestCLIPresentationIntegration:
             custom_path = temp_dir / "custom.xega"
             custom_path.write_text('assign(s="custom")\nreveal(black, s)')
             custom_pres_path = temp_dir / "custom_presentation.py"
-            custom_pres_path.write_text("""def present(state, history):
+            custom_pres_path.write_text("""def present(state, history, metadata):
     return "Custom presentation"
 """)
 
@@ -182,7 +182,7 @@ class TestCLIPresentationIntegration:
             warning_path = temp_dir / "warning.xega"
             warning_path.write_text('assign(s="warning")')
             warning_pres_path = temp_dir / "warning_presentation.py"
-            warning_pres_path.write_text("""def present(game_state, events):  # Non-standard names
+            warning_pres_path.write_text("""def present(game_state, events, metadata):  # Non-standard names
     return "Works with warnings"
 """)
 
@@ -203,7 +203,10 @@ class TestCLIPresentationIntegration:
             assert custom["code"] == 'assign(s="custom")\nreveal(black, s)'
             assert custom["presentation_function"] is not None
             assert "Custom presentation" in custom["presentation_function"]
-            assert "def present(state, history):" in custom["presentation_function"]
+            assert (
+                "def present(state, history, metadata):"
+                in custom["presentation_function"]
+            )
 
             warning = next(g for g in games if g["name"] == "warning")
             assert warning["code"] == 'assign(s="warning")'

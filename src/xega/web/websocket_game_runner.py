@@ -78,7 +78,7 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
 
 def _get_default_presentation_function() -> str:
     """Get a simple default presentation function for websocket games"""
-    return """def present(state, history):
+    return """def present(state, history, metadata):
     \"\"\"Default presentation function for websocket games\"\"\"
     output = []
     for event in history:

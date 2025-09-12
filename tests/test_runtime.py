@@ -25,7 +25,11 @@ from xega.common.xega_event import (
     RewardEvent,
     XegaEvent,
 )
-from xega.presentation.executor import PresentationFunction, get_default_presentation
+from xega.presentation.executor import (
+    SAMPLE_METADATA,
+    PresentationFunction,
+    get_default_presentation,
+)
 from xega.presentation.sdk import (
     format_elicit_request,
     format_elicit_response,
@@ -1229,18 +1233,18 @@ class TestSDKFunctions:
 class TestPresentationFunction:
     def test_simple_presentation_function(self):
         code = """
-def present(state, history):
+def present(state, history, metadata):
     return "Simple presentation"
 """
         func = PresentationFunction(code)
-        result = func({}, [])
+        result = func({}, [], SAMPLE_METADATA)
         assert result == "Simple presentation"
 
     def test_presentation_with_sdk_functions(self):
         code = """
 from xega.presentation.sdk import format_elicit_request, format_reveal
 
-def present(state, history):
+def present(state, history, metadata):
     if not history:
         return "No events yet"
 
@@ -1267,12 +1271,12 @@ def present(state, history):
             }
         ]
 
-        result = func({}, events)
+        result = func({}, events, SAMPLE_METADATA)
         assert "Request: move (max 10 tokens)" in result
 
     def test_presentation_function_validation(self):
         valid_code = """
-def present(state, history):
+def present(state, history, metadata):
     return "Valid function"
 """
         func = PresentationFunction(valid_code)
@@ -1280,7 +1284,9 @@ def present(state, history):
 
     def test_invalid_syntax(self):
         with pytest.raises(XegaInternalError):
-            PresentationFunction("def present(state history):")  # Missing comma
+            PresentationFunction(
+                "def present(state history, metadata):"
+            )  # Missing comma
 
     def test_missing_present_function(self):
         with pytest.raises(XegaConfigurationError):
@@ -1296,7 +1302,7 @@ def present(state, history):
 from xega.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
 from xega.common.token_xent_list import TokenXentList
 
-def present(state, history):
+def present(state, history, metadata):
     # Test split_rounds
     rounds = split_rounds(history)
 
@@ -1322,7 +1328,7 @@ def present(state, history):
             {"type": "round_finished", "round_index": 2},  # type: ignore
         ]
 
-        result = func({}, history)
+        result = func({}, history, SAMPLE_METADATA)
         assert "Rounds: 2" in result
         assert "Rewards: 2" in result
         assert "Scores: 2" in result
@@ -1332,7 +1338,7 @@ def present(state, history):
         code = """
 from xega.presentation.sdk import PresentationBuilder
 
-def present(state, history):
+def present(state, history, metadata):
     builder = PresentationBuilder()
     builder.add_header("Test Header")
     builder.add_line("Test Line")
@@ -1345,7 +1351,7 @@ def present(state, history):
     return builder.render()
 """
         func = PresentationFunction(code)
-        result = func({}, [])
+        result = func({}, [], SAMPLE_METADATA)
 
         assert "Test Header" in result
         assert "Test Line" in result
@@ -1362,7 +1368,7 @@ def present(state, history):
 from xega.presentation.sdk import format_token_xent_list, format_reward
 from xega.common.token_xent_list import TokenXentList
 
-def present(state, history):
+def present(state, history, metadata):
     # Test format_token_xent_list
     txl = TokenXentList([("hello", 1.5), ("world", 2.0)])
     formatted = format_token_xent_list(txl)
@@ -1374,7 +1380,7 @@ def present(state, history):
     return f"Formatted: {formatted}\\nReward: {reward_text}\\nScore: {reward_score}"
 """
         func = PresentationFunction(code)
-        result = func({}, [])
+        result = func({}, [], SAMPLE_METADATA)
 
         assert "hello|15 world|20" in result  # rounded values
         assert "Total:" in result
@@ -1386,7 +1392,7 @@ def present(state, history):
 def game_config():
     """Create a game config with a custom presentation function"""
     presentation_code = """
-def present(state, history):
+def present(state, history, metadata):
     if not history:
         return "No events yet"
 
@@ -1475,7 +1481,7 @@ class TestPresentationIntegration:
         player.event_history = [reveal_event, elicit_event]
 
         # Test the presentation function directly
-        result = player.presentation_function({}, player.event_history)
+        result = player.presentation_function({}, player.event_history, SAMPLE_METADATA)
 
         assert "CUSTOM: Revealed x" in result
         assert "CUSTOM: y requested (max 10)" in result
@@ -1484,7 +1490,7 @@ class TestPresentationIntegration:
     def test_presentation_function_throws_error(self, game_config):
         # Create a game config with a broken presentation function
         broken_code = """
-def present(state, history):
+def present(state, history, metadata):
     raise ValueError("Intentional error")
 """
         game_config["game_map"]["presentation_function"] = broken_code
@@ -1510,7 +1516,7 @@ def present(state, history):
         player.event_history = [elicit_event]
 
         with pytest.raises(XegaConfigurationError):
-            player.presentation_function({}, player.event_history)
+            player.presentation_function({}, player.event_history, SAMPLE_METADATA)
 
     def test_default_presentation_function(self):
         """Test that the default presentation function produces expected output"""
@@ -1538,7 +1544,7 @@ def present(state, history):
         }
 
         history: list[XegaEvent] = [reveal_event, elicit_event]
-        result = func({}, history)
+        result = func({}, history, SAMPLE_METADATA)
 
         # Should match the format produced by SDK functions
         expected_lines = [
@@ -1555,7 +1561,7 @@ def present(state, history):
 
         # Create a presentation function that includes register state info
         presentation_code = """
-def present(state, history):
+def present(state, history, metadata):
     lines = []
 
     # Include register state to verify it's being passed
@@ -1674,7 +1680,7 @@ elicit(black, z, 10)""",
 
         # Create a broken presentation function
         broken_presentation = """
-def present(state, history):
+def present(state, history, metadata):
     # Intentionally cause an error to test fallback
     return 1 / 0  # Division by zero error
 """
@@ -1733,7 +1739,7 @@ from xega.presentation.sdk import (
     split_rounds,
 )
 
-def present(state, history):
+def present(state, history, metadata):
     builder = PresentationBuilder()
     builder.add_header("Condense Game Test")
     builder.add_game_state(story=state.get("s", "test story"))
@@ -1761,7 +1767,7 @@ def present(state, history):
             {"type": "reward", "value": TokenXentList([("test", 1.5)])},  # type: ignore
         ]
 
-        result = func(state, history)
+        result = func(state, history, SAMPLE_METADATA)
         assert "Condense Game Test" in result
         assert "Once upon a time" in result
         assert "Round 0: 1.5" in result
@@ -1771,7 +1777,7 @@ def present(state, history):
         test_presentation = """
 from xega.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
 
-def present(state, history):
+def present(state, history, metadata):
     rounds = split_rounds(history)
     scores = get_scores_by_round(history)
     all_rewards = extract_rewards(history)
@@ -1811,7 +1817,7 @@ def present(state, history):
             {"type": "round_finished", "round_index": 0},  # type: ignore
         ]
 
-        result = func({}, history)
+        result = func({}, history, SAMPLE_METADATA)
 
         assert "Total rounds: 3" in result
         assert "Total rewards: 3" in result

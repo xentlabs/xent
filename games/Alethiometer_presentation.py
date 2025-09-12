@@ -8,7 +8,7 @@ from xega.presentation.sdk import (
 )
 
 
-def present(state, history):
+def present(state, history, metadata):
     # Extract game state
     story = state["s"]
     valid_symbols = state["s1"]
@@ -17,7 +17,7 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Rich header with complete game explanation
-    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -45,7 +45,7 @@ Your goal is to maximize your score by finding the symbol combination that best 
 You have multiple rounds to optimize your score. After each attempt, you'll see:
 - Your total score (higher is better)
 - Per-token cross-entropy showing which parts of the story responded best to your symbols
-Use this feedback to refine your symbol choices in subsequent rounds. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+Use this feedback to refine your symbol choices in subsequent rounds. Your final score is the maximum score you obtain over {metadata["num_rounds_per_game"]} rounds, so you should not worry about decreasing temporarily your score.
 
 
 Your symbol sequence can be up to 40 characters long. You MUST use only the valid symbols provided below. Any invalid symbols will cause your attempt to be rejected.

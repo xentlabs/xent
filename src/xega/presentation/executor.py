@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from xega.common.configuration_types import XegaEvent
+from xega.common.configuration_types import XegaEvent, XegaMetadata
 from xega.common.errors import XegaConfigurationError, XegaInternalError
 
 DEFAULT_PRESENTATION = '''
@@ -14,7 +14,7 @@ from xega.presentation.sdk import (
     format_failed_ensure,
 )
 
-def present(state, history):
+def present(state, history, metadata):
     """Default presentation matching current system output"""
     output = []
     for event in history:
@@ -35,8 +35,16 @@ def present(state, history):
     return '\\n'.join(output)
 '''
 
+SAMPLE_METADATA: XegaMetadata = XegaMetadata(
+    benchmark_id="bid",
+    xega_version="0.1.0",
+    judge_model="judge",
+    num_rounds_per_game=2,
+    seed="seed",
+)
+
 SINGLE_PRESENTATION = '''
-def present(state, history):
+def present(state, history, metadata):
     story = state["s"]
     game_overview = f"""I am going to give you a short text. Your job is to provide a string that will prefix that text. Your goal is to minimize the cross-entropy of the text given the prefix you provide. You should respond with what will make the text as likely as possible.
 
@@ -84,9 +92,9 @@ class PresentationFunction:
     def __init__(self, code_string: str):
         self.code_string = code_string
         self.compiled_code = None
-        self.present_func: Callable[[dict[str, Any], list[XegaEvent]], str] | None = (
-            None
-        )
+        self.present_func: (
+            Callable[[dict[str, Any], list[XegaEvent], XegaMetadata], str] | None
+        ) = None
 
         try:
             self.compiled_code = compile(code_string, "<presentation>", "exec")
@@ -115,12 +123,14 @@ class PresentationFunction:
         # Type narrowing - we know it's callable now
         self.present_func = present_func
 
-    def __call__(self, state: dict[str, Any], history: list[XegaEvent]) -> str:
+    def __call__(
+        self, state: dict[str, Any], history: list[XegaEvent], metadata: XegaMetadata
+    ) -> str:
         if self.present_func is None:
             raise XegaInternalError("Presentation function not properly initialized")
 
         try:
-            result = self.present_func(state, history)
+            result = self.present_func(state, history, metadata)
             if not isinstance(result, str):
                 logging.warning(
                     f"Presentation function returned non-string: {type(result)}. Converting to string."
@@ -137,14 +147,17 @@ class PresentationFunction:
         self,
         sample_state: dict[str, Any] | None = None,
         sample_history: list[XegaEvent] | None = None,
+        sample_metadata: XegaMetadata | None = None,
     ) -> bool:
         if sample_state is None:
             sample_state = {}
         if sample_history is None:
             sample_history = []
+        if sample_metadata is None:
+            sample_metadata = SAMPLE_METADATA
 
         try:
-            result = self(sample_state, sample_history)
+            result = self(sample_state, sample_history, sample_metadata)
             return isinstance(result, str)
         except Exception as e:
             logging.error(f"Presentation function validation failed: {e}")

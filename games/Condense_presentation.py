@@ -9,7 +9,7 @@ from xega.presentation.sdk import (
 )
 
 
-def present(state, history):
+def present(state, history, metadata):
     # Extract data using SDK utilities
     rounds = split_rounds(history)
     all_rewards = extract_rewards(history)
@@ -22,7 +22,7 @@ def present(state, history):
     builder = PresentationBuilder()
 
     # Game header
-    header = """You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -36,7 +36,7 @@ You will be given a short story, and your task is to provide a prefix that makes
 
 The scoring measures how much information your prefix provides about the story. Specifically, your score is the difference between the story's baseline cross-entropy and its cross-entropy given your prefix: `Score = crossEntropy(story) - crossEntropy(story | prefix)`. Your goal is to maximize this score. So you want to find a prefix that will most help an LLM predict the story.
 
-After each attempt, you'll see your score and a per-token breakdown of the cross entropy difference. The game automatically restarts after each successful attempt, allowing you to continuously optimize your approach. Use the feedback from previous rounds to improve your score.  Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+After each attempt, you'll see your score and a per-token breakdown of the cross entropy difference. The game automatically restarts after each successful attempt, allowing you to continuously optimize your approach. Use the feedback from previous rounds to improve your score.  Your final score is the maximum score you obtain over {metadata["num_rounds_per_game"]} rounds, so you should not worry about decreasing temporarily your score.
 
 You cannot use any words that appear in the story itself (regardless of case or punctuation). Your prefix is limited to 10 tokens maximum.
 

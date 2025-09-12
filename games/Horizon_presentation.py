@@ -8,14 +8,14 @@ from xega.presentation.sdk import (
 )
 
 
-def present(state, history):
+def present(state, history, metadata):
     story = state["s"]
 
     # Build presentation
     builder = PresentationBuilder()
 
     # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM (Qwen3-14B-Base) to compute score.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -45,7 +45,7 @@ Here is the start text `t0` for this game:
 {story}
 </startText>
 
-You will be able to play multiple rounds of this game. You will see your choices and attempts from all previous rounds. Use the history of your previous attempts to inform better choices and decisions in current play. Your final score is the maximum score you obtain over 30 rounds, so you should not worry about decreasing temporarily your score.
+You will be able to play multiple rounds of this game. You will see your choices and attempts from all previous rounds. Use the history of your previous attempts to inform better choices and decisions in current play. Your final score is the maximum score you obtain over {metadata["num_rounds_per_game"]} rounds, so you should not worry about decreasing temporarily your score.
 
 """
 

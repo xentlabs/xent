@@ -4,12 +4,11 @@ from pathlib import Path
 
 from xega.common.configuration_types import (
     BenchmarkResult,
-    ExecutableGameMap,
     ExpandedXegaBenchmarkConfig,
     GameMapResults,
 )
 from xega.common.util import dumps, generate_executable_game_maps
-from xega.storage.storage_interface import BenchmarkStorage, GameStorage, Storage
+from xega.storage.storage_interface import BenchmarkStorage, Storage
 
 
 # TODO needs exception handling
@@ -151,91 +150,3 @@ class DirectoryStorage(Storage):
         benchmark_storage = DirectoryBenchmarkStorage(self.storage_dir, benchmark_id)
         await benchmark_storage.initialize()
         return await benchmark_storage.get_benchmark_results()
-
-
-class DirectoryGameStorage(GameStorage):
-    def __init__(self, storage_dir: Path):
-        self.storage_dir = storage_dir
-        self.games_dir = self.storage_dir / "games"
-        self.game_results_dir = self.storage_dir / "game_results"
-
-    async def initialize(self):
-        self.games_dir.mkdir(parents=True, exist_ok=True)
-        self.game_results_dir.mkdir(parents=True, exist_ok=True)
-
-    async def get_game_map(self, game_name: str) -> ExecutableGameMap:
-        config_path = self._game_config_path(game_name)
-        if config_path.exists():
-            with open(config_path) as f:
-                game_config = json.load(f)
-                return self._ensure_empty_player(game_config)
-        raise FileNotFoundError(f"Game map '{game_name}' not found")
-
-    async def insert_game_map_config(self, game: ExecutableGameMap):
-        game_name = game["game_map"]["name"]
-        config_path = self._game_config_path(game_name)
-        if config_path.exists():
-            raise ValueError(f"Game map '{game_name}' already exists")
-
-        game_to_store = self._ensure_empty_player(game)
-        with open(config_path, "w") as f:
-            f.write(dumps(game_to_store, indent=4))
-
-    async def list_game_map_configs(self) -> list[ExecutableGameMap]:
-        configs: list[ExecutableGameMap] = []
-        for item in self.games_dir.iterdir():
-            if item.is_file() and item.suffix == ".json":
-                try:
-                    game_name = item.stem
-                    config = await self.get_game_map(game_name)
-                    configs.append(config)
-                except (FileNotFoundError, OSError, json.JSONDecodeError) as e:
-                    print(f"Error reading {item}: {e}")
-                    continue
-        return configs
-
-    async def set_game_map_results(
-        self, results: GameMapResults
-    ) -> list[GameMapResults]:
-        game_name = results["game_map"]["name"]
-        existing_results = await self.get_game_map_results(game_name)
-
-        player_id = results["player"]["id"]
-        found_existing = False
-        for i, existing in enumerate(existing_results):
-            if existing["player"]["id"] == player_id:
-                existing_results[i] = results
-                found_existing = True
-                break
-
-        if not found_existing:
-            existing_results.append(results)
-
-        results_path = self._game_results_path(game_name)
-        with open(results_path, "w") as f:
-            f.write(dumps(existing_results, indent=4))
-
-        return existing_results
-
-    async def get_game_map_results(self, game_name: str) -> list[GameMapResults]:
-        results_path = self._game_results_path(game_name)
-        if results_path.exists():
-            with open(results_path) as f:
-                return json.load(f)
-        return []
-
-    def _game_config_path(self, game_name: str) -> Path:
-        return self.games_dir / f"{game_name}.json"
-
-    def _game_results_path(self, game_name: str) -> Path:
-        return self.game_results_dir / f"{game_name}_results.json"
-
-    def _ensure_empty_player(self, game: ExecutableGameMap) -> ExecutableGameMap:
-        game_copy = game.copy()
-        game_copy["player"] = {
-            "name": "black",
-            "id": "",
-            "player_type": "",
-            "options": {},
-        }
-        return game_copy

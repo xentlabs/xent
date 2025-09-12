@@ -12,7 +12,7 @@ def present(state, history, metadata):
     builder = PresentationBuilder()
 
     # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge"]}) to compute score.
+    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s1=story(), s2=story(), s3=story())

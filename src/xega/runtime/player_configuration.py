@@ -8,7 +8,14 @@ from xega.common.errors import XegaConfigurationError
 from xega.common.util import dumps
 
 KNOWN_PROVIDER = Literal[
-    "openai", "anthropic", "gemini", "grok", "ollama", "huggingface", "deepseek"
+    "openai",
+    "anthropic",
+    "gemini",
+    "grok",
+    "ollama",
+    "huggingface",
+    "deepseek",
+    "moonshot",
 ]
 
 

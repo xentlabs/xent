@@ -26,3 +26,6 @@ web/package-lock.json
 
 # Generated static files (build output)
 src/xega/web/static/
+src/*.egg-info/
+build/
+*.egg-info/

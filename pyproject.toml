@@ -1,6 +1,6 @@
 [project]
 name = "xega"
-version = "0.1.0"
+version = "0.1.2"
 description = "Xega LLM Benchmarking System"
 keywords = ["llm", "benchmark", "ai", "evaluation"]
 classifiers = [
@@ -13,11 +13,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 authors = [{ name = "Andrew Emil", email = "ace@xentlabs.ai" }]
-homepage = "https://xentlabs.ai"
-repository = "https://github.com/xentlabs/xega"
 requires-python = ">=3.12, <4.0"
 readme = "README.md"
-license = "MIT"
+license = {text = "MIT"}
 dependencies = [
     "matplotlib (>=3.10.3,<4.0.0)",
     "anthropic (>=0.51.0,<0.52.0)",
@@ -33,25 +31,23 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
 ]
-packages = [{ from = "src", include = "xega" }]
 
 [project.scripts]
 xega = "xega.cli.main:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build]
-include = [
-    "src/xega/**/*.py",
-    "src/xega/web/static/**/*",
-    "games/**/*.xega",
-    "games/**/*.py",
-]
+[tool.setuptools]
+package-dir = {"" = "src"}
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/xega"]
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["**/*"]
+
 
 [dependency-groups]
 dev = [

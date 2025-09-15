@@ -1,0 +1,19 @@
+# Adapted from S+7 game from the oulipo
+# Given 2 sets of words, must create a story that remains likely when permutate the 2 sets
+
+# TODO create function list(x) that generate a list of x unique words
+# Here, we must also ensure that s1 has no common words with s2
+
+# TODO create function permutate_words_from_sets(x, s1 + s2) that permutates words from s1 in x by words from s2
+
+# TODO create function uses_words(s1, x1) that ensures x1 makes us of ALL words from s1
+
+assign(s1=list(5))
+assign(s2=list(5))
+
+elicit(x1, 50)
+ensure(uses_words(s1, x1))
+assign(x2=permutate_words_from_sets(x, s1 + s2))
+reveal(x2)
+reward(black, xed(x1))
+reward(black, xed(x2))

@@ -1,0 +1,13 @@
+# Basically, this game is the same as constrast but on sets of words
+
+# TODO create function list(x) that generate a list of x unique words
+# Here, we must also ensure that s1 has no common words with s2
+
+assign(s1=list(10))
+assign(s2=list(10))
+
+elicit(x, 5)
+assign(x1=remove_common_words(x, s1 + s2))
+reveal(x1)
+reward(black, xed(s1 | x1))
+reward(black, dex(s2 | x1))

@@ -1,0 +1,13 @@
+# create circular story S -> X1 -> X2 -> S in which each step is likely
+
+assign(s=story())
+assign(t1="After the rain", t2=" I eat food")
+
+elicit(x1, 50)
+ensure(xed(x1 | s) >= xed(t2 | t1))
+
+elicit(x2, 50)
+ensure(xed(x2 | s + x1) >= xed(t2 | t1))
+
+reward(xed(s | s + x1 + x2))
+# TODO check if it is the most appropriate reward

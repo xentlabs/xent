@@ -70,6 +70,8 @@ def guess_provider_from_model(model: str) -> str:
         return "grok"
     elif "deepseek" in model.lower():
         return "deepseek"
+    elif "moonshot" in model.lower() or "kimi" in model.lower():
+        return "moonshot"
     elif "/" in model and not model.startswith("ollama/"):
         return "huggingface"
     if ":" in model.lower() or model.lower().startswith("ollama/"):
@@ -571,6 +573,85 @@ class DeepSeekClient(LLMClient):
             raise XegaApiError(str(e), provider="deepseek") from e
 
 
+class MoonshotClient(LLMClient):
+    def __init__(self, model: str):
+        super().__init__(model)
+        api_key = os.getenv("MOONSHOT_API_KEY")
+        if not api_key:
+            raise XegaConfigurationError(
+                "MOONSHOT_API_KEY environment variable not set."
+            )
+        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.moonshot.ai")
+
+    async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
+        openai_api_messages: list[ChatCompletionMessageParam] = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if not content:
+                logging.warning("Warning: Skipping empty message")
+                continue
+
+            if role == "system":
+                openai_api_messages.append(
+                    ChatCompletionSystemMessageParam(content=content, role="system")
+                )
+            elif role == "user":
+                openai_api_messages.append(
+                    ChatCompletionUserMessageParam(content=content, role="user")
+                )
+            elif role == "assistant":
+                openai_api_messages.append(
+                    ChatCompletionAssistantMessageParam(
+                        content=content, role="assistant"
+                    )
+                )
+            else:
+                logging.warning(
+                    f"Warning: Skipping invalid message format for Moonshot API: {msg}"
+                )
+
+        try:
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=openai_api_messages,
+            )
+            input_token_count = getattr(
+                getattr(response, "usage", {}), "prompt_tokens", 0
+            )
+            output_token_count = getattr(
+                getattr(response, "usage", {}), "completion_tokens", 0
+            )
+            self.increment_token_counts(input_token_count, output_token_count)
+            response_message = response.choices[0].message.content
+            token_usage = TokenUsage(
+                input_tokens=input_token_count, output_tokens=output_token_count
+            )
+            if response_message is None:
+                raise XegaApiError(
+                    "The API returned an empty message.", provider="moonshot"
+                )
+            return response_message, token_usage
+        except OpenAIRateLimitError as e:
+            raise XegaRateLimitError(
+                str(e), provider="moonshot", status_code=e.status_code
+            ) from e
+        except OpenAIAuthenticationError as e:
+            raise XegaAuthenticationError(
+                str(e), provider="moonshot", status_code=e.status_code
+            ) from e
+        except OpenAIBadRequestError as e:
+            raise XegaInvalidRequestError(
+                str(e), provider="moonshot", status_code=e.status_code
+            ) from e
+        except OpenAIInternalServerError as e:
+            raise XegaInternalServerError(
+                str(e), provider="moonshot", status_code=e.status_code
+            ) from e
+        except OpenAIAPIError as e:
+            raise XegaApiError(str(e), provider="moonshot") from e
+
+
 class HuggingFaceClient(LLMClient):
     def __init__(
         self,
@@ -739,6 +820,8 @@ def make_client(unchecked_options: PlayerOptions | None) -> LLMClient:
         return GrokClient(options["model"])
     elif provider == "deepseek":
         return DeepSeekClient(options["model"])
+    elif provider == "moonshot":
+        return MoonshotClient(options["model"])
     elif provider == "ollama":
         return OllamaClient(options["model"])
     elif provider == "huggingface":

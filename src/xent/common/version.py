@@ -1,9 +1,9 @@
 from importlib.metadata import PackageNotFoundError, version
 
 
-def get_xega_version() -> str:
+def get_xent_version() -> str:
     try:
-        return version("xega")
+        return version("xent")
     except PackageNotFoundError:
         # Package is not installed (likely in development/editable mode)
         return "0.1.0-dev"
@@ -15,7 +15,7 @@ def validate_version(
     if config_version is None:
         return (
             True,
-            "Warning: Configuration has no version field (likely created with older xega version)",
+            "Warning: Configuration has no version field (likely created with older xent version)",
         )
 
     if config_version == current_version:
@@ -23,6 +23,6 @@ def validate_version(
 
     return (
         False,
-        f"Version mismatch: configuration was created with xega {config_version}, "
+        f"Version mismatch: configuration was created with xent {config_version}, "
         f"but current version is {current_version}",
     )

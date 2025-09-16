@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from xent.common.errors import XegaTypeError
+from xent.common.errors import XentTypeError
 
 
 class XString:
@@ -17,7 +17,7 @@ class XString:
             primary_string = primary_string.primary_string
 
         if not isinstance(primary_string, str):
-            raise XegaTypeError(
+            raise XentTypeError(
                 f"XString constructor requires a string argument. Got: {type(primary_string).__name__}"
             )
 
@@ -35,7 +35,7 @@ class XString:
 
     def _verify_other_operand(self, other):
         if not isinstance(other, str) and not isinstance(other, XString):
-            raise XegaTypeError(
+            raise XentTypeError(
                 f"Unsupported operand type(s): '{type(self).__name__}' and '{type(other).__name__}'. "
                 "Operand must be a String."
             )

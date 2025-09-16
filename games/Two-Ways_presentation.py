@@ -1,4 +1,4 @@
-from xega.presentation.sdk import (
+from xent.presentation.sdk import (
     PresentationBuilder,
     extract_rewards,
     format_token_xent_list,

@@ -1,6 +1,6 @@
-# XEGA Web Interface
+# XENT Web Interface
 
-Simple web frontend for monitoring XEGA benchmarks.
+Simple web frontend for monitoring XENT benchmarks.
 
 ## Setup
 
@@ -12,14 +12,14 @@ npm install
 npm run build
 ```
 
-Built files are output to `../src/xega/web/static/` and served by the FastAPI backend.
+Built files are output to `../src/xent/web/static/` and served by the FastAPI backend.
 
 ## Usage
 
 After building, start the web server from the project root:
 
 ```bash
-uv run xega serve
+uv run xent serve
 ```
 
 Then open http://localhost:8000 in your browser.

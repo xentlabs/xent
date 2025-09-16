@@ -2,8 +2,8 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from xent.common.configuration_types import XegaEvent, XegaMetadata
-from xent.common.errors import XegaConfigurationError, XegaInternalError
+from xent.common.configuration_types import XentEvent, XentMetadata
+from xent.common.errors import XentConfigurationError, XentInternalError
 
 DEFAULT_PRESENTATION = '''
 from xent.presentation.sdk import (
@@ -35,9 +35,9 @@ def present(state, history, metadata):
     return '\\n'.join(output)
 '''
 
-SAMPLE_METADATA: XegaMetadata = XegaMetadata(
+SAMPLE_METADATA: XentMetadata = XentMetadata(
     benchmark_id="bid",
-    xega_version="0.1.0",
+    xent_version="0.1.0",
     judge_model="judge",
     num_rounds_per_game=2,
     seed="seed",
@@ -93,13 +93,13 @@ class PresentationFunction:
         self.code_string = code_string
         self.compiled_code = None
         self.present_func: (
-            Callable[[dict[str, Any], list[XegaEvent], XegaMetadata], str] | None
+            Callable[[dict[str, Any], list[XentEvent], XentMetadata], str] | None
         ) = None
 
         try:
             self.compiled_code = compile(code_string, "<presentation>", "exec")
         except SyntaxError as e:
-            raise XegaInternalError(f"Presentation function syntax error: {e}") from e
+            raise XentInternalError(f"Presentation function syntax error: {e}") from e
 
         # Allow full Python imports - presentations are trusted code
         self.namespace: Any = {}
@@ -107,27 +107,27 @@ class PresentationFunction:
         try:
             exec(self.compiled_code, self.namespace)
         except Exception as e:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 f"Error executing presentation function: {e}"
             ) from e
 
         if "present" not in self.namespace:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 "Presentation function must define a 'present' function"
             )
 
         present_func = self.namespace["present"]
         if not callable(present_func):
-            raise XegaInternalError("'present' must be a callable function")
+            raise XentInternalError("'present' must be a callable function")
 
         # Type narrowing - we know it's callable now
         self.present_func = present_func
 
     def __call__(
-        self, state: dict[str, Any], history: list[XegaEvent], metadata: XegaMetadata
+        self, state: dict[str, Any], history: list[XentEvent], metadata: XentMetadata
     ) -> str:
         if self.present_func is None:
-            raise XegaInternalError("Presentation function not properly initialized")
+            raise XentInternalError("Presentation function not properly initialized")
 
         try:
             result = self.present_func(state, history, metadata)
@@ -139,15 +139,15 @@ class PresentationFunction:
             return result
         except Exception as e:
             logging.error(f"Error in presentation function execution: {e}")
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 "Error in presentation function execution"
             ) from e
 
     def validate(
         self,
         sample_state: dict[str, Any] | None = None,
-        sample_history: list[XegaEvent] | None = None,
-        sample_metadata: XegaMetadata | None = None,
+        sample_history: list[XentEvent] | None = None,
+        sample_metadata: XentMetadata | None = None,
     ) -> bool:
         if sample_state is None:
             sample_state = {}

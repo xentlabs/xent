@@ -1,6 +1,7 @@
 TODO
 *.swp
 test_output/game_plots
+xent_config.json
 xega_config.json
 results/
 venv

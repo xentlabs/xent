@@ -1,77 +1,77 @@
-class XegaError(Exception):
-    """Base class for all Xega exceptions."""
+class XentError(Exception):
+    """Base class for all Xent exceptions."""
 
     pass
 
 
-class XegaConfigurationError(XegaError):
-    """Raised when there is an error in Xega configuration"""
+class XentConfigurationError(XentError):
+    """Raised when there is an error in Xent configuration"""
 
     def __init__(self, message: str):
-        super().__init__(f"Xega Validation Error: {message}")
+        super().__init__(f"Xent Validation Error: {message}")
 
 
-class XegaSyntaxError(XegaError):
-    """Raised when there is a syntax error in a Xega game"""
+class XentSyntaxError(XentError):
+    """Raised when there is a syntax error in a Xent game"""
 
     # TODO - this should take in line + col for better error reporting
     def __init__(self, message: str):
-        super().__init__(f"Xega Syntax Error: {message}")
+        super().__init__(f"Xent Syntax Error: {message}")
 
 
-class XegaGameError(XegaError):
-    """Raised when there is an error during Xega game execution"""
+class XentGameError(XentError):
+    """Raised when there is an error during Xent game execution"""
 
     def __init__(self, message: str):
-        super().__init__(f"Xega Game Error: {message}")
+        super().__init__(f"Xent Game Error: {message}")
 
 
-class XegaApiError(XegaGameError):
+class XentApiError(XentGameError):
     """
     Raised for failures in communication with an external LLM API.
-    This is a subclass of XegaGameError as it occurs during game execution.
+    This is a subclass of XentGameError as it occurs during game execution.
     """
 
     def __init__(self, message: str, provider: str, status_code: int | None = None):
-        full_message = f"Xega API Error with provider '{provider}': {message}"
+        full_message = f"Xent API Error with provider '{provider}': {message}"
         super().__init__(full_message)
         self.provider = provider
         self.status_code = status_code
 
 
-class XegaRateLimitError(XegaApiError):
+class XentRateLimitError(XentApiError):
     """Raised when an API rate limit is exceeded (HTTP 429)."""
 
     pass
 
 
-class XegaAuthenticationError(XegaApiError):
+class XentAuthenticationError(XentApiError):
     """Raised for authentication failures (HTTP 401/403)."""
 
     pass
 
 
-class XegaInvalidRequestError(XegaApiError):
+class XentInvalidRequestError(XentApiError):
     """Raised for malformed requests that the API rejected (HTTP 400)."""
 
     pass
 
 
-class XegaInternalServerError(XegaApiError):
+class XentInternalServerError(XentApiError):
     """Raised for failures on the API provider's end (HTTP 5xx)."""
 
     pass
 
 
-class XegaInternalError(XegaError):
-    """Raised when there is an error in the Xega codebase. This indicates an issue in Xega itself"""
+class XentInternalError(XentError):
+    """Raised when there is an error in the Xent codebase. This indicates an issue in Xent itself"""
 
     def __init__(self, message: str):
-        super().__init__(f"Xega Internal Error: {message}")
+        super().__init__(f"Xent Internal Error: {message}")
 
 
-class XegaTypeError(XegaError):
-    """Raised when there is a type error in Xega"""
+class XentTypeError(XentError):
+    """Raised when there is a type error in Xent"""
 
     def __init__(self, message: str):
-        super().__init__(f"Xega Type Error: {message}")
+        super().__init__(f"Xent Type Error: {message}")

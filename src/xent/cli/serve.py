@@ -9,5 +9,5 @@ import uvicorn
 @click.option("--host", default="127.0.0.1", help="Host to bind the server to")
 def serve(port: int, host: str):
     """Start web interface for benchmark monitoring."""
-    click.echo(f"Starting XEGA web interface on http://{host}:{port}")
-    uvicorn.run("xega.web.server:app", host=host, port=port)
+    click.echo(f"Starting XENT web interface on http://{host}:{port}")
+    uvicorn.run("xent.web.server:app", host=host, port=port)

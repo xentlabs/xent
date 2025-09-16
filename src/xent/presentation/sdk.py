@@ -2,13 +2,13 @@ from collections.abc import Callable
 from typing import Any
 
 from xent.common.token_xent_list import TokenXentList
-from xent.common.xega_event import (
+from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
     RevealEvent,
     RewardEvent,
-    XegaEvent,
+    XentEvent,
 )
 
 PRESENTATION_SCORE_SCALE = 10
@@ -20,9 +20,9 @@ def round_xent(value: float, scaled: bool = True) -> float:
     return round(value)
 
 
-def split_rounds(history: list[XegaEvent]) -> list[list[XegaEvent]]:
-    rounds: list[list[XegaEvent]] = []
-    current_round: list[XegaEvent] = []
+def split_rounds(history: list[XentEvent]) -> list[list[XentEvent]]:
+    rounds: list[list[XentEvent]] = []
+    current_round: list[XentEvent] = []
 
     for event in history:
         if event["type"] == "round_started":
@@ -40,15 +40,15 @@ def split_rounds(history: list[XegaEvent]) -> list[list[XegaEvent]]:
     return rounds
 
 
-def extract_rewards(events: list[XegaEvent]) -> list[RewardEvent]:
+def extract_rewards(events: list[XentEvent]) -> list[RewardEvent]:
     return [event for event in events if event["type"] == "reward"]
 
 
-def extract_reveals(events: list[XegaEvent]) -> list[RevealEvent]:
+def extract_reveals(events: list[XentEvent]) -> list[RevealEvent]:
     return [event for event in events if event["type"] == "reveal"]
 
 
-def extract_attempts(events: list[XegaEvent], reason: str = "") -> list[dict[str, Any]]:
+def extract_attempts(events: list[XentEvent], reason: str = "") -> list[dict[str, Any]]:
     attempts = []
 
     for i, event in enumerate(events):
@@ -76,7 +76,7 @@ def extract_attempts(events: list[XegaEvent], reason: str = "") -> list[dict[str
 
 
 def get_max_score(
-    events: list[XegaEvent],
+    events: list[XentEvent],
     scaled: bool = True,
     score_fn: Callable[[RewardEvent], float] | None = None,
 ) -> tuple[float, RewardEvent | None]:
@@ -96,7 +96,7 @@ def get_max_score(
     return score_fn(max_reward), max_reward
 
 
-def get_scores_by_round(history: list[XegaEvent]) -> list[dict[str, Any]]:
+def get_scores_by_round(history: list[XentEvent]) -> list[dict[str, Any]]:
     rounds = split_rounds(history)
     scores_by_round = []
 
@@ -111,11 +111,11 @@ def get_scores_by_round(history: list[XegaEvent]) -> list[dict[str, Any]]:
     return scores_by_round
 
 
-def count_event(events: list[XegaEvent], event_type: str) -> int:
+def count_event(events: list[XentEvent], event_type: str) -> int:
     return sum(1 for e in events if e["type"] == event_type)
 
 
-def count_all_events(events: list[XegaEvent]) -> dict[str, int]:
+def count_all_events(events: list[XentEvent]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for event in events:
         event_type_str: str = event["type"]
@@ -204,8 +204,8 @@ def format_elicit_response(event: ElicitResponseEvent) -> str:
 
 
 def process_rounds_with_state(
-    history: list[XegaEvent], initial_state: dict[str, Any] | None = None
-) -> tuple[list[list[XegaEvent]], dict[str, Any]]:
+    history: list[XentEvent], initial_state: dict[str, Any] | None = None
+) -> tuple[list[list[XentEvent]], dict[str, Any]]:
     if initial_state is None:
         initial_state = {}
 
@@ -294,7 +294,7 @@ class PresentationBuilder:
         return separator.join(self.sections)
 
 
-def get_event_summary(history: list[XegaEvent]) -> str:
+def get_event_summary(history: list[XentEvent]) -> str:
     event_counts = count_all_events(history)
     summary_parts = [
         f"{count} {event_type}" for event_type, count in event_counts.items()

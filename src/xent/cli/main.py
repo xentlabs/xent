@@ -8,7 +8,7 @@ from xent.cli.serve import serve
 
 @click.group()
 def main():
-    """XEGA LLM Benchmark Tool"""
+    """XENT LLM Benchmark Tool"""
     pass
 
 

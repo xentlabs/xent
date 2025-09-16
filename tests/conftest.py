@@ -4,11 +4,11 @@ import pytest
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from xent.common.configuration_types import ExecutableGameMap
-from xent.common.version import get_xega_version
+from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation
 from xent.runtime.default_players import MockXGP
 from xent.runtime.judge import Judge
-from xent.runtime.runtime import XegaRuntime
+from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 
 FAKE_GAME_MAP: ExecutableGameMap = {
@@ -20,7 +20,7 @@ FAKE_GAME_MAP: ExecutableGameMap = {
     },
     "metadata": {
         "benchmark_id": "",
-        "xega_version": get_xega_version(),
+        "xent_version": get_xent_version(),
         "num_rounds_per_game": 30,
         "judge_model": "gpt2",
         "seed": "test_seed",
@@ -104,10 +104,10 @@ def pytest_unconfigure(config):
 
 @pytest.fixture
 def xrt():
-    """Create a test XegaRuntime instance."""
+    """Create a test XentRuntime instance."""
     executable_game_map = FAKE_GAME_MAP.copy()
     player = MockXGP("black", "mock_black_id", {}, executable_game_map)
     locals = build_locals(player, executable_game_map)
     judge = Judge("gpt2")
     globals = build_globals(judge)
-    return XegaRuntime(player, locals, globals)
+    return XentRuntime(player, locals, globals)

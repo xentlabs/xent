@@ -8,7 +8,7 @@ from xent.common.configuration_types import (
 )
 from xent.common.util import dumps
 from xent.common.x_string import XString
-from xent.common.xega_event import TokenUsage, XegaEvent
+from xent.common.xent_event import TokenUsage, XentEvent
 from xent.presentation.executor import PresentationFunction
 from xent.runtime.base_player import XGP
 from xent.runtime.llm_api_client import LLMMessage, make_client
@@ -24,7 +24,7 @@ class MockXGP(XGP):
         token_usage_per_move: TokenUsage | None = None,
     ):
         super().__init__(name, id, options, executable_game_map)
-        self.event_history: list[XegaEvent] = []
+        self.event_history: list[XentEvent] = []
         self.token_usage_per_move = token_usage_per_move or {
             "input_tokens": 1,
             "output_tokens": 1,
@@ -54,7 +54,7 @@ class MockXGP(XGP):
 
         return ("mocked_move", self.token_usage_per_move.copy())
 
-    async def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XentEvent) -> None:
         logging.info(f"Player received: {event}")
         self.event_history.append(event)
 
@@ -70,7 +70,7 @@ class DefaultXGP(XGP):
         super().__init__(name, id, options, executable_game_map)
         self.client = make_client(options)
         self.game_code = executable_game_map["game_map"]["code"]
-        self.event_history: list[XegaEvent] = []
+        self.event_history: list[XentEvent] = []
         self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
         self.metadata = executable_game_map["metadata"]
@@ -111,7 +111,7 @@ class DefaultXGP(XGP):
         logging.info(f"Parsed LLM move: {result}")
         return result, token_usage
 
-    async def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XentEvent) -> None:
         self.event_history.append(event)
 
 

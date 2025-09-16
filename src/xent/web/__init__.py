@@ -1,5 +1,5 @@
-"""Web interface for XEGA benchmark monitoring."""
+"""Web interface for XENT benchmark monitoring."""
 
 __all__ = ["app"]
 
-from xega.web.server import app
+from xent.web.server import app

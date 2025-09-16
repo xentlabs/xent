@@ -7,22 +7,22 @@ import click
 from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.cli.cli_util import generate_benchmark_id
 from xent.common.configuration_types import (
-    CondensedXegaBenchmarkConfig,
-    ExpandedXegaBenchmarkConfig,
+    CondensedXentBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     ExpansionConfig,
     GameConfig,
     PlayerConfig,
-    XegaMetadata,
+    XentMetadata,
 )
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.util import dumps
-from xent.common.version import get_xega_version
+from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation, get_single_presentation
 from xent.runtime.llm_api_client import guess_provider_from_model
 
-DEFAULT_XEGA_METADATA = XegaMetadata(
+DEFAULT_XENT_METADATA = XentMetadata(
     benchmark_id="",
-    xega_version=get_xega_version(),
+    xent_version=get_xent_version(),
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
@@ -51,10 +51,10 @@ def games_from_paths(paths: list[Path]) -> list[GameConfig]:
     all_game_paths: set[Path] = set()
     for p in paths:
         if p.is_dir():
-            all_game_paths.update(p.glob("*.xega"))
+            all_game_paths.update(p.glob("*.xent"))
         elif p.is_file():
-            if p.suffix != ".xega":
-                raise click.BadParameter(f"Not a .xega file: {p}")
+            if p.suffix != ".xent":
+                raise click.BadParameter(f"Not a .xent file: {p}")
             all_game_paths.add(p)
         else:
             raise click.BadParameter(f"Path does not exist: {p}")
@@ -74,7 +74,7 @@ def build_benchmark_config(
     seed: str,
     num_rounds_per_game: int,
     num_maps_per_game: int,
-) -> CondensedXegaBenchmarkConfig:
+) -> CondensedXentBenchmarkConfig:
     players = []
     if not human:
         players = [
@@ -99,13 +99,13 @@ def build_benchmark_config(
             )
         )
 
-    return CondensedXegaBenchmarkConfig(
-        config_type="condensed_xega_config",
+    return CondensedXentBenchmarkConfig(
+        config_type="condensed_xent_config",
         games=games,
         players=players,
-        metadata=XegaMetadata(
+        metadata=XentMetadata(
             benchmark_id=benchmark_id,
-            xega_version=get_xega_version(),
+            xent_version=get_xent_version(),
             judge_model=judge,
             num_rounds_per_game=num_rounds_per_game,
             seed=seed,
@@ -115,8 +115,8 @@ def build_benchmark_config(
 
 
 def add_player_to_config(
-    config: ExpandedXegaBenchmarkConfig, new_player: PlayerConfig
-) -> ExpandedXegaBenchmarkConfig:
+    config: ExpandedXentBenchmarkConfig, new_player: PlayerConfig
+) -> ExpandedXentBenchmarkConfig:
     """Add a new player to an expanded benchmark config"""
     players = config["players"]
     if any(p["id"] == new_player["id"] for p in players):
@@ -128,8 +128,8 @@ def add_player_to_config(
 
 
 def remove_player_from_config(
-    config: ExpandedXegaBenchmarkConfig, player_id_to_remove: str
-) -> ExpandedXegaBenchmarkConfig:
+    config: ExpandedXentBenchmarkConfig, player_id_to_remove: str
+) -> ExpandedXentBenchmarkConfig:
     players = config["players"]
     if not any(p["id"] == player_id_to_remove for p in players):
         print("Player not found benchmark configuration!")
@@ -143,7 +143,7 @@ def remove_player_from_config(
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option(
-    "--output", help="Output configuration path", default="./xega_config.json"
+    "--output", help="Output configuration path", default="./xent_config.json"
 )
 @click.option(
     "--game-path",
@@ -151,7 +151,7 @@ def remove_player_from_config(
     "game_paths",
     multiple=True,
     type=click.Path(exists=True, readable=True),
-    help="Path(s) to .xega game file(s). If a directory is provided, include all .xega files in the directory. Repeat to add multiple.",
+    help="Path(s) to .xent game file(s). If a directory is provided, include all .xent files in the directory. Repeat to add multiple.",
 )
 @click.option(
     "--model",
@@ -166,7 +166,7 @@ def remove_player_from_config(
 )
 @click.option(
     "--judge",
-    default=DEFAULT_XEGA_METADATA["judge_model"],
+    default=DEFAULT_XENT_METADATA["judge_model"],
     help="Specify the judge model to use for the benchmark. Default is 'gpt2'",
 )
 @click.option(
@@ -176,12 +176,12 @@ def remove_player_from_config(
 )
 @click.option(
     "--num-rounds-per-game",
-    default=DEFAULT_XEGA_METADATA["num_rounds_per_game"],
+    default=DEFAULT_XENT_METADATA["num_rounds_per_game"],
     help="Specify the number of rounds to play per game mape. Default is 30",
 )
 @click.option(
     "--seed",
-    default=DEFAULT_XEGA_METADATA["seed"],
+    default=DEFAULT_XENT_METADATA["seed"],
     help="Specify a seed for benchmark randomization. 'notrandom' is the default seed if not specified",
 )
 @click.option(
@@ -214,7 +214,7 @@ def configure(
     print_config: bool,
     expand_config: bool,
 ):
-    """Build Xega benchmark configuration"""
+    """Build Xent benchmark configuration"""
     # If a subcommand is invoked, let it handle the operation
     if ctx.invoked_subcommand is not None:
         return
@@ -248,7 +248,7 @@ def configure(
     if expand_config:
         config = expand_benchmark_config(config)
         print(
-            f"Configuration expanded with xega version {config.get('xega_version', 'unknown')}"
+            f"Configuration expanded with xent version {config.get('xent_version', 'unknown')}"
         )
 
     config_str = dumps(config, indent=2)
@@ -257,13 +257,13 @@ def configure(
     else:
         with open(output, "w") as f:
             f.write(config_str)
-            current_version = get_xega_version()
+            current_version = get_xent_version()
             if expand_config:
-                print(f"Config written to {output} (xega version: {current_version})")
+                print(f"Config written to {output} (xent version: {current_version})")
             else:
                 print(f"Config written to {output}")
                 print(
-                    f"Note: Configuration will be stamped with xega version {current_version} when expanded/run"
+                    f"Note: Configuration will be stamped with xent version {current_version} when expanded/run"
                 )
 
 
@@ -271,7 +271,7 @@ def configure(
 @click.argument(
     "config_path",
     type=click.Path(exists=True, readable=True),
-    default="./xega_config.json",
+    default="./xent_config.json",
 )
 @click.option(
     "--model",
@@ -290,7 +290,7 @@ def add_player_cmd(
     model: list[str],
     output: str | None,
 ):
-    """Add players to an existing expanded Xega benchmark configuration"""
+    """Add players to an existing expanded Xent benchmark configuration"""
 
     # Load the existing config
     with open(config_path) as f:
@@ -327,7 +327,7 @@ def add_player_cmd(
 @click.argument(
     "config_path",
     type=click.Path(exists=True, readable=True),
-    default="./xega_config.json",
+    default="./xent_config.json",
 )
 @click.option(
     "--player-id",
@@ -346,14 +346,14 @@ def remove_player_cmd(
     player_id: list[str],
     output: str | None,
 ):
-    """Remove players from an existing expanded Xega benchmark configuration."""
+    """Remove players from an existing expanded Xent benchmark configuration."""
 
     # Load the existing config
     with open(config_path) as f:
         config = json.load(f)
 
     # Verify it's an expanded config
-    if config.get("config_type") != "expanded_xega_config":
+    if config.get("config_type") != "expanded_xent_config":
         click.echo(
             "Error: This command only works with expanded configurations.", err=True
         )

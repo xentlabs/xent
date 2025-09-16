@@ -4,7 +4,7 @@ import torch
 from typeguard import check_type
 
 from xent.common.configuration_types import PlayerOptions
-from xent.common.errors import XegaConfigurationError
+from xent.common.errors import XentConfigurationError
 from xent.common.util import dumps
 
 KNOWN_PROVIDER = Literal[
@@ -42,14 +42,14 @@ def check_default_xgp_options(
     options: PlayerOptions | None,
 ) -> DefaultXGPOptions:
     if options is None:
-        raise XegaConfigurationError(
+        raise XentConfigurationError(
             "Player options for default player type cannot be None. Please provide valid options."
         )
     try:
         check_type(options, DefaultXGPOptions)
         return cast(DefaultXGPOptions, options)
     except TypeError:
-        raise XegaConfigurationError(
+        raise XentConfigurationError(
             f"Invalid options for default player type. Expected a dictionary with 'model' and 'provider' keys. Got: {dumps(options)}"
         ) from None
 
@@ -58,13 +58,13 @@ def check_default_hf_xgp_options(
     options: PlayerOptions | None,
 ) -> DefaultHFXGPOptions:
     if options is None:
-        raise XegaConfigurationError(
+        raise XentConfigurationError(
             "Player options for default HF player type cannot be None. Please provide valid options."
         )
     try:
         check_type(options, DefaultHFXGPOptions)
         return cast(DefaultHFXGPOptions, options)
     except TypeError:
-        raise XegaConfigurationError(
+        raise XentConfigurationError(
             "Invalid options for default HF player type."
         ) from None

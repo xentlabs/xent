@@ -12,19 +12,19 @@ from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.benchmark.run_benchmark import run_benchmark
 from xent.cli.cli_util import generate_benchmark_id
 from xent.common.configuration_types import (
-    CondensedXegaBenchmarkConfig,
-    ExpandedXegaBenchmarkConfig,
+    CondensedXentBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     ExpansionConfig,
-    XegaMetadata,
+    XentMetadata,
 )
 from xent.common.util import dumps, log_git_snapshot
-from xent.common.version import get_xega_version, validate_version
+from xent.common.version import get_xent_version, validate_version
 from xent.storage.directory_storage import DirectoryBenchmarkStorage
 from xent.storage.storage_interface import BenchmarkStorage
 
-DEFAULT_XEGA_METADATA = XegaMetadata(
+DEFAULT_XENT_METADATA = XentMetadata(
     benchmark_id="",
-    xega_version=get_xega_version(),
+    xent_version=get_xent_version(),
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
@@ -35,7 +35,7 @@ DEFAULT_EXPANSION_CONFIG = ExpansionConfig(num_maps_per_game=1)
 
 def load_benchmark_config(
     benchmark_config_file_path: str,
-) -> CondensedXegaBenchmarkConfig | ExpandedXegaBenchmarkConfig:
+) -> CondensedXentBenchmarkConfig | ExpandedXentBenchmarkConfig:
     with open(benchmark_config_file_path) as f:
         benchmark_config = json.load(f)
 
@@ -45,8 +45,8 @@ def load_benchmark_config(
 @click.command()
 @click.option(
     "--config",
-    default="./xega_config.json",
-    help="Path to json configuration for Xega benchmark",
+    default="./xent_config.json",
+    help="Path to json configuration for Xent benchmark",
 )
 @click.option(
     "--results-dir",
@@ -91,7 +91,7 @@ def run(
     parallel_games: int,
     ignore_version_mismatch: bool,
 ):
-    """Execute Xega benchmark"""
+    """Execute Xent benchmark"""
     logging_format = (
         "%(asctime)s - %(levelname)-8s - %(filename)s:%(lineno)d - %(message)s"
     )
@@ -116,7 +116,7 @@ def run(
         logging.info(f"Generated new benchmark ID: {benchmark_id}")
         benchmark_config["metadata"]["benchmark_id"] = benchmark_id
 
-    if benchmark_config["config_type"] != "expanded_xega_config":
+    if benchmark_config["config_type"] != "expanded_xent_config":
         benchmark_config = expand_benchmark_config(benchmark_config)
 
     check_version(benchmark_config, ignore_version_mismatch)
@@ -161,10 +161,10 @@ def run(
 
 
 def check_version(
-    benchmark_config: ExpandedXegaBenchmarkConfig, ignore_version_mismatch: bool
+    benchmark_config: ExpandedXentBenchmarkConfig, ignore_version_mismatch: bool
 ):
-    config_version = benchmark_config["metadata"]["xega_version"]
-    current_version = get_xega_version()
+    config_version = benchmark_config["metadata"]["xent_version"]
+    current_version = get_xent_version()
     print(f"Config: {config_version}")
     print(f"Current: {current_version}")
     is_valid, message = validate_version(config_version, current_version)

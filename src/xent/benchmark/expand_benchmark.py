@@ -3,27 +3,27 @@ import io
 import tokenize
 
 from xent.common.configuration_types import (
-    CondensedXegaBenchmarkConfig,
-    ExpandedXegaBenchmarkConfig,
+    CondensedXentBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     GameConfig,
     GameMapConfig,
-    XegaMetadata,
+    XentMetadata,
 )
 from xent.runtime.judge import Judge
 
 
 def expand_benchmark_config(
-    condensed_config: CondensedXegaBenchmarkConfig,
-) -> ExpandedXegaBenchmarkConfig:
+    condensed_config: CondensedXentBenchmarkConfig,
+) -> ExpandedXentBenchmarkConfig:
     judge = Judge(condensed_config["metadata"]["judge_model"])
-    expanded_benchmark_config = ExpandedXegaBenchmarkConfig(
-        config_type="expanded_xega_config",
-        metadata=XegaMetadata(
+    expanded_benchmark_config = ExpandedXentBenchmarkConfig(
+        config_type="expanded_xent_config",
+        metadata=XentMetadata(
             judge_model=condensed_config["metadata"]["judge_model"],
             num_rounds_per_game=condensed_config["metadata"]["num_rounds_per_game"],
             seed=condensed_config["metadata"]["seed"],
             benchmark_id=condensed_config["metadata"]["benchmark_id"],
-            xega_version=condensed_config["metadata"]["xega_version"],
+            xent_version=condensed_config["metadata"]["xent_version"],
         ),
         players=condensed_config["players"],
         games=condensed_config["games"],
@@ -41,7 +41,7 @@ def expand_benchmark_config(
 
 def build_game_configs_from_condensed_config(
     game: GameConfig,
-    condensed_config: CondensedXegaBenchmarkConfig,
+    condensed_config: CondensedXentBenchmarkConfig,
     judge: Judge,
 ) -> list[GameMapConfig]:
     game_map_configs: list[GameMapConfig] = []

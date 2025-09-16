@@ -7,10 +7,10 @@ from xent.common.configuration_types import (
     PlayerName,
     PlayerOptions,
 )
-from xent.common.errors import XegaApiError, XegaConfigurationError, XegaInternalError
+from xent.common.errors import XentApiError, XentConfigurationError, XentInternalError
 from xent.common.util import dumps
 from xent.common.x_string import XString
-from xent.common.xega_event import TokenUsage, XegaEvent
+from xent.common.xent_event import TokenUsage, XentEvent
 from xent.runtime.base_player import XGP
 from xent.runtime.default_players import get_presentation_function
 
@@ -21,12 +21,12 @@ class WebsocketXGPOptions(TypedDict):
 
 def check_websocket_xgp_options(options: PlayerOptions | None) -> WebsocketXGPOptions:
     if options is None:
-        raise XegaConfigurationError(
+        raise XentConfigurationError(
             "Player options for websocket player type cannot be None. Please provide valid options."
         )
     websocket = options.get("websocket")
     if websocket is None:
-        raise XegaConfigurationError("No websocket set for websocket player options")
+        raise XentConfigurationError("No websocket set for websocket player options")
     return {"websocket": websocket}
 
 
@@ -39,7 +39,7 @@ class WebsocketXGP(XGP):
         executable_game_map: ExecutableGameMap,
     ):
         super().__init__(name, id, options, executable_game_map)
-        self.event_history: list[XegaEvent] = []
+        self.event_history: list[XentEvent] = []
         self.presentation_function = get_presentation_function(executable_game_map)
         validated_options = check_websocket_xgp_options(options)
         self.websocket = validated_options["websocket"]
@@ -61,18 +61,18 @@ class WebsocketXGP(XGP):
         move = await self._wait_for_websocket_input()
         return move, TokenUsage(input_tokens=0, output_tokens=0)
 
-    async def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XentEvent) -> None:
         logging.info(f"Sending event to websocket: {event}")
         self.event_history.append(event)
-        await self._send_xega_event_to_websocket(event)
+        await self._send_xent_event_to_websocket(event)
 
-    async def _send_xega_event_to_websocket(self, event: XegaEvent) -> None:
+    async def _send_xent_event_to_websocket(self, event: XentEvent) -> None:
         try:
-            serialized_data = dumps({"type": "xega_event", "event": event})
+            serialized_data = dumps({"type": "xent_event", "event": event})
             await self.websocket.send_text(serialized_data)
         except Exception as e:
             logging.error(f"Failed to send event to websocket: {e}")
-            raise XegaApiError("Failed to send event to websocket", "websocket") from e
+            raise XentApiError("Failed to send event to websocket", "websocket") from e
 
     async def _wait_for_websocket_input(self) -> str:
         try:
@@ -86,7 +86,7 @@ class WebsocketXGP(XGP):
                     logging.error("Invalid message format received")
                     continue
 
-                if message["type"] == "xega_input":
+                if message["type"] == "xent_input":
                     input_text = message.get("input", "")
                     logging.info(f"Received user input: {input_text}")
                     return input_text
@@ -96,4 +96,4 @@ class WebsocketXGP(XGP):
 
         except Exception as e:
             logging.error(f"Websocket error while waiting for input: {e}")
-            raise XegaInternalError("Websocket error while waiting for input") from e
+            raise XentInternalError("Websocket error while waiting for input") from e

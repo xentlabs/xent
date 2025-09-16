@@ -13,7 +13,7 @@ def process_benchmark_results(
         map_seed = game_result["game"]["map_seed"]
         game_id = f"{game_name}-{map_seed}"
 
-        # Assuming 1 player per XegaGameResult as per the prompt
+        # Assuming 1 player per XentGameResult as per the prompt
         player_config = game_result["game"]["players"][0]
         player_id = player_config["id"]
         player_name = player_config["name"]

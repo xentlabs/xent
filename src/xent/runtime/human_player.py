@@ -6,7 +6,7 @@ from xent.common.configuration_types import (
     PlayerOptions,
 )
 from xent.common.x_string import XString
-from xent.common.xega_event import TokenUsage, XegaEvent
+from xent.common.xent_event import TokenUsage, XentEvent
 from xent.runtime.base_player import XGP
 from xent.runtime.default_players import get_presentation_function
 
@@ -20,7 +20,7 @@ class HumanXGP(XGP):
         executable_game_map: ExecutableGameMap,
     ):
         super().__init__(name, id, options, executable_game_map)
-        self.event_history: list[XegaEvent] = []
+        self.event_history: list[XentEvent] = []
         self.presentation_function = get_presentation_function(executable_game_map)
         self.metadata = executable_game_map["metadata"]
 
@@ -47,6 +47,6 @@ class HumanXGP(XGP):
         )
         return move, TokenUsage(input_tokens=0, output_tokens=0)
 
-    async def post(self, event: XegaEvent) -> None:
+    async def post(self, event: XentEvent) -> None:
         logging.info(f"Player received: {event}")
         self.event_history.append(event)

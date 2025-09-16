@@ -4,15 +4,15 @@ from typing import Any
 
 from xent.common.configuration_types import GameMapRoundResult
 from xent.common.errors import (
-    XegaConfigurationError,
-    XegaError,
-    XegaGameError,
-    XegaInternalError,
-    XegaSyntaxError,
+    XentConfigurationError,
+    XentError,
+    XentGameError,
+    XentInternalError,
+    XentSyntaxError,
 )
 from xent.common.x_flag import XFlag
-from xent.common.xega_event import RoundFinishedEvent, RoundStartedEvent
-from xent.runtime.runtime import XegaRuntime
+from xent.common.xent_event import RoundFinishedEvent, RoundStartedEvent
+from xent.runtime.runtime import XentRuntime
 
 
 class StringLiteralToXStringTransformer(ast.NodeTransformer):
@@ -28,12 +28,12 @@ class StringLiteralToXStringTransformer(ast.NodeTransformer):
 
 async def play_game(
     code: str,
-    xrt: XegaRuntime,
+    xrt: XentRuntime,
     num_rounds=30,
 ) -> list[GameMapRoundResult]:
     lines = [line.strip() for line in code.split("\n")]
     if len(lines) > 64:
-        raise XegaConfigurationError("Code too long. Max 64 lines.")
+        raise XentConfigurationError("Code too long. Max 64 lines.")
 
     rounds_played = 0
     round_results: list[GameMapRoundResult] = []
@@ -53,7 +53,7 @@ async def play_game(
 # TODO need to clean up error handling / none return here
 async def play_single_game(
     lines: list[str],
-    xrt: XegaRuntime,
+    xrt: XentRuntime,
     rounds_played: int,
 ) -> GameMapRoundResult | None:
     start_event = RoundStartedEvent(
@@ -81,7 +81,7 @@ async def play_single_game(
             line_index = execution_result.line_num
 
             if line_index < 0 or line_index >= len(lines):
-                raise XegaInternalError(
+                raise XentInternalError(
                     f"Invalid line number {line_index} returned by instruction"
                 )
 
@@ -99,7 +99,7 @@ async def play_single_game(
     return results
 
 
-async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
+async def eval_line(line: str, line_num: int, xrt: XentRuntime) -> XFlag | None:
     # Inline comments are handled by ast, but if the line starts with # or is empty, we ignore it
     if (line.strip() == "") or line.strip().startswith("#"):
         return None
@@ -107,12 +107,12 @@ async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
         tree = ast.parse(line, mode="eval")
     except SyntaxError as e:
         logging.exception(f"Syntax error in expression: {e}")
-        raise XegaSyntaxError(
+        raise XentSyntaxError(
             f"Syntax error in expression: {line} (line {line_num})"
         ) from None
 
     if not isinstance(tree, ast.Expression):
-        raise XegaSyntaxError(
+        raise XentSyntaxError(
             f"Invalid expression: {line} (line {line_num}): Not an Expression"
         )
 
@@ -127,12 +127,12 @@ async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
         (resolved_args, resolved_kwargs) = gather_params(
             args, kwargs, xrt, line, line_num
         )
-    except XegaError as e:
+    except XentError as e:
         logging.exception(f"Error gathering parameters: {e}")
         raise e
     except Exception as e:
         logging.exception(f"Unexpected error resolving parameters: {e}")
-        raise XegaGameError(
+        raise XentGameError(
             f"Unexpected error resolving parameters: {line} (line {line_num}): {e}"
         ) from e
 
@@ -140,12 +140,12 @@ async def eval_line(line: str, line_num: int, xrt: XegaRuntime) -> XFlag | None:
         result = await xrt.execute(
             instruction_name, resolved_args, resolved_kwargs, line, line_num
         )
-    except XegaError as e:
+    except XentError as e:
         logging.exception(f"Error executing instruction: {e}")
         raise e
     except Exception as e:
         logging.exception(f"Unexpected error executing instruction: {e}")
-        raise XegaGameError(
+        raise XentGameError(
             f"Unexpected error executing instruction: {line} (line {line_num}): {e}"
         ) from e
 
@@ -156,11 +156,11 @@ def get_validated_call_info(
     tree: ast.Expression, instruction_names: set[str], line: str, line_num: int
 ) -> tuple[str, ast.Call]:
     if not isinstance(tree.body, ast.Call):
-        raise XegaSyntaxError(
+        raise XentSyntaxError(
             f"The expression does not start with an instruction (not ast.Call). Line: {line}, Line number: {line_num}"
         )
     if not isinstance(tree.body.func, ast.Name):
-        raise XegaSyntaxError(
+        raise XentSyntaxError(
             f"The instruction call does not use a simple name (not ast.Name). Line: {line}, Line number: {line_num}"
         )
 
@@ -169,7 +169,7 @@ def get_validated_call_info(
 
     instruction_name: str = func_node.id
     if instruction_name not in instruction_names:
-        raise XegaSyntaxError(
+        raise XentSyntaxError(
             f'Instruction "{instruction_name}" not found. Line: {line}, Line number: {line_num}'
         )
 
@@ -180,7 +180,7 @@ def get_validated_call_info(
 def gather_params(
     args: list[ast.expr],
     kwargs: list[ast.keyword],
-    xrt: XegaRuntime,
+    xrt: XentRuntime,
     line: str,
     line_num: int,
 ) -> tuple[list[Any], dict[str, Any]]:
@@ -192,7 +192,7 @@ def gather_params(
     for kwarg in kwargs:
         variable_name = kwarg.arg
         if not isinstance(variable_name, str):
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Keyword argument key {variable_name} is not a string. Line: {line}, Line number: {line_num}"
             )
 
@@ -203,7 +203,7 @@ def gather_params(
     return (resolved_args, resolved_kwargs)
 
 
-def resolve_arg(arg_node: ast.expr, xrt: XegaRuntime, line: str, line_num: int) -> Any:
+def resolve_arg(arg_node: ast.expr, xrt: XentRuntime, line: str, line_num: int) -> Any:
     try:
         transformer = StringLiteralToXStringTransformer()
         transformed_arg_node = transformer.visit(arg_node)
@@ -215,7 +215,7 @@ def resolve_arg(arg_node: ast.expr, xrt: XegaRuntime, line: str, line_num: int) 
         return resolved_arg
     except Exception as e:
         logging.exception(f"Error resolving argument: {e}")
-        # TODO: depending on the error, we might want to raise a XegaSyntaxError instead
-        raise XegaGameError(
+        # TODO: depending on the error, we might want to raise a XentSyntaxError instead
+        raise XentGameError(
             f"Error resolving argument: {line} (line {line_num}): {e}"
         ) from e

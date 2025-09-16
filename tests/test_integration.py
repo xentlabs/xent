@@ -16,14 +16,14 @@ from xent.analysis.report import generate_markdown_report
 from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.benchmark.run_benchmark import run_benchmark
 from xent.cli.configure import DEFAULT_EXPANSION_CONFIG
-from xent.cli.run import DEFAULT_XEGA_METADATA
+from xent.cli.run import DEFAULT_XENT_METADATA
 from xent.common.configuration_types import (
-    CondensedXegaBenchmarkConfig,
-    ExpandedXegaBenchmarkConfig,
+    CondensedXentBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     ExpansionConfig,
     GameConfig,
     PlayerConfig,
-    XegaMetadata,
+    XentMetadata,
 )
 from xent.common.util import dumps
 from xent.presentation.executor import get_default_presentation
@@ -44,21 +44,21 @@ def module_test_data_dir(tmp_path_factory):
     yield test_dir
 
 
-def create_test_benchmark_config() -> CondensedXegaBenchmarkConfig:
+def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
     """Create a comprehensive benchmark config for testing all scenarios"""
     id_string = (
         datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
         + "-"
         + hex(hash(str(datetime.datetime.now().timestamp())))[-6:]
     )
-    return CondensedXegaBenchmarkConfig(
-        config_type="condensed_xega_config",
-        metadata=XegaMetadata(
+    return CondensedXentBenchmarkConfig(
+        config_type="condensed_xent_config",
+        metadata=XentMetadata(
             benchmark_id=id_string,
-            xega_version=DEFAULT_XEGA_METADATA["xega_version"],
+            xent_version=DEFAULT_XENT_METADATA["xent_version"],
             num_rounds_per_game=1,
-            judge_model=DEFAULT_XEGA_METADATA["judge_model"],
-            seed=DEFAULT_XEGA_METADATA["seed"],
+            judge_model=DEFAULT_XENT_METADATA["judge_model"],
+            seed=DEFAULT_XENT_METADATA["seed"],
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
@@ -113,7 +113,7 @@ def shared_benchmark_results(module_test_data_dir):
     print(dumps(benchmark_config, indent=4))
 
     expanded_config = expand_benchmark_config(benchmark_config)
-    check_type(expanded_config, ExpandedXegaBenchmarkConfig)
+    check_type(expanded_config, ExpandedXentBenchmarkConfig)
     # Run the benchmark once in the event loop
     storage = DirectoryBenchmarkStorage(
         Path(module_test_data_dir), benchmark_config["metadata"]["benchmark_id"]
@@ -142,12 +142,12 @@ def test_benchmark_structure(shared_benchmark_results):
     assert benchmark_results["expanded_config"] == benchmark_config
 
     # Verify version is present in the expanded config and results
-    assert isinstance(benchmark_config["metadata"]["xega_version"], str)
-    assert len(benchmark_config["metadata"]["xega_version"]) > 0
-    assert "xega_version" in benchmark_results["expanded_config"]["metadata"]
+    assert isinstance(benchmark_config["metadata"]["xent_version"], str)
+    assert len(benchmark_config["metadata"]["xent_version"]) > 0
+    assert "xent_version" in benchmark_results["expanded_config"]["metadata"]
     assert (
-        benchmark_results["expanded_config"]["metadata"]["xega_version"]
-        == benchmark_config["metadata"]["xega_version"]
+        benchmark_results["expanded_config"]["metadata"]["xent_version"]
+        == benchmark_config["metadata"]["xent_version"]
     )
 
     # Verify we have results for both games
@@ -265,14 +265,14 @@ def test_individual_analysis_functions(shared_benchmark_results):
 async def test_minimal_benchmark_smoke(test_data_dir):
     """Quick smoke test with minimal configuration"""
     id_string = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M:%S")
-    config = CondensedXegaBenchmarkConfig(
-        config_type="condensed_xega_config",
-        metadata=XegaMetadata(
+    config = CondensedXentBenchmarkConfig(
+        config_type="condensed_xent_config",
+        metadata=XentMetadata(
             benchmark_id=id_string,
-            xega_version=DEFAULT_XEGA_METADATA["xega_version"],
+            xent_version=DEFAULT_XENT_METADATA["xent_version"],
             num_rounds_per_game=2,  # Very low for speed
-            judge_model=DEFAULT_XEGA_METADATA["judge_model"],
-            seed=DEFAULT_XEGA_METADATA["seed"],
+            judge_model=DEFAULT_XENT_METADATA["judge_model"],
+            seed=DEFAULT_XENT_METADATA["seed"],
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"]
@@ -295,7 +295,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
     )
 
     expanded_config = expand_benchmark_config(config)
-    check_type(expanded_config, ExpandedXegaBenchmarkConfig)
+    check_type(expanded_config, ExpandedXentBenchmarkConfig)
 
     storage = DirectoryBenchmarkStorage(
         Path(test_data_dir), expanded_config["metadata"]["benchmark_id"]

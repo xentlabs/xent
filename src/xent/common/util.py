@@ -5,7 +5,7 @@ import subprocess
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
-    ExpandedXegaBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
 )
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.x_string import XString
@@ -87,7 +87,7 @@ def log_git_snapshot(repo_path="."):
 
 
 def generate_executable_game_maps(
-    config: ExpandedXegaBenchmarkConfig,
+    config: ExpandedXentBenchmarkConfig,
 ) -> list[ExecutableGameMap]:
     game_maps: list[ExecutableGameMap] = []
     for map in config["maps"]:

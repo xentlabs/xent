@@ -9,17 +9,17 @@ from xent.common.configuration_types import (
     ExecutableGameMap,
     GameMapConfig,
     PlayerConfig,
-    XegaMetadata,
+    XentMetadata,
 )
-from xent.common.version import get_xega_version
+from xent.common.version import get_xent_version
 from xent.runtime.judge import Judge
 
 
 async def run_websocket_game(websocket: Any, game_code: str) -> None:
     try:
-        metadata: XegaMetadata = {
+        metadata: XentMetadata = {
             "benchmark_id": "interactive_play",
-            "xega_version": get_xega_version(),
+            "xent_version": get_xent_version(),
             "judge_model": "gpt2",
             "num_rounds_per_game": 999,
             "seed": "websocket_game",
@@ -71,7 +71,7 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
         logging.error(f"Error running websocket game: {e}")
         with contextlib.suppress(Exception):
             await websocket.send_text(
-                json.dumps({"type": "xega_error", "error": str(e)})
+                json.dumps({"type": "xent_error", "error": str(e)})
             )
         raise
 

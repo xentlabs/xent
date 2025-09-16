@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from xent.common.configuration_types import (
     BenchmarkResult,
-    ExpandedXegaBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     GameMapResults,
 )
 
@@ -13,11 +13,11 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    async def list_configs(self) -> list[ExpandedXegaBenchmarkConfig]:
+    async def list_configs(self) -> list[ExpandedXentBenchmarkConfig]:
         pass
 
     @abstractmethod
-    async def add_config(self, config: ExpandedXegaBenchmarkConfig):
+    async def add_config(self, config: ExpandedXentBenchmarkConfig):
         pass
 
     @abstractmethod
@@ -42,11 +42,11 @@ class BenchmarkStorage(ABC):
         pass
 
     @abstractmethod
-    async def get_config(self) -> ExpandedXegaBenchmarkConfig | None:
+    async def get_config(self) -> ExpandedXentBenchmarkConfig | None:
         pass
 
     @abstractmethod
-    async def store_config(self, config: ExpandedXegaBenchmarkConfig):
+    async def store_config(self, config: ExpandedXentBenchmarkConfig):
         pass
 
     @abstractmethod

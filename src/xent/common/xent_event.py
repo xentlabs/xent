@@ -10,53 +10,53 @@ class TokenUsage(TypedDict):
     output_tokens: int
 
 
-class BaseXegaEvent(TypedDict):
+class BaseXentEvent(TypedDict):
     line: str
     line_num: int
     player: str
 
 
-class ElicitRequestEvent(BaseXegaEvent):
+class ElicitRequestEvent(BaseXentEvent):
     type: Literal["elicit_request"]
     var_name: str
     max_len: int
     registers: dict[str, XString]
 
 
-class ElicitResponseEvent(BaseXegaEvent):
+class ElicitResponseEvent(BaseXentEvent):
     type: Literal["elicit_response"]
     response: str
     token_usage: TokenUsage
 
 
-class RevealEvent(BaseXegaEvent):
+class RevealEvent(BaseXentEvent):
     type: Literal["reveal"]
     # Map of variable names to their values.
     values: dict[str, XString]
 
 
-class RewardEvent(BaseXegaEvent):
+class RewardEvent(BaseXentEvent):
     type: Literal["reward"]
     value: TokenXentList
 
 
-class FailedEnsureEvent(BaseXegaEvent):
+class FailedEnsureEvent(BaseXentEvent):
     type: Literal["failed_ensure"]
     ensure_results: list[bool]
     beacon: str
 
 
-class RoundStartedEvent(BaseXegaEvent):
+class RoundStartedEvent(BaseXentEvent):
     type: Literal["round_started"]
     round_index: int
 
 
-class RoundFinishedEvent(BaseXegaEvent):
+class RoundFinishedEvent(BaseXentEvent):
     type: Literal["round_finished"]
     round_index: int
 
 
-XegaEvent = (
+XentEvent = (
     ElicitRequestEvent
     | ElicitResponseEvent
     | RevealEvent

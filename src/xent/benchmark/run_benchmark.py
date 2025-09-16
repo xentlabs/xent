@@ -4,18 +4,18 @@ import logging
 from xent.common.configuration_types import (
     BenchmarkResult,
     ExecutableGameMap,
-    ExpandedXegaBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     GameMapResults,
     GameMapRoundResult,
 )
-from xent.common.errors import XegaInternalError
+from xent.common.errors import XentInternalError
 from xent.common.util import generate_executable_game_maps
-from xent.common.version import get_xega_version, validate_version
-from xent.common.xega_event import TokenUsage
+from xent.common.version import get_xent_version, validate_version
+from xent.common.xent_event import TokenUsage
 from xent.runtime.execution import play_game
 from xent.runtime.judge import Judge
 from xent.runtime.players import make_player
-from xent.runtime.runtime import XegaRuntime
+from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 from xent.storage.storage_interface import BenchmarkStorage
 
@@ -39,7 +39,7 @@ async def run_game(
     locals = build_locals(player, executable_game_map)
     globals = build_globals(judge)
 
-    xrt = XegaRuntime(player, locals, globals)
+    xrt = XentRuntime(player, locals, globals)
 
     logging.info(f"Running game: {game_str}")
     try:
@@ -104,9 +104,9 @@ def print_game_history(game_results: GameMapResults) -> None:
         logging.info(f"Score: {game_result['score']}")
 
 
-def check_version(config: ExpandedXegaBenchmarkConfig):
-    config_version = config["metadata"]["xega_version"]
-    current_version = get_xega_version()
+def check_version(config: ExpandedXentBenchmarkConfig):
+    config_version = config["metadata"]["xent_version"]
+    current_version = get_xent_version()
     is_valid, message = validate_version(config_version, current_version)
     if not is_valid:
         logging.warning(f"Version validation in run_benchmark: {message}")
@@ -115,7 +115,7 @@ def check_version(config: ExpandedXegaBenchmarkConfig):
 
 
 async def run_benchmark(
-    config: ExpandedXegaBenchmarkConfig,
+    config: ExpandedXentBenchmarkConfig,
     storage: BenchmarkStorage,
     max_concurrent_games: int,
 ) -> BenchmarkResult:
@@ -178,7 +178,7 @@ async def run_benchmark(
         benchmark_result = await storage.get_benchmark_results()
         if benchmark_result is None:
             logging.error(f"Could not find benchmark results for {benchmark_id}")
-            raise XegaInternalError("Could not find benchmark results after execution")
+            raise XentInternalError("Could not find benchmark results after execution")
 
         logging.info(f"Benchmark ({benchmark_id}) completed")
         print(f"Benchmark ({benchmark_id}) completed")

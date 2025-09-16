@@ -10,18 +10,18 @@ from xent.common.configuration_types import (
     GameMapRoundResult,
     is_omniscient_player_name,
 )
-from xent.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
+from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.x_flag import XFlag
 from xent.common.x_string import XString
-from xent.common.xega_event import (
+from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
     RevealEvent,
     RewardEvent,
     TokenUsage,
-    XegaEvent,
+    XentEvent,
 )
 from xent.runtime.base_player import XGP
 
@@ -31,7 +31,7 @@ ENFORCE_XENT_ENSURE = False
 MAX_ENSURE_FAILURES = 10
 
 
-class XegaRuntime:
+class XentRuntime:
     def __init__(self, player: XGP, locals: dict[str, Any], globals: dict[str, Any]):
         self.local_vars = locals
         self.player = player
@@ -39,7 +39,7 @@ class XegaRuntime:
         self.token_usage: TokenUsage = {"input_tokens": 0, "output_tokens": 0}
         self.globals = globals
         self.beacons: dict[str, XFlag] = {}
-        self.history: list[XegaEvent] = []
+        self.history: list[XentEvent] = []
         # Map from line number to the number of times the replay has been called since reset
         self.replay_counters: dict[int, int] = {}
 
@@ -100,15 +100,15 @@ class XegaRuntime:
             elif instruction_name == "replay":
                 return self.replay(args, kwargs, line_num)
             else:
-                raise XegaSyntaxError(f"Unknown instruction: {instruction_name}")
-        except XegaSyntaxError as e:
+                raise XentSyntaxError(f"Unknown instruction: {instruction_name}")
+        except XentSyntaxError as e:
             logging.exception(f"Syntax error in instruction: {e}")
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"{e}. Line: {line}, Line number: {line_num}"
             ) from None
-        except XegaInternalError as e:
+        except XentInternalError as e:
             logging.exception(f"Internal error in instruction: {e}")
-            raise XegaInternalError(
+            raise XentInternalError(
                 f"{e}. Line: {line}, Line number: {line_num}"
             ) from e
 
@@ -117,30 +117,30 @@ class XegaRuntime:
 
     def assert_no_args(self, args: list[Any], instruction_name: str) -> None:
         if len(args) > 0:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Positional arguments are not allowed for {instruction_name}"
             )
 
     def assert_no_kwargs(self, kwargs: dict[str, Any], instruction_name: str) -> None:
         if len(kwargs) > 0:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Keyword arguments are not allowed for {instruction_name}"
             )
 
-    async def send_event(self, player: XGP, event: XegaEvent) -> None:
+    async def send_event(self, player: XGP, event: XentEvent) -> None:
         await player.post(event)
         self.history.append(event)
 
     def _validate_assign_register(self, var_name: str) -> XString:
         cur = self.local_vars.get(var_name)
         if cur is None:
-            raise XegaSyntaxError(f"Register {var_name} does not exist")
+            raise XentSyntaxError(f"Register {var_name} does not exist")
         if not isinstance(cur, XString):
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"{var_name} is not a valid assign target. Assign requires a String register"
             )
         if cur.static:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Register {var_name} is static: {cur}. Assign requires a non-static register"
             )
 
@@ -150,7 +150,7 @@ class XegaRuntime:
         if isinstance(var_value, str):
             var_value = XString(var_value)
         if not isinstance(var_value, XString):
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Value provided to assign is not a String: {var_value}. Assign requires a String value"
             )
         return var_value
@@ -169,9 +169,9 @@ class XegaRuntime:
         self, args: list[Any], line_num: int
     ) -> tuple[int, int, XGP, int]:
         if len(args) < 2:
-            raise XegaSyntaxError("Elicit requires at least two positional arguments")
+            raise XentSyntaxError("Elicit requires at least two positional arguments")
         if len(args) < 2:
-            raise XegaSyntaxError("Elicit requires at least two positional arguments")
+            raise XentSyntaxError("Elicit requires at least two positional arguments")
 
         var_arg_start = 1
         player = args[0]
@@ -179,11 +179,11 @@ class XegaRuntime:
             var_arg_start = 0
             player = self.local_vars.get("black")
         if not isinstance(player, XGP):
-            raise XegaInternalError("No player identified for elicit")
+            raise XentInternalError("No player identified for elicit")
 
         max_len = args[-1]
         if not isinstance(max_len, int):
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Elicit requires an integer for the length, not {type(max_len)}"
             )
         return (
@@ -195,11 +195,11 @@ class XegaRuntime:
 
     def _validate_elicit_arg(self, var: Any) -> None:
         if not isinstance(var, XString):
-            raise XegaSyntaxError("Elicit requires a String register target")
+            raise XentSyntaxError("Elicit requires a String register target")
         if var.name is None:
-            raise XegaSyntaxError("Elicit requires a String register target")
+            raise XentSyntaxError("Elicit requires a String register target")
         if var.static:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "Elicit target is static. Elicit requires a non-static register target"
             )
 
@@ -271,13 +271,13 @@ class XegaRuntime:
     ) -> None:
         self.assert_no_kwargs(kwargs, "reveal")
         if len(args) == 0:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "Reveal requires at least one positional argument, got none"
             )
 
         player = self.local_vars.get("black")
         if not isinstance(player, XGP):
-            raise XegaInternalError("No player identified for reward")
+            raise XentInternalError("No player identified for reward")
 
         var_names = extract_reveal_parameters(line)
         rest_of_args = args[0:]
@@ -298,11 +298,11 @@ class XegaRuntime:
     ) -> None:
         self.assert_no_kwargs(kwargs, "reward")
         if len(args) == 0:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "Reward requires one or two positional arguments, got none"
             )
         if len(args) > 2:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Reward requires one or two positional arguments, got {len(args)}"
             )
 
@@ -313,10 +313,10 @@ class XegaRuntime:
             score = args[0]
             player = self.local_vars.get("black")
             if not isinstance(player, XGP):
-                raise XegaInternalError("No player identified for reward")
+                raise XentInternalError("No player identified for reward")
 
         if not isinstance(score, TokenXentList):
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "Reward amount must generated by linearly combining xents"
             )
 
@@ -337,25 +337,25 @@ class XegaRuntime:
 
     def _validate_ensure_args(self, args: list[Any]) -> None:
         if len(args) == 0:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "Ensure requires at least one positional argument, got none"
             )
 
         for i, arg in enumerate(args):
             if ENFORCE_XENT_ENSURE:
                 if not isinstance(arg, ValidatedBool):
-                    raise XegaSyntaxError(
+                    raise XentSyntaxError(
                         f"Argument {i} is not the result of a xent computation. Ensure requires a boolean generated by comparisons of xents"
                     )
             else:
                 if not isinstance(arg, bool) and not isinstance(arg, ValidatedBool):
-                    raise XegaSyntaxError(
+                    raise XentSyntaxError(
                         f"Argument {i} is not a boolean. Ensure requires boolean arguments"
                     )
 
     def _validate_elicit_occurred(self) -> XGP:
         if self.last_elicit_player is None:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 "No player identified for previous elicit. Cannot ensure before elicit"
             )
         return self.last_elicit_player
@@ -373,7 +373,7 @@ class XegaRuntime:
 
         fail_count = self.replay_counters.get(line_num, 0)
         if fail_count >= MAX_ENSURE_FAILURES:
-            raise XegaGameError(
+            raise XentGameError(
                 f"Ensure limit exceeded for line {line_num}. Limit: {MAX_ENSURE_FAILURES}"
             )
         previous_elicit = self.beacons["previous_elicit"]
@@ -393,13 +393,13 @@ class XegaRuntime:
     def beacon(self, args: list[Any], kwargs: dict[str, Any], line_num: int) -> None:
         self.assert_no_kwargs(kwargs, "beacon")
         if len(args) != 1:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Beacon requires exactly one positional argument, got {len(args)}"
             )
 
         flag = args[0]
         if not isinstance(flag, XFlag):
-            raise XegaSyntaxError("Beacon argument must be either `flag_1` or `flag_2`")
+            raise XentSyntaxError("Beacon argument must be either `flag_1` or `flag_2`")
 
         flag.line_num = line_num
         self.beacons[flag.name] = flag
@@ -411,20 +411,20 @@ class XegaRuntime:
         self.assert_no_kwargs(kwargs, "replay")
 
         if len(args) != 2:
-            raise XegaSyntaxError(
+            raise XentSyntaxError(
                 f"Replay requires exactly two positional arguments, got {len(args)}"
             )
 
         flag = args[0]
         if not isinstance(flag, XFlag):
-            raise XegaSyntaxError("Replay argument must be an XFlag")
+            raise XentSyntaxError("Replay argument must be an XFlag")
 
         if flag.name not in self.beacons:
-            raise XegaInternalError(f"Replay beacon {flag.name} not found")
+            raise XentInternalError(f"Replay beacon {flag.name} not found")
 
         iterations = args[1]
         if not isinstance(iterations, int):
-            raise XegaSyntaxError("Replay iterations must be an integer")
+            raise XentSyntaxError("Replay iterations must be an integer")
 
         replay_count = self.replay_counters.get(line_num, 0)
         if replay_count >= iterations:

@@ -11,19 +11,19 @@ from pydantic import BaseModel
 
 from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.benchmark.run_benchmark import run_benchmark
-from xent.common.configuration_types import CondensedXegaBenchmarkConfig
+from xent.common.configuration_types import CondensedXentBenchmarkConfig
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
 from xent.web.websocket_game_runner import run_websocket_game
 
-app = FastAPI(title="XEGA Web Interface")
+app = FastAPI(title="XENT Web Interface")
 
 STORAGE_DIR = Path.cwd() / "results"
 storage = DirectoryStorage(STORAGE_DIR)
 
 
 class ConfigRequest(BaseModel):
-    config: CondensedXegaBenchmarkConfig
+    config: CondensedXentBenchmarkConfig
 
 
 # Serve static files
@@ -356,12 +356,12 @@ async def websocket_endpoint(websocket: WebSocket):
             if not isinstance(message, dict) or "type" not in message:
                 await websocket.send_text("Invalid message format")
                 continue
-            elif message["type"] == "xega_control":
+            elif message["type"] == "xent_control":
                 if message["command"] == "start":
                     # Use code from message if provided, otherwise fallback to current code
                     game_code = message.get("code", code)
                     print(
-                        f"Starting interactive Xega game with code: {game_code[:50]}..."
+                        f"Starting interactive Xent game with code: {game_code[:50]}..."
                     )
 
                     # Cancel any existing game first

@@ -32,15 +32,15 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig
 
 from xent.common.configuration_types import PlayerOptions
 from xent.common.errors import (
-    XegaApiError,
-    XegaAuthenticationError,
-    XegaConfigurationError,
-    XegaGameError,
-    XegaInternalServerError,
-    XegaInvalidRequestError,
-    XegaRateLimitError,
+    XentApiError,
+    XentAuthenticationError,
+    XentConfigurationError,
+    XentGameError,
+    XentInternalServerError,
+    XentInvalidRequestError,
+    XentRateLimitError,
 )
-from xent.common.xega_event import TokenUsage
+from xent.common.xent_event import TokenUsage
 from xent.runtime.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,
@@ -131,27 +131,27 @@ class OllamaClient(LLMClient):
             return response_message, token_usage
         except OllamaResponseError as e:
             if e.status_code == 429:
-                raise XegaRateLimitError(
+                raise XentRateLimitError(
                     str(e), provider="ollama", status_code=e.status_code
                 ) from e
             elif e.status_code in [401, 403]:
-                raise XegaAuthenticationError(
+                raise XentAuthenticationError(
                     str(e), provider="ollama", status_code=e.status_code
                 ) from e
             elif e.status_code == 400:
-                raise XegaInvalidRequestError(
+                raise XentInvalidRequestError(
                     str(e), provider="ollama", status_code=e.status_code
                 ) from e
             elif e.status_code >= 500:
-                raise XegaInternalServerError(
+                raise XentInternalServerError(
                     str(e), provider="ollama", status_code=e.status_code
                 ) from e
             else:
-                raise XegaApiError(
+                raise XentApiError(
                     str(e), provider="ollama", status_code=e.status_code
                 ) from e
         except Exception as e:
-            raise XegaGameError(
+            raise XentGameError(
                 f"An unexpected error occurred with Ollama client: {e}"
             ) from e
 
@@ -161,7 +161,7 @@ class OpenAIClient(LLMClient):
         super().__init__(model)
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise XegaConfigurationError("OPENAI_API_KEY environment variable not set.")
+            raise XentConfigurationError("OPENAI_API_KEY environment variable not set.")
         self.client = AsyncOpenAI(api_key=api_key)
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
@@ -210,28 +210,28 @@ class OpenAIClient(LLMClient):
                 input_tokens=input_token_count, output_tokens=output_token_count
             )
             if response_message is None:
-                raise XegaApiError(
+                raise XentApiError(
                     "The API returned an empty message.", provider="openai"
                 )
             return response_message, token_usage
         except OpenAIRateLimitError as e:
-            raise XegaRateLimitError(
+            raise XentRateLimitError(
                 str(e), provider="openai", status_code=e.status_code
             ) from e
         except OpenAIAuthenticationError as e:
-            raise XegaAuthenticationError(
+            raise XentAuthenticationError(
                 str(e), provider="openai", status_code=e.status_code
             ) from e
         except OpenAIBadRequestError as e:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 str(e), provider="openai", status_code=e.status_code
             ) from e
         except OpenAIInternalServerError as e:
-            raise XegaInternalServerError(
+            raise XentInternalServerError(
                 str(e), provider="openai", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(str(e), provider="openai", status_code=500) from e
+            raise XentApiError(str(e), provider="openai", status_code=500) from e
 
 
 class AnthropicClient(LLMClient):
@@ -239,7 +239,7 @@ class AnthropicClient(LLMClient):
         super().__init__(model)
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 "ANTHROPIC_API_KEY environment variable not set."
             )
         self.client = AsyncAnthropic(api_key=api_key)
@@ -268,7 +268,7 @@ class AnthropicClient(LLMClient):
                 )
 
         if not anthropic_api_messages:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 "Cannot send a request with no user/assistant messages.",
                 provider="anthropic",
             )
@@ -293,28 +293,28 @@ class AnthropicClient(LLMClient):
             ):
                 return message.content[0].text, token_usage
             else:
-                raise XegaApiError(
+                raise XentApiError(
                     "The API returned an empty or blocked message.",
                     provider="anthropic",
                 )
         except AnthropicRateLimitError as e:
-            raise XegaRateLimitError(
+            raise XentRateLimitError(
                 str(e), provider="anthropic", status_code=e.status_code
             ) from e
         except AnthropicAuthenticationError as e:
-            raise XegaAuthenticationError(
+            raise XentAuthenticationError(
                 str(e), provider="anthropic", status_code=e.status_code
             ) from e
         except AnthropicBadRequestError as e:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 str(e), provider="anthropic", status_code=e.status_code
             ) from e
         except AnthropicInternalServerError as e:
-            raise XegaInternalServerError(
+            raise XentInternalServerError(
                 str(e), provider="anthropic", status_code=e.status_code
             ) from e
         except AnthropicAPIError as e:
-            raise XegaApiError(str(e), provider="anthropic", status_code=500) from e
+            raise XentApiError(str(e), provider="anthropic", status_code=500) from e
 
 
 class GeminiClient(LLMClient):
@@ -322,7 +322,7 @@ class GeminiClient(LLMClient):
         super().__init__(model)
         google_api_key = os.getenv("GEMINI_API_KEY")
         if not google_api_key:
-            raise XegaConfigurationError("GEMINI_API_KEY environment variable not set.")
+            raise XentConfigurationError("GEMINI_API_KEY environment variable not set.")
         self.client = genai.Client(api_key=google_api_key)
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
@@ -365,7 +365,7 @@ class GeminiClient(LLMClient):
                 )
 
         if not gemini_contents and not system_instruction_content:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 "Cannot send a request with no user/assistant messages and no system instruction.",
                 provider="gemini",
             )
@@ -396,7 +396,7 @@ class GeminiClient(LLMClient):
                 return response.text, token_usage
             else:
                 feedback = getattr(response, "prompt_feedback", "N/A")
-                raise XegaApiError(
+                raise XentApiError(
                     f"Gemini response is empty or was blocked. Feedback: {feedback}",
                     provider="gemini",
                 )
@@ -404,15 +404,15 @@ class GeminiClient(LLMClient):
         except genai.errors.ClientError as e:
             # Map specific client errors based on status code
             if e.code == 429:
-                raise XegaRateLimitError(str(e), provider="gemini") from e
+                raise XentRateLimitError(str(e), provider="gemini") from e
             elif e.code in (401, 403):
-                raise XegaAuthenticationError(str(e), provider="gemini") from e
+                raise XentAuthenticationError(str(e), provider="gemini") from e
             else:
-                raise XegaInvalidRequestError(str(e), provider="gemini") from e
+                raise XentInvalidRequestError(str(e), provider="gemini") from e
         except genai.errors.ServerError as e:
-            raise XegaInternalServerError(str(e), provider="gemini") from e
+            raise XentInternalServerError(str(e), provider="gemini") from e
         except Exception as e:
-            raise XegaApiError(
+            raise XentApiError(
                 f"An unexpected error occurred: {e}", provider="gemini"
             ) from e
 
@@ -422,7 +422,7 @@ class GrokClient(LLMClient):
         super().__init__(model)
         api_key = os.getenv("GROK_API_KEY")
         if not api_key:
-            raise XegaConfigurationError("GROK_API_KEY environment variable not set.")
+            raise XentConfigurationError("GROK_API_KEY environment variable not set.")
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
@@ -470,28 +470,28 @@ class GrokClient(LLMClient):
                 input_tokens=input_token_count, output_tokens=output_token_count
             )
             if response_message is None:
-                raise XegaApiError(
+                raise XentApiError(
                     "The API returned an empty message.", provider="grok"
                 )
             return response_message, token_usage
         except OpenAIRateLimitError as e:
-            raise XegaRateLimitError(
+            raise XentRateLimitError(
                 str(e), provider="grok", status_code=e.status_code
             ) from e
         except OpenAIAuthenticationError as e:
-            raise XegaAuthenticationError(
+            raise XentAuthenticationError(
                 str(e), provider="grok", status_code=e.status_code
             ) from e
         except OpenAIBadRequestError as e:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 str(e), provider="grok", status_code=e.status_code
             ) from e
         except OpenAIInternalServerError as e:
-            raise XegaInternalServerError(
+            raise XentInternalServerError(
                 str(e), provider="grok", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(str(e), provider="grok") from e
+            raise XentApiError(str(e), provider="grok") from e
 
 
 class DeepSeekClient(LLMClient):
@@ -499,7 +499,7 @@ class DeepSeekClient(LLMClient):
         super().__init__(model)
         api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 "DEEPSEEK_API_KEY environment variable not set."
             )
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
@@ -549,28 +549,28 @@ class DeepSeekClient(LLMClient):
                 input_tokens=input_token_count, output_tokens=output_token_count
             )
             if response_message is None:
-                raise XegaApiError(
+                raise XentApiError(
                     "The API returned an empty message.", provider="deepseek"
                 )
             return response_message, token_usage
         except OpenAIRateLimitError as e:
-            raise XegaRateLimitError(
+            raise XentRateLimitError(
                 str(e), provider="deepseek", status_code=e.status_code
             ) from e
         except OpenAIAuthenticationError as e:
-            raise XegaAuthenticationError(
+            raise XentAuthenticationError(
                 str(e), provider="deepseek", status_code=e.status_code
             ) from e
         except OpenAIBadRequestError as e:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 str(e), provider="deepseek", status_code=e.status_code
             ) from e
         except OpenAIInternalServerError as e:
-            raise XegaInternalServerError(
+            raise XentInternalServerError(
                 str(e), provider="deepseek", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(str(e), provider="deepseek") from e
+            raise XentApiError(str(e), provider="deepseek") from e
 
 
 class MoonshotClient(LLMClient):
@@ -578,7 +578,7 @@ class MoonshotClient(LLMClient):
         super().__init__(model)
         api_key = os.getenv("MOONSHOT_API_KEY")
         if not api_key:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 "MOONSHOT_API_KEY environment variable not set."
             )
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.moonshot.ai")
@@ -628,28 +628,28 @@ class MoonshotClient(LLMClient):
                 input_tokens=input_token_count, output_tokens=output_token_count
             )
             if response_message is None:
-                raise XegaApiError(
+                raise XentApiError(
                     "The API returned an empty message.", provider="moonshot"
                 )
             return response_message, token_usage
         except OpenAIRateLimitError as e:
-            raise XegaRateLimitError(
+            raise XentRateLimitError(
                 str(e), provider="moonshot", status_code=e.status_code
             ) from e
         except OpenAIAuthenticationError as e:
-            raise XegaAuthenticationError(
+            raise XentAuthenticationError(
                 str(e), provider="moonshot", status_code=e.status_code
             ) from e
         except OpenAIBadRequestError as e:
-            raise XegaInvalidRequestError(
+            raise XentInvalidRequestError(
                 str(e), provider="moonshot", status_code=e.status_code
             ) from e
         except OpenAIInternalServerError as e:
-            raise XegaInternalServerError(
+            raise XentInternalServerError(
                 str(e), provider="moonshot", status_code=e.status_code
             ) from e
         except OpenAIAPIError as e:
-            raise XegaApiError(str(e), provider="moonshot") from e
+            raise XentApiError(str(e), provider="moonshot") from e
 
 
 class HuggingFaceClient(LLMClient):
@@ -709,7 +709,7 @@ class HuggingFaceClient(LLMClient):
             self.model_instance.eval()
             logging.info(f"Loaded model {model_name_or_path} on {self.device}")
         except Exception as e:
-            raise XegaConfigurationError(
+            raise XentConfigurationError(
                 f"Failed to load Hugging Face model '{model_name_or_path}': {e}"
             ) from e
 
@@ -783,7 +783,7 @@ class HuggingFaceClient(LLMClient):
             )
             return response.strip(), token_usage
         except Exception as e:
-            raise XegaGameError(f"Hugging Face model generation failed: {e}") from e
+            raise XentGameError(f"Hugging Face model generation failed: {e}") from e
 
     def _generate(
         self, input_ids: torch.Tensor, attention_mask: torch.Tensor | None = None
@@ -829,4 +829,4 @@ def make_client(unchecked_options: PlayerOptions | None) -> LLMClient:
             check_default_hf_xgp_options(unchecked_options)
         )
     else:
-        raise XegaConfigurationError(f"Unsupported provider: {provider}")
+        raise XentConfigurationError(f"Unsupported provider: {provider}")

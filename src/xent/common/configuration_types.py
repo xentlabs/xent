@@ -1,6 +1,6 @@
 from typing import Literal, TypedDict, TypeGuard
 
-from xent.common.xega_event import TokenUsage, XegaEvent
+from xent.common.xent_event import TokenUsage, XentEvent
 
 PlayerName = Literal["black", "white", "alice", "bob", "carol", "env"]
 OmniscientPlayerName = Literal["black", "white", "env"]
@@ -33,17 +33,17 @@ class ExpansionConfig(TypedDict):
     num_maps_per_game: int
 
 
-class XegaMetadata(TypedDict):
+class XentMetadata(TypedDict):
     benchmark_id: str
-    xega_version: str
+    xent_version: str
     judge_model: str
     num_rounds_per_game: int
     seed: str
 
 
-class CondensedXegaBenchmarkConfig(TypedDict):
-    config_type: Literal["condensed_xega_config"]
-    metadata: XegaMetadata
+class CondensedXentBenchmarkConfig(TypedDict):
+    config_type: Literal["condensed_xent_config"]
+    metadata: XentMetadata
     expansion_config: ExpansionConfig
     players: list[PlayerConfig]
     games: list[GameConfig]
@@ -60,9 +60,9 @@ class GameMapConfig(TypedDict):
     map_seed: str
 
 
-class ExpandedXegaBenchmarkConfig(TypedDict):
-    config_type: Literal["expanded_xega_config"]
-    metadata: XegaMetadata
+class ExpandedXentBenchmarkConfig(TypedDict):
+    config_type: Literal["expanded_xent_config"]
+    metadata: XentMetadata
     players: list[PlayerConfig]
     games: list[GameConfig]
     maps: list[GameMapConfig]
@@ -75,7 +75,7 @@ class ExpandedXegaBenchmarkConfig(TypedDict):
 # atomically - you can't have a result that is partially finished.
 class ExecutableGameMap(TypedDict):
     game_map: GameMapConfig
-    metadata: XegaMetadata
+    metadata: XentMetadata
     player: PlayerConfig
 
 
@@ -85,12 +85,12 @@ class ExecutableGameMap(TypedDict):
 class GameMapRoundResult(TypedDict):
     score: float
     token_usage: TokenUsage
-    history: list[XegaEvent]
+    history: list[XentEvent]
 
 
 class GameMapResults(TypedDict):
     game_map: GameMapConfig
-    metadata: XegaMetadata
+    metadata: XentMetadata
     player: PlayerConfig
     score: float
     token_usage: TokenUsage
@@ -98,5 +98,5 @@ class GameMapResults(TypedDict):
 
 
 class BenchmarkResult(TypedDict):
-    expanded_config: ExpandedXegaBenchmarkConfig
+    expanded_config: ExpandedXentBenchmarkConfig
     results: list[GameMapResults]

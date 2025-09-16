@@ -4,7 +4,7 @@ from pathlib import Path
 
 from xent.common.configuration_types import (
     BenchmarkResult,
-    ExpandedXegaBenchmarkConfig,
+    ExpandedXentBenchmarkConfig,
     GameMapResults,
 )
 from xent.common.util import dumps, generate_executable_game_maps
@@ -31,7 +31,7 @@ class DirectoryBenchmarkStorage(BenchmarkStorage):
                 if item.is_dir():
                     item.rmdir()
 
-    async def get_config(self) -> ExpandedXegaBenchmarkConfig | None:
+    async def get_config(self) -> ExpandedXentBenchmarkConfig | None:
         config_path = self.results_dir / "benchmark_config.json"
         if config_path.exists():
             with open(config_path) as f:
@@ -39,7 +39,7 @@ class DirectoryBenchmarkStorage(BenchmarkStorage):
                 return config
         return None
 
-    async def store_config(self, config: ExpandedXegaBenchmarkConfig):
+    async def store_config(self, config: ExpandedXentBenchmarkConfig):
         config_path = self.results_dir / "benchmark_config.json"
         with open(config_path, "w") as f:
             f.write(dumps(config, indent=4))
@@ -109,8 +109,8 @@ class DirectoryStorage(Storage):
     def __init__(self, storage_dir: Path):
         self.storage_dir = storage_dir
 
-    async def list_configs(self) -> list[ExpandedXegaBenchmarkConfig]:
-        configs: list[ExpandedXegaBenchmarkConfig] = []
+    async def list_configs(self) -> list[ExpandedXentBenchmarkConfig]:
+        configs: list[ExpandedXentBenchmarkConfig] = []
         for item in self.storage_dir.iterdir():
             if item.is_dir():
                 config_file = item / "benchmark_config.json"
@@ -126,7 +126,7 @@ class DirectoryStorage(Storage):
 
         return configs
 
-    async def add_config(self, config: ExpandedXegaBenchmarkConfig):
+    async def add_config(self, config: ExpandedXentBenchmarkConfig):
         benchmark_storage = DirectoryBenchmarkStorage(
             self.storage_dir, config["metadata"]["benchmark_id"]
         )

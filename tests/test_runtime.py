@@ -3,21 +3,21 @@ from unittest.mock import Mock
 
 import pytest
 
-from xega.benchmark.expand_benchmark import (
+from xent.benchmark.expand_benchmark import (
     expand_game_config,
     preprocess_dsl_code,
 )
-from xega.benchmark.run_benchmark import extract_token_usage
-from xega.common.configuration_types import (
+from xent.benchmark.run_benchmark import extract_token_usage
+from xent.common.configuration_types import (
     ExecutableGameMap,
     GameConfig,
     GameMapConfig,
 )
-from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
-from xega.common.token_xent_list import TokenXentList, ValidatedBool
-from xega.common.version import get_xega_version, validate_version
-from xega.common.x_string import XString
-from xega.common.xega_event import (
+from xent.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
+from xent.common.token_xent_list import TokenXentList, ValidatedBool
+from xent.common.version import get_xega_version, validate_version
+from xent.common.x_string import XString
+from xent.common.xega_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
@@ -25,12 +25,12 @@ from xega.common.xega_event import (
     RewardEvent,
     XegaEvent,
 )
-from xega.presentation.executor import (
+from xent.presentation.executor import (
     SAMPLE_METADATA,
     PresentationFunction,
     get_default_presentation,
 )
-from xega.presentation.sdk import (
+from xent.presentation.sdk import (
     format_elicit_request,
     format_elicit_response,
     format_failed_ensure,
@@ -40,11 +40,11 @@ from xega.presentation.sdk import (
     get_current_registers,
     get_event_summary,
 )
-from xega.runtime.default_players import DefaultXGP, MockXGP
-from xega.runtime.execution import eval_line, play_game
-from xega.runtime.judge import Judge
-from xega.runtime.runtime import XegaRuntime
-from xega.runtime.variables import build_globals, build_locals
+from xent.runtime.default_players import DefaultXGP, MockXGP
+from xent.runtime.execution import eval_line, play_game
+from xent.runtime.judge import Judge
+from xent.runtime.runtime import XegaRuntime
+from xent.runtime.variables import build_globals, build_locals
 
 
 class TestXString:
@@ -1242,7 +1242,7 @@ def present(state, history, metadata):
 
     def test_presentation_with_sdk_functions(self):
         code = """
-from xega.presentation.sdk import format_elicit_request, format_reveal
+from xent.presentation.sdk import format_elicit_request, format_reveal
 
 def present(state, history, metadata):
     if not history:
@@ -1299,8 +1299,8 @@ def present(state, history, metadata):
     def test_sdk_utilities_with_imports(self):
         """Test that SDK utilities work correctly when imported"""
         code = """
-from xega.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
-from xega.common.token_xent_list import TokenXentList
+from xent.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
+from xent.common.token_xent_list import TokenXentList
 
 def present(state, history, metadata):
     # Test split_rounds
@@ -1336,7 +1336,7 @@ def present(state, history, metadata):
     def test_presentation_builder(self):
         """Test PresentationBuilder functionality"""
         code = """
-from xega.presentation.sdk import PresentationBuilder
+from xent.presentation.sdk import PresentationBuilder
 
 def present(state, history, metadata):
     builder = PresentationBuilder()
@@ -1365,8 +1365,8 @@ def present(state, history, metadata):
     def test_format_functions(self):
         """Test SDK formatting functions"""
         code = """
-from xega.presentation.sdk import format_token_xent_list, format_reward
-from xega.common.token_xent_list import TokenXentList
+from xent.presentation.sdk import format_token_xent_list, format_reward
+from xent.common.token_xent_list import TokenXentList
 
 def present(state, history, metadata):
     # Test format_token_xent_list
@@ -1732,7 +1732,7 @@ elicit(black, x, 5)""",
         """Test that a real game presentation works with SDK imports"""
         # Simplified version of Condense presentation using SDK
         condense_presentation = """
-from xega.presentation.sdk import (
+from xent.presentation.sdk import (
     PresentationBuilder,
     extract_rewards,
     get_scores_by_round,
@@ -1759,7 +1759,7 @@ def present(state, history, metadata):
         func = PresentationFunction(condense_presentation)
 
         # Test with realistic game state and history
-        from xega.common.token_xent_list import TokenXentList
+        from xent.common.token_xent_list import TokenXentList
 
         state = {"s": "Once upon a time"}
         history: list[XegaEvent] = [
@@ -1775,7 +1775,7 @@ def present(state, history, metadata):
     def test_sdk_data_extraction_with_game_history(self):
         """Test SDK utilities with realistic multi-round game history"""
         test_presentation = """
-from xega.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
+from xent.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
 
 def present(state, history, metadata):
     rounds = split_rounds(history)
@@ -1797,7 +1797,6 @@ def present(state, history, metadata):
         func = PresentationFunction(test_presentation)
 
         # Create realistic multi-round history
-        from xega.common.token_xent_list import TokenXentList
 
         history: list[XegaEvent] = [
             # Round 1

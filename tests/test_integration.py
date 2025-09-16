@@ -7,17 +7,17 @@ from pathlib import Path
 import pytest
 from typeguard import check_type
 
-from xega.analysis.analyze import analyze
-from xega.analysis.plot import (
+from xent.analysis.analyze import analyze
+from xent.analysis.plot import (
     generate_normalized_score_summary_chart,
     generate_score_iteration_plots,
 )
-from xega.analysis.report import generate_markdown_report
-from xega.benchmark.expand_benchmark import expand_benchmark_config
-from xega.benchmark.run_benchmark import run_benchmark
-from xega.cli.configure import DEFAULT_EXPANSION_CONFIG
-from xega.cli.run import DEFAULT_XEGA_METADATA
-from xega.common.configuration_types import (
+from xent.analysis.report import generate_markdown_report
+from xent.benchmark.expand_benchmark import expand_benchmark_config
+from xent.benchmark.run_benchmark import run_benchmark
+from xent.cli.configure import DEFAULT_EXPANSION_CONFIG
+from xent.cli.run import DEFAULT_XEGA_METADATA
+from xent.common.configuration_types import (
     CondensedXegaBenchmarkConfig,
     ExpandedXegaBenchmarkConfig,
     ExpansionConfig,
@@ -25,9 +25,9 @@ from xega.common.configuration_types import (
     PlayerConfig,
     XegaMetadata,
 )
-from xega.common.util import dumps
-from xega.presentation.executor import get_default_presentation
-from xega.storage.directory_storage import DirectoryBenchmarkStorage
+from xent.common.util import dumps
+from xent.presentation.executor import get_default_presentation
+from xent.storage.directory_storage import DirectoryBenchmarkStorage
 
 
 @pytest.fixture

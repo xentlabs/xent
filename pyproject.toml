@@ -1,7 +1,7 @@
 [project]
-name = "xega"
-version = "0.1.2"
-description = "Xega LLM Benchmarking System"
+name = "xent"
+version = "0.1.0"
+description = "Xent LLM Benchmarking System"
 keywords = ["llm", "benchmark", "ai", "evaluation"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -33,7 +33,7 @@ dependencies = [
 ]
 
 [project.scripts]
-xega = "xega.cli.main:main"
+xent = "xent.cli.main:main"
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -83,7 +83,7 @@ indent-style = "space"
 
 [tool.mypy]
 python_version = "3.13"
-packages = ["xega"]
+packages = ["xent"]
 mypy_path = "src"
 show_error_codes = true
 exclude = ["games/"]

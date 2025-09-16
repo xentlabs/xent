@@ -3,13 +3,13 @@ import os
 import pytest
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from xega.common.configuration_types import ExecutableGameMap
-from xega.common.version import get_xega_version
-from xega.presentation.executor import get_default_presentation
-from xega.runtime.default_players import MockXGP
-from xega.runtime.judge import Judge
-from xega.runtime.runtime import XegaRuntime
-from xega.runtime.variables import build_globals, build_locals
+from xent.common.configuration_types import ExecutableGameMap
+from xent.common.version import get_xega_version
+from xent.presentation.executor import get_default_presentation
+from xent.runtime.default_players import MockXGP
+from xent.runtime.judge import Judge
+from xent.runtime.runtime import XegaRuntime
+from xent.runtime.variables import build_globals, build_locals
 
 FAKE_GAME_MAP: ExecutableGameMap = {
     "game_map": {

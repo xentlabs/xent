@@ -1,9 +1,9 @@
 import pytest
 
-from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
-from xega.common.x_flag import XFlag
-from xega.common.x_string import XString
-from xega.runtime.execution import eval_line, play_game
+from xent.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
+from xent.common.x_flag import XFlag
+from xent.common.x_string import XString
+from xent.runtime.execution import eval_line, play_game
 
 
 class TestAssignInstruction:

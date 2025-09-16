@@ -7,19 +7,19 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from xega.cli.configure import (
+from xent.cli.configure import (
     add_player_to_config,
     configure,
     games_from_paths,
     remove_player_from_config,
 )
-from xega.cli.run import check_version
-from xega.common.configuration_types import (
+from xent.cli.run import check_version
+from xent.common.configuration_types import (
     ExpandedXegaBenchmarkConfig,
     PlayerConfig,
 )
-from xega.common.version import get_xega_version
-from xega.presentation.executor import get_default_presentation
+from xent.common.version import get_xega_version
+from xent.presentation.executor import get_default_presentation
 
 
 @pytest.fixture

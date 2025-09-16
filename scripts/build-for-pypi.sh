@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+echo "Cleaning previous build artifacts..."
+rm -rf \
+  dist \
+  build \
+  *.egg-info \
+  src/*.egg-info \
+  src/xent/web/static
+
 echo "Building web frontend..."
 cd web
 npm install

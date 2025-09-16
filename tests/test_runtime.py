@@ -698,8 +698,8 @@ class TestTokenUsage:
         """Test that token usage resets between iterations but accumulates in final results."""
         game_config = self.FAKE_GAME_CONFIG.copy()
         player = MockXGP(
-            "alice",
-            "test_alice",
+            "black",
+            "test_black",
             {},
             game_config,
             token_usage_per_move={"input_tokens": 15, "output_tokens": 10},
@@ -751,8 +751,8 @@ class TestTokenUsage:
         """Test handling of zero token usage scenarios."""
         game_config = self.FAKE_GAME_CONFIG.copy()
         player = MockXGP(
-            "alice",
-            "test_alice",
+            "black",
+            "test_black",
             {},
             game_config,
             token_usage_per_move={"input_tokens": 0, "output_tokens": 0},

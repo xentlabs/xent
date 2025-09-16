@@ -9,6 +9,9 @@ rm -rf \
   src/*.egg-info \
   src/xent/web/static
 
+echo "Removing cached Python bytecode..."
+find src -type d -name "__pycache__" -exec rm -rf {} +
+
 echo "Building web frontend..."
 cd web
 npm install

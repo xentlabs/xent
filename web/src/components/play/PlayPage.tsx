@@ -4,33 +4,33 @@ import GamePanel from './GamePanel';
 import GameError from './GameError';
 import TokenVisualization from './TokenVisualization';
 
-interface XegaInputMessage {
-  type: 'xega_input';
+interface XentInputMessage {
+  type: 'xent_input';
   input: string;
 }
 
-interface XegaConfigureMessage {
-  type: 'xega_configure';
+interface XentConfigureMessage {
+  type: 'xent_configure';
   code: string;
 }
 
-interface XegaControlMessage {
-  type: 'xega_control';
+interface XentControlMessage {
+  type: 'xent_control';
   command: string;
   code?: string;
 }
 
-interface XegaErrorMessage {
-  type: 'xega_error';
+interface XentErrorMessage {
+  type: 'xent_error';
   error: string;
 }
 
-interface XegaEventMessage {
-  type: 'xega_event';
+interface XentEventMessage {
+  type: 'xent_event';
   event: any;
 }
 
-type XegaMessage = XegaInputMessage | XegaConfigureMessage | XegaControlMessage | XegaErrorMessage | XegaEventMessage;
+type XentMessage = XentInputMessage | XentConfigureMessage | XentControlMessage | XentErrorMessage | XentEventMessage;
 
 const DEFAULT_GAME_CODE = `assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
 reveal(black, s)
@@ -60,7 +60,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
     setOutputs((prev) => [...prev, element]);
   };
 
-  const sendMessage = (message: XegaMessage) => {
+  const sendMessage = (message: XentMessage) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify(message));
       console.log('Sent message:', message);
@@ -70,11 +70,11 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
   };
 
   const sendInputMessage = (input: string) => {
-    sendMessage({ type: 'xega_input', input });
+    sendMessage({ type: 'xent_input', input });
   };
 
   const sendStartMessage = () => {
-    sendMessage({ type: 'xega_control', command: 'start', code: code });
+    sendMessage({ type: 'xent_control', command: 'start', code: code });
     setIsGameRunning(true);
     setGameCompleted(false);
     setTotalScore(null);
@@ -98,10 +98,10 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
 
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
-      const message: XegaMessage = JSON.parse(event.data);
+      const message: XentMessage = JSON.parse(event.data);
       console.log('Received message:', message);
 
-      if (message.type === 'xega_error') {
+      if (message.type === 'xent_error') {
         console.error('Error from server:', message.error);
         appendOutput(
           <GameError
@@ -113,7 +113,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
         return;
       }
 
-      if (message.type !== 'xega_event') {
+      if (message.type !== 'xent_event') {
         console.warn('Received non-event message:', message);
         return;
       }
@@ -287,7 +287,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
       }
       // Configure with current code
       if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'xega_configure', code: code }));
+        socket.send(JSON.stringify({ type: 'xent_configure', code: code }));
       }
     };
 
@@ -352,7 +352,7 @@ export default function PlayPage({ onBack }: { onBack: () => void }) {
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>XEGA Interactive Play</h1>
+        <h1>XENT Interactive Play</h1>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {connectionStatus === 'disconnected' && (
             <>

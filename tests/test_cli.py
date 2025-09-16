@@ -7,29 +7,29 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
-from xega.cli.configure import (
+from xent.cli.configure import (
     add_player_to_config,
     configure,
     games_from_paths,
     remove_player_from_config,
 )
-from xega.cli.run import check_version
-from xega.common.configuration_types import (
-    ExpandedXegaBenchmarkConfig,
+from xent.cli.run import check_version
+from xent.common.configuration_types import (
+    ExpandedXentBenchmarkConfig,
     PlayerConfig,
 )
-from xega.common.version import get_xega_version
-from xega.presentation.executor import get_default_presentation
+from xent.common.version import get_xent_version
+from xent.presentation.executor import get_default_presentation
 
 
 @pytest.fixture
-def simple_expanded_config() -> ExpandedXegaBenchmarkConfig:
+def simple_expanded_config() -> ExpandedXentBenchmarkConfig:
     """Provides a simple, expanded benchmark configuration for testing."""
     return {
-        "config_type": "expanded_xega_config",
+        "config_type": "expanded_xent_config",
         "metadata": {
             "benchmark_id": "test-benchmark",
-            "xega_version": get_xega_version(),
+            "xent_version": get_xent_version(),
             "judge_model": "gpt-4",
             "num_rounds_per_game": 30,
             "seed": "test-seed",
@@ -167,11 +167,11 @@ class TestCLIPresentationIntegration:
         with tempfile.TemporaryDirectory() as temp_dir_path:
             temp_dir = Path(temp_dir_path)
             # Scenario 1: Game without presentation
-            simple_path = temp_dir / "simple.xega"
+            simple_path = temp_dir / "simple.xent"
             simple_path.write_text('assign(s="test")\nreveal(black, s)')
 
             # Scenario 2: Game with valid presentation
-            custom_path = temp_dir / "custom.xega"
+            custom_path = temp_dir / "custom.xent"
             custom_path.write_text('assign(s="custom")\nreveal(black, s)')
             custom_pres_path = temp_dir / "custom_presentation.py"
             custom_pres_path.write_text("""def present(state, history, metadata):
@@ -179,7 +179,7 @@ class TestCLIPresentationIntegration:
 """)
 
             # Scenario 3: Game with non-standard presentation (warnings)
-            warning_path = temp_dir / "warning.xega"
+            warning_path = temp_dir / "warning.xent"
             warning_path.write_text('assign(s="warning")')
             warning_pres_path = temp_dir / "warning_presentation.py"
             warning_pres_path.write_text("""def present(game_state, events, metadata):  # Non-standard names
@@ -187,7 +187,7 @@ class TestCLIPresentationIntegration:
 """)
 
             # Scenario 4: Another game without presentation to test mixed scenario
-            another_path = temp_dir / "another.xega"
+            another_path = temp_dir / "another.xent"
             another_path.write_text('assign(s="another")')
 
             # Test that duplicate games are not added
@@ -226,7 +226,7 @@ class TestVersionChecking:
 
         # Add current version to config
         config = deepcopy(simple_expanded_config)
-        config["xega_version"] = get_xega_version()
+        config["xent_version"] = get_xent_version()
 
         # Should not raise any exception
         check_version(config, ignore_version_mismatch=False)
@@ -236,7 +236,7 @@ class TestVersionChecking:
 
         # Add different version to config
         config = deepcopy(simple_expanded_config)
-        config["metadata"]["xega_version"] = "99.99.99"
+        config["metadata"]["xent_version"] = "99.99.99"
 
         # Should raise SystemExit
         with pytest.raises(SystemExit) as exc_info:
@@ -248,7 +248,7 @@ class TestVersionChecking:
 
         # Add different version to config
         config = deepcopy(simple_expanded_config)
-        config["metadata"]["xega_version"] = "99.99.99"
+        config["metadata"]["xent_version"] = "99.99.99"
 
         # Should not raise exception when ignored
         with caplog.at_level(logging.WARNING):

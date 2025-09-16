@@ -3,34 +3,34 @@ from unittest.mock import Mock
 
 import pytest
 
-from xega.benchmark.expand_benchmark import (
+from xent.benchmark.expand_benchmark import (
     expand_game_config,
     preprocess_dsl_code,
 )
-from xega.benchmark.run_benchmark import extract_token_usage
-from xega.common.configuration_types import (
+from xent.benchmark.run_benchmark import extract_token_usage
+from xent.common.configuration_types import (
     ExecutableGameMap,
     GameConfig,
     GameMapConfig,
 )
-from xega.common.errors import XegaConfigurationError, XegaInternalError, XegaTypeError
-from xega.common.token_xent_list import TokenXentList, ValidatedBool
-from xega.common.version import get_xega_version, validate_version
-from xega.common.x_string import XString
-from xega.common.xega_event import (
+from xent.common.errors import XentConfigurationError, XentInternalError, XentTypeError
+from xent.common.token_xent_list import TokenXentList, ValidatedBool
+from xent.common.version import get_xent_version, validate_version
+from xent.common.x_string import XString
+from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
     RevealEvent,
     RewardEvent,
-    XegaEvent,
+    XentEvent,
 )
-from xega.presentation.executor import (
+from xent.presentation.executor import (
     SAMPLE_METADATA,
     PresentationFunction,
     get_default_presentation,
 )
-from xega.presentation.sdk import (
+from xent.presentation.sdk import (
     format_elicit_request,
     format_elicit_response,
     format_failed_ensure,
@@ -40,11 +40,11 @@ from xega.presentation.sdk import (
     get_current_registers,
     get_event_summary,
 )
-from xega.runtime.default_players import DefaultXGP, MockXGP
-from xega.runtime.execution import eval_line, play_game
-from xega.runtime.judge import Judge
-from xega.runtime.runtime import XegaRuntime
-from xega.runtime.variables import build_globals, build_locals
+from xent.runtime.default_players import DefaultXGP, MockXGP
+from xent.runtime.execution import eval_line, play_game
+from xent.runtime.judge import Judge
+from xent.runtime.runtime import XentRuntime
+from xent.runtime.variables import build_globals, build_locals
 
 
 class TestXString:
@@ -84,7 +84,7 @@ class TestXString:
         assert s5.name is None
 
         # Invalid type
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             XString(123)  # type: ignore[arg-type]
 
     def test_prefix_decorator(self):
@@ -122,9 +122,9 @@ class TestXString:
         assert result.primary_string == "raw_string"
         assert result.prefix == "test"
         # Test with invalid types
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             s1 | 123
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             123 | s1
 
     def test_operator_cat(self):
@@ -150,9 +150,9 @@ class TestXString:
         assert "Hello" + s2 + "Hello" == XString("HelloWorldHello")
 
         # Test with invalid types
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             s1 + 123
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             123 + s1
 
     def test_operator_cut_front(self):
@@ -202,9 +202,9 @@ class TestXString:
         assert result.primary_string == "before "
 
         # Test with invalid types
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             xs // 123
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             123 // xs
 
     def test_operator_cut_back(self):
@@ -256,9 +256,9 @@ class TestXString:
             "hello world after" % xs  # type: ignore[str-format]  # noqa: UP031
 
         # Test with invalid types
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             xs % 123
-        with pytest.raises(XegaTypeError):
+        with pytest.raises(XentTypeError):
             123 % xs
 
     def test_equality_and_inequality(self):
@@ -641,7 +641,7 @@ class TestJudge:
         return judge
 
     def test_first_n_tokens(self, judge):
-        string = XString("This is a test string for the Xega framework.")
+        string = XString("This is a test string for the Xent framework.")
 
         assert judge.first_n_tokens(string, 5) == "This is a test string"
         assert judge.first_n_tokens(str(string), 5) == "This is a test string"
@@ -686,7 +686,7 @@ class TestTokenUsage:
         },
         "metadata": {
             "benchmark_id": "test",
-            "xega_version": "0.1.0-dev",
+            "xent_version": "0.1.0-dev",
             "judge_model": "gpt2",
             "seed": "test_seed",
             "num_rounds_per_game": 30,
@@ -707,7 +707,7 @@ class TestTokenUsage:
         locals = build_locals(player, game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XegaRuntime(player, locals, globals)
+        xrt = XentRuntime(player, locals, globals)
 
         # First iteration: make some moves
         await eval_line("elicit(alice, s1, 20)", 1, xrt)
@@ -760,7 +760,7 @@ class TestTokenUsage:
         locals = build_locals(player, game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XegaRuntime(player, locals, globals)
+        xrt = XentRuntime(player, locals, globals)
 
         # Make elicit call with zero token usage
         await eval_line("elicit(alice, s1, 20)", 1, xrt)
@@ -1072,9 +1072,9 @@ assign(s2=story())  # Second story
 class TestVersioning:
     """Tests for version tracking functionality"""
 
-    def test_get_xega_version(self):
-        """Test that get_xega_version returns a valid version string"""
-        version = get_xega_version()
+    def test_get_xent_version(self):
+        """Test that get_xent_version returns a valid version string"""
+        version = get_xent_version()
         assert isinstance(version, str)
         assert len(version) > 0
         # Should be semantic version or dev version
@@ -1082,7 +1082,7 @@ class TestVersioning:
 
     def test_validate_version_matching(self):
         """Test version validation with matching versions"""
-        current = get_xega_version()
+        current = get_xent_version()
         is_valid, message = validate_version(current, current)
         assert is_valid is True
         assert "match" in message.lower()
@@ -1097,7 +1097,7 @@ class TestVersioning:
 
     def test_validate_version_missing(self):
         """Test version validation with missing version (old config)"""
-        current = get_xega_version()
+        current = get_xent_version()
         is_valid, message = validate_version(None, current)
         assert is_valid is True  # Should not fail for backward compatibility
         assert "no version" in message.lower() or "warning" in message.lower()
@@ -1170,7 +1170,7 @@ class TestSDKFunctions:
         assert result == expected
 
     def test_get_event_summary(self):
-        events: list[XegaEvent] = [
+        events: list[XentEvent] = [
             {
                 "type": "elicit_request",
                 "line": "",
@@ -1242,7 +1242,7 @@ def present(state, history, metadata):
 
     def test_presentation_with_sdk_functions(self):
         code = """
-from xega.presentation.sdk import format_elicit_request, format_reveal
+from xent.presentation.sdk import format_elicit_request, format_reveal
 
 def present(state, history, metadata):
     if not history:
@@ -1259,7 +1259,7 @@ def present(state, history, metadata):
 """
         func = PresentationFunction(code)
 
-        events: list[XegaEvent] = [
+        events: list[XentEvent] = [
             {
                 "type": "elicit_request",
                 "line": "test",
@@ -1283,24 +1283,24 @@ def present(state, history, metadata):
         assert func.validate()
 
     def test_invalid_syntax(self):
-        with pytest.raises(XegaInternalError):
+        with pytest.raises(XentInternalError):
             PresentationFunction(
                 "def present(state history, metadata):"
             )  # Missing comma
 
     def test_missing_present_function(self):
-        with pytest.raises(XegaConfigurationError):
+        with pytest.raises(XentConfigurationError):
             PresentationFunction("def other_function(): pass")
 
     def test_non_callable_present(self):
-        with pytest.raises(XegaInternalError):
+        with pytest.raises(XentInternalError):
             PresentationFunction("present = 'not a function'")
 
     def test_sdk_utilities_with_imports(self):
         """Test that SDK utilities work correctly when imported"""
         code = """
-from xega.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
-from xega.common.token_xent_list import TokenXentList
+from xent.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
+from xent.common.token_xent_list import TokenXentList
 
 def present(state, history, metadata):
     # Test split_rounds
@@ -1317,7 +1317,7 @@ def present(state, history, metadata):
         func = PresentationFunction(code)
 
         # Create test history with multiple rounds
-        history: list[XegaEvent] = [
+        history: list[XentEvent] = [
             {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "test1"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("token1", 1.0)])},  # type: ignore
@@ -1336,7 +1336,7 @@ def present(state, history, metadata):
     def test_presentation_builder(self):
         """Test PresentationBuilder functionality"""
         code = """
-from xega.presentation.sdk import PresentationBuilder
+from xent.presentation.sdk import PresentationBuilder
 
 def present(state, history, metadata):
     builder = PresentationBuilder()
@@ -1365,8 +1365,8 @@ def present(state, history, metadata):
     def test_format_functions(self):
         """Test SDK formatting functions"""
         code = """
-from xega.presentation.sdk import format_token_xent_list, format_reward
-from xega.common.token_xent_list import TokenXentList
+from xent.presentation.sdk import format_token_xent_list, format_reward
+from xent.common.token_xent_list import TokenXentList
 
 def present(state, history, metadata):
     # Test format_token_xent_list
@@ -1426,7 +1426,7 @@ def present(state, history, metadata):
         },
         "metadata": {
             "benchmark_id": "test",
-            "xega_version": "0.1.0-dev",
+            "xent_version": "0.1.0-dev",
             "judge_model": "test",
             "num_rounds_per_game": 1,
             "seed": "test",
@@ -1515,7 +1515,7 @@ def present(state, history, metadata):
 
         player.event_history = [elicit_event]
 
-        with pytest.raises(XegaConfigurationError):
+        with pytest.raises(XentConfigurationError):
             player.presentation_function({}, player.event_history, SAMPLE_METADATA)
 
     def test_default_presentation_function(self):
@@ -1543,7 +1543,7 @@ def present(state, history, metadata):
             "registers": {},
         }
 
-        history: list[XegaEvent] = [reveal_event, elicit_event]
+        history: list[XentEvent] = [reveal_event, elicit_event]
         result = func({}, history, SAMPLE_METADATA)
 
         # Should match the format produced by SDK functions
@@ -1611,7 +1611,7 @@ elicit(black, z, 10)""",
             },
             "metadata": {
                 "benchmark_id": "test",
-                "xega_version": "0.1.0-dev",
+                "xent_version": "0.1.0-dev",
                 "judge_model": "test",
                 "num_rounds_per_game": 1,
                 "seed": "test",
@@ -1696,7 +1696,7 @@ elicit(black, x, 5)""",
         config: ExecutableGameMap = {
             "metadata": {
                 "benchmark_id": "test",
-                "xega_version": "0.1.0-dev",
+                "xent_version": "0.1.0-dev",
                 "judge_model": "test",
                 "num_rounds_per_game": 1,
                 "seed": "test",
@@ -1725,14 +1725,14 @@ elicit(black, x, 5)""",
         await mock_player.post(elicit_event)
 
         register_states = {"test": XString("test_value")}
-        with pytest.raises(XegaConfigurationError):
+        with pytest.raises(XentConfigurationError):
             move, tokens = await mock_player.make_move("x", register_states)
 
     def test_real_game_presentation_with_sdk(self):
         """Test that a real game presentation works with SDK imports"""
         # Simplified version of Condense presentation using SDK
         condense_presentation = """
-from xega.presentation.sdk import (
+from xent.presentation.sdk import (
     PresentationBuilder,
     extract_rewards,
     get_scores_by_round,
@@ -1759,10 +1759,10 @@ def present(state, history, metadata):
         func = PresentationFunction(condense_presentation)
 
         # Test with realistic game state and history
-        from xega.common.token_xent_list import TokenXentList
+        from xent.common.token_xent_list import TokenXentList
 
         state = {"s": "Once upon a time"}
-        history: list[XegaEvent] = [
+        history: list[XentEvent] = [
             {"type": "elicit_response", "response": "magical"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("test", 1.5)])},  # type: ignore
         ]
@@ -1775,7 +1775,7 @@ def present(state, history, metadata):
     def test_sdk_data_extraction_with_game_history(self):
         """Test SDK utilities with realistic multi-round game history"""
         test_presentation = """
-from xega.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
+from xent.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
 
 def present(state, history, metadata):
     rounds = split_rounds(history)
@@ -1797,9 +1797,8 @@ def present(state, history, metadata):
         func = PresentationFunction(test_presentation)
 
         # Create realistic multi-round history
-        from xega.common.token_xent_list import TokenXentList
 
-        history: list[XegaEvent] = [
+        history: list[XentEvent] = [
             # Round 1
             {"type": "round_started", "round_index": 0},  # type: ignore
             {"type": "elicit_response", "response": "attempt1"},  # type: ignore

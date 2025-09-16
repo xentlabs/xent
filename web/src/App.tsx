@@ -9,9 +9,9 @@ interface GameConfig {
   presentation_function: string;
 }
 
-interface XegaMetadata {
+interface XentMetadata {
   benchmark_id: string;
-  xega_version: string;
+  xent_version: string;
   judge_model: string;
   num_rounds_per_game: number;
   seed: string;
@@ -21,9 +21,9 @@ interface ExpansionConfig {
   num_maps_per_game: number;
 }
 
-interface CondensedXegaBenchmarkConfig {
-  config_type: "condensed_xega_config";
-  metadata: XegaMetadata;
+interface CondensedXentBenchmarkConfig {
+  config_type: "condensed_xent_config";
+  metadata: XentMetadata;
   expansion_config: ExpansionConfig;
   players: PlayerConfig[];
   games: GameConfig[];
@@ -147,7 +147,7 @@ function App() {
     }
   };
 
-  const buildConfig = (): CondensedXegaBenchmarkConfig => {
+  const buildConfig = (): CondensedXentBenchmarkConfig => {
     let games: GameConfig[];
     if (!useCustomGames || customGames.length === 0) {
       games = [{
@@ -160,10 +160,10 @@ function App() {
     }
 
     return {
-      config_type: "condensed_xega_config",
+      config_type: "condensed_xent_config",
       metadata: {
         benchmark_id: benchmarkId,
-        xega_version: "0.1.0",
+        xent_version: "0.1.0",
         judge_model: judge,
         num_rounds_per_game: numRoundsPerGame,
         seed: seed,
@@ -341,7 +341,7 @@ function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>XEGA Benchmarks</h1>
+        <h1>XENT Benchmarks</h1>
         <button
           onClick={() => setCurrentView('play')}
           style={{
@@ -513,12 +513,12 @@ function App() {
                   </div>
 
                   <div style={{ marginBottom: '10px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Game Code (.xega DSL):</label>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Game Code (.xent DSL):</label>
                     <textarea
                       value={game.code}
                       onChange={(e) => updateCustomGame(index, 'code', e.target.value)}
                       style={{ width: '100%', padding: '10px', minHeight: '150px', fontFamily: 'monospace' }}
-                      placeholder="Enter game logic using XEGA DSL..."
+                      placeholder="Enter game logic using XENT DSL..."
                     />
                   </div>
 
@@ -582,7 +582,7 @@ function App() {
         <h3>Configuration Preview (JSON)</h3>
         <p style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
           This is the condensed configuration that will be sent to the backend.
-          It matches the output of <code>xega configure</code> CLI command.
+          It matches the output of <code>xent configure</code> CLI command.
         </p>
         <pre style={{ backgroundColor: 'white', padding: '10px', overflow: 'auto', maxHeight: '400px', fontSize: '12px' }}>
           {JSON.stringify(config, null, 2)}

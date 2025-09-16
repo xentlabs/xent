@@ -1,9 +1,9 @@
 import pytest
 
-from xega.common.errors import XegaGameError, XegaInternalError, XegaSyntaxError
-from xega.common.x_flag import XFlag
-from xega.common.x_string import XString
-from xega.runtime.execution import eval_line, play_game
+from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
+from xent.common.x_flag import XFlag
+from xent.common.x_string import XString
+from xent.runtime.execution import eval_line, play_game
 
 
 class TestAssignInstruction:
@@ -39,13 +39,13 @@ class TestAssignInstruction:
     async def test_assign_static_registers(self, xrt):
         """Test that assignment to static registers is not allowed."""
         # Static register types are: ["a", "b", "c"]
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(a='should_fail')", 1, xrt)
 
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(b1='should_fail')", 1, xrt)
 
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(c='should_fail')", 1, xrt)
 
     @pytest.mark.asyncio
@@ -118,21 +118,21 @@ class TestAssignInstruction:
     @pytest.mark.asyncio
     async def test_assign_with_positional_args(self, xrt):
         """Test that assign only accepts keyword arguments."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign('should_fail')", 1, xrt)
 
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign('s', 'value')", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_assign_invalid_register_names(self, xrt):
         """Test assignment to invalid register names."""
         # Test invalid register type
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(z='invalid')", 1, xrt)
 
         # Test register number out of bounds (assuming num_registers_per_type is 4)
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(s10='too_high')", 1, xrt)
 
     @pytest.mark.asyncio
@@ -218,7 +218,7 @@ class TestRevealInstruction:
         await eval_line("assign(s='test')", 1, xrt)
 
         # This should fail because reveal doesn't accept keyword arguments
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("reveal(value=s)", 2, xrt)
 
 
@@ -283,16 +283,16 @@ class TestElicitInstruction:
     @pytest.mark.asyncio
     async def test_elicit_missing_token_limit(self, xrt):
         """Test that elicit requires a token limit."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("elicit(s)", 1, xrt)
 
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("elicit(black, s)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_elicit_only_positional_args(self, xrt):
         """Test that elicit only accepts positional arguments."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("elicit(var=s, limit=10)", 1, xrt)
 
 
@@ -345,7 +345,7 @@ class TestRewardInstruction:
     @pytest.mark.asyncio
     async def test_reward_only_positional_args(self, xrt):
         """Test that reward only accepts positional arguments."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("reward(player=black, amount=10)", 1, xrt)
 
     @pytest.mark.asyncio
@@ -469,13 +469,13 @@ class TestEnsureInstruction:
     @pytest.mark.asyncio
     async def test_ensure_only_positional_args(self, xrt):
         """Test that ensure only accepts positional arguments."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("ensure(condition=True)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_ensure_non_boolean_condition(self, xrt):
         """Test that ensure requires boolean conditions."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("ensure('not a boolean')", 1, xrt)
 
     @pytest.mark.asyncio
@@ -486,7 +486,7 @@ class TestEnsureInstruction:
         ensure(s == 'impossible_to_guess')
         """
 
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await play_game(
                 game_code,
                 xrt,
@@ -550,23 +550,23 @@ class TestBeaconReplayInstructions:
     @pytest.mark.asyncio
     async def test_beacon_only_one_arg(self, xrt):
         """Test that beacon only accepts a single argument."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("beacon(flag_1, flag_2)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_beacon_only_positional_arg(self, xrt):
         """Test that beacon only accepts positional arguments."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("beacon(flag=flag_1)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_beacon_invalid_flag(self, xrt):
         """Test beacon with invalid flag name."""
         # Only flag_1 and flag_2 are valid
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("beacon(flag_3)", 1, xrt)
 
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("beacon(invalid_flag)", 1, xrt)
 
     @pytest.mark.asyncio
@@ -601,7 +601,7 @@ class TestBeaconReplayInstructions:
     @pytest.mark.asyncio
     async def test_replay_without_beacon(self, xrt):
         """Test replay without setting beacon first."""
-        with pytest.raises(XegaInternalError):
+        with pytest.raises(XentInternalError):
             await eval_line("replay(flag_1, 1)", 1, xrt)
 
     @pytest.mark.asyncio
@@ -864,25 +864,25 @@ class TestErrorCases:
     @pytest.mark.asyncio
     async def test_unknown_instruction(self, xrt):
         """Test that unknown instructions raise exceptions."""
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("unknown_instruction(x='test')", 1, xrt)
 
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("this_does_not_exist()", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_malformed_syntax(self, xrt):
         """Test various malformed syntax errors."""
         # Missing closing parenthesis
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(s='test'", 1, xrt)
 
         # Missing quotes
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=test)", 1, xrt)
 
         # Invalid Python syntax
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign s='test'", 1, xrt)
 
     @pytest.mark.asyncio
@@ -905,33 +905,33 @@ class TestErrorCases:
         """Comprehensive test for wrong types, missing args, and too many args."""
         # Part 1: Test wrong argument types
         # assign with positional args
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign('s', 'value')", 1, xrt)
 
         # reveal with keyword args
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("reveal(value='test')", 1, xrt)
 
         # ensure with keyword args
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("ensure(condition=True)", 1, xrt)
 
         # Part 2: Test missing required arguments
         # elicit without token limit
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("elicit(s)", 1, xrt)
 
         # beacon without flag
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("beacon()", 1, xrt)
 
         # replay without arguments
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("replay()", 1, xrt)
 
         # Part 3: Test too many arguments
         # beacon with multiple flags
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("beacon(flag_1, flag_2)", 1, xrt)
 
     @pytest.mark.asyncio
@@ -939,48 +939,48 @@ class TestErrorCases:
         """Comprehensive test for invalid register names and undefined access."""
         # Part 1: Test invalid register names
         # Invalid register type
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(z='invalid')", 1, xrt)
 
         # Register number too high
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(s99='too_high')", 1, xrt)
 
         # Invalid format
-        with pytest.raises(XegaSyntaxError):
+        with pytest.raises(XentSyntaxError):
             await eval_line("assign(1s='invalid')", 1, xrt)
 
         # Part 2: Test undefined register access
         # Accessing undefined register in expression
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=undefined_var)", 1, xrt)
 
         # Using undefined register in reveal
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("reveal(undefined_var)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_undefined_functions(self, xrt):
         """Test calling undefined functions."""
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=undefined_function())", 1, xrt)
 
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=random_func('arg'))", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_wrong_function_args(self, xrt):
         """Test functions with wrong number of arguments."""
         # xent with no args
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=xent())", 1, xrt)
 
         # get_story with args (should take none)
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=get_story('arg'))", 1, xrt)
 
         # first_n_tokens with wrong number of args
-        with pytest.raises(XegaGameError):
+        with pytest.raises(XentGameError):
             await eval_line("assign(s=first_n_tokens('string'))", 1, xrt)
 
 

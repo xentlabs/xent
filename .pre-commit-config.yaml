@@ -14,4 +14,4 @@ repos:
         types: [python]
         exclude: ^games/
         pass_filenames: false
-        args: [--config-file=pyproject.toml, --no-incremental, src/xega]
+        args: [--config-file=pyproject.toml, --no-incremental, src/xent]

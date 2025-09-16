@@ -85,7 +85,7 @@ def create_leaderboard_markdown(player_scores: PlayerScores) -> str:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Process XEGA benchmark results and generate a Markdown leaderboard."
+        description="Process XENT benchmark results and generate a Markdown leaderboard."
     )
     parser.add_argument(
         "input_file", type=Path, help="Path to the benchmark results JSON file."

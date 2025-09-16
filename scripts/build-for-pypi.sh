@@ -6,7 +6,7 @@ cd web
 npm install
 npm run build
 
-echo "Web files built directly to src/xega/web/static/"
+echo "Web files built directly to src/xent/web/static/"
 cd ..
 
 echo "Building Python package..."

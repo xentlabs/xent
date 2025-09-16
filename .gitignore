@@ -1,6 +1,7 @@
 TODO
 *.swp
 test_output/game_plots
+xent_config.json
 xega_config.json
 results/
 venv
@@ -25,7 +26,7 @@ web/dist/
 web/package-lock.json
 
 # Generated static files (build output)
-src/xega/web/static/
+src/xent/web/static/
 src/*.egg-info/
 build/
 *.egg-info/

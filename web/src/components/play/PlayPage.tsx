@@ -33,12 +33,12 @@ interface XentEventMessage {
 type XentMessage = XentInputMessage | XentConfigureMessage | XentControlMessage | XentErrorMessage | XentEventMessage;
 
 const DEFAULT_GAME_CODE = `assign(s="Once upon a time, there was a brave knight who fought dragons and saved kingdoms.")
-reveal(black, s)
-elicit(black, t, 10)
-reveal(black, t)
+reveal(s)
+elicit(t, 10)
+reveal(t)
 assign(t1=remove_common_words(t, s))
-reveal(black, t1)
-reward(black, xed(s | t1))`;
+reveal(t1)
+reward(xed(s | t1))`;
 
 export default function PlayPage({ onBack }: { onBack: () => void }) {
   const ws = useRef<WebSocket | null>(null);

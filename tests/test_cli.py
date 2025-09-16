@@ -168,11 +168,11 @@ class TestCLIPresentationIntegration:
             temp_dir = Path(temp_dir_path)
             # Scenario 1: Game without presentation
             simple_path = temp_dir / "simple.xent"
-            simple_path.write_text('assign(s="test")\nreveal(black, s)')
+            simple_path.write_text('assign(s="test")\nreveal(s)')
 
             # Scenario 2: Game with valid presentation
             custom_path = temp_dir / "custom.xent"
-            custom_path.write_text('assign(s="custom")\nreveal(black, s)')
+            custom_path.write_text('assign(s="custom")\nreveal(s)')
             custom_pres_path = temp_dir / "custom_presentation.py"
             custom_pres_path.write_text("""def present(state, history, metadata):
     return "Custom presentation"
@@ -196,11 +196,11 @@ class TestCLIPresentationIntegration:
 
             # Verify each game
             simple = next(g for g in games if g["name"] == "simple")
-            assert simple["code"] == 'assign(s="test")\nreveal(black, s)'
+            assert simple["code"] == 'assign(s="test")\nreveal(s)'
             assert simple["presentation_function"] == get_default_presentation()
 
             custom = next(g for g in games if g["name"] == "custom")
-            assert custom["code"] == 'assign(s="custom")\nreveal(black, s)'
+            assert custom["code"] == 'assign(s="custom")\nreveal(s)'
             assert custom["presentation_function"] is not None
             assert "Custom presentation" in custom["presentation_function"]
             assert (

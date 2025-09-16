@@ -710,8 +710,8 @@ class TestTokenUsage:
         xrt = XentRuntime(player, locals, globals)
 
         # First iteration: make some moves
-        await eval_line("elicit(alice, s1, 20)", 1, xrt)
-        await eval_line("elicit(alice, s2, 20)", 2, xrt)
+        await eval_line("elicit(s1, 20)", 1, xrt)
+        await eval_line("elicit(s2, 20)", 2, xrt)
 
         # Check token usage after first iteration
         assert xrt.token_usage["input_tokens"] == 30  # 15 * 2
@@ -729,7 +729,7 @@ class TestTokenUsage:
         assert xrt.token_usage["output_tokens"] == 0
 
         # Second iteration: make more moves
-        await eval_line("elicit(alice, s3, 20)", 1, xrt)
+        await eval_line("elicit(s3, 20)", 1, xrt)
 
         # Check token usage in second iteration
         assert xrt.token_usage["input_tokens"] == 15  # 15 * 1
@@ -763,7 +763,7 @@ class TestTokenUsage:
         xrt = XentRuntime(player, locals, globals)
 
         # Make elicit call with zero token usage
-        await eval_line("elicit(alice, s1, 20)", 1, xrt)
+        await eval_line("elicit(s1, 20)", 1, xrt)
 
         # Verify zero accumulation works correctly
         assert xrt.token_usage["input_tokens"] == 0
@@ -800,8 +800,8 @@ class TestExpandConfig:
             name="test_simple_story",
             code="""
                 assign(s=story())
-                reveal(black, s)
-                elicit(black, x, 10)
+                reveal(s)
+                elicit(x, 10)
                 reward(xent(x | s))
             """,
             presentation_function="",
@@ -814,8 +814,8 @@ class TestExpandConfig:
             name="test_multi_story",
             code="""
                 assign(s1=story(), s2=story())
-                reveal(black, s1, s2)
-                elicit(black, x, 20)
+                reveal(s1, s2)
+                elicit(x, 20)
                 reward(xent(x | s1))
                 assign(s3=story())
                 reward(-xent(s3 | x))
@@ -830,8 +830,8 @@ class TestExpandConfig:
             name="test_no_story",
             code="""
                 assign(s="This is a hardcoded string")
-                reveal(black, s)
-                elicit(black, x, 15)
+                reveal(s)
+                elicit(x, 15)
                 reward(xent(x | s))
             """,
             presentation_function="",
@@ -845,9 +845,9 @@ class TestExpandConfig:
             code="""
                 assign(s1="Introduction: ")
                 assign(s=s1 + story())
-                reveal(black, s)
+                reveal(s)
                 assign(s2=(story() + " " + story()))
-                elicit(black, response, 25)
+                elicit(response, 25)
                 reward(xent(response | s2))
             """,
             presentation_function="",
@@ -870,8 +870,8 @@ class TestExpandConfig:
 
         # Verify other code structure is preserved
         assert "assign(s=" in expanded["code"]
-        assert "reveal(black, s)" in expanded["code"]
-        assert "elicit(black, x, 10)" in expanded["code"]
+        assert "reveal(s)" in expanded["code"]
+        assert "elicit(x, 10)" in expanded["code"]
         assert "reward(xent(x | s))" in expanded["code"]
 
         # Verify judge methods were called
@@ -897,7 +897,7 @@ class TestExpandConfig:
         # Verify structure is preserved
         assert "assign(s1=" in expanded["code"]
         assert "s2=" in expanded["code"]
-        assert "reveal(black, s1, s2)" in expanded["code"]
+        assert "reveal(s1, s2)" in expanded["code"]
         assert "assign(s3=" in expanded["code"]
 
         # Verify judge was called 3 times (for 3 story() calls)
@@ -921,7 +921,7 @@ class TestExpandConfig:
 
         # Verify code structure is preserved
         assert "assign(s='This is a hardcoded string')" in expanded["code"]
-        assert "reveal(black, s)" in expanded["code"]
+        assert "reveal(s)" in expanded["code"]
 
     def test_expand_game_config_complex_expressions(
         self, complex_story_game_config, mock_judge
@@ -952,8 +952,8 @@ class TestExpandConfig:
         mock_judge.generate_text.return_value = "Generated story content"
 
         code = """assign(x=story())
-reveal(player, x)
-elicit(player, y, 10)"""
+reveal(x)
+elicit(10)"""
 
         result = preprocess_dsl_code(code, mock_judge)
 
@@ -963,8 +963,8 @@ elicit(player, y, 10)"""
         # Each line should be properly transformed
         lines = result.splitlines()
         assert lines[0] == "assign(x='Generated story content')"
-        assert lines[1] == "reveal(player, x)"
-        assert lines[2] == "elicit(player, y, 10)"
+        assert lines[1] == "reveal(x)"
+        assert lines[2] == "elicit(10)"
 
     def test_story_rewriter_only_replaces_story_function(self):
         """Test that StoryRewriter only replaces story() calls, not other functions"""
@@ -1039,12 +1039,12 @@ assign(s=story())
         code_empty_lines = """
 assign(s=story())
 
-reveal(black, s)
+reveal(s)
         """
         processed_empty = preprocess_dsl_code(code_empty_lines, judge4)
         assert "assign(s='Once upon a time in a distant galaxy...')" in processed_empty
         assert "\n\n" in processed_empty
-        assert "reveal(black, s)" in processed_empty
+        assert "reveal(s)" in processed_empty
 
         # Test 5: Mixed comments and code
         judge5 = Mock()
@@ -1107,7 +1107,7 @@ class TestSDKFunctions:
     def test_format_elicit_request(self):
         event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(player, var, 10)",
+            "line": "elicit(var, 10)",
             "line_num": 5,
             "player": "alice",
             "var_name": "move",
@@ -1120,7 +1120,7 @@ class TestSDKFunctions:
     def test_format_elicit_response(self):
         event: ElicitResponseEvent = {
             "type": "elicit_response",
-            "line": "elicit(player, var, 10)",
+            "line": "elicit(var, 10)",
             "line_num": 5,
             "player": "alice",
             "response": "my move",
@@ -1133,7 +1133,7 @@ class TestSDKFunctions:
         values = {"var1": XString("value1"), "var2": XString("value2")}
         event: RevealEvent = {
             "type": "reveal",
-            "line": "reveal(player, var1, var2)",
+            "line": "reveal(var1, var2)",
             "line_num": 3,
             "player": "alice",
             "values": values,
@@ -1411,7 +1411,7 @@ def present(state, history, metadata):
 
     expanded_game: GameMapConfig = {
         "name": "test_game",
-        "code": 'assign(x="test")\nreveal(black, x)\nelicit(black, y, 10)',
+        "code": 'assign(x="test")\nreveal(x)\nelicit(y, 10)',
         "map_seed": "test_seed",
         "presentation_function": presentation_code,
     }
@@ -1462,7 +1462,7 @@ class TestPresentationIntegration:
 
         reveal_event: RevealEvent = {
             "type": "reveal",
-            "line": "reveal(black, x)",
+            "line": "reveal(x)",
             "line_num": 1,
             "player": "black",
             "values": {"x": XString("test_value")},
@@ -1470,7 +1470,7 @@ class TestPresentationIntegration:
 
         elicit_event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(black, y, 10)",
+            "line": "elicit(y, 10)",
             "line_num": 2,
             "player": "black",
             "var_name": "y",
@@ -1505,7 +1505,7 @@ def present(state, history, metadata):
 
         elicit_event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(black, y, 10)",
+            "line": "elicit(y, 10)",
             "line_num": 1,
             "player": "black",
             "var_name": "y",
@@ -1527,7 +1527,7 @@ def present(state, history, metadata):
         # Test with sample events
         reveal_event: RevealEvent = {
             "type": "reveal",
-            "line": "reveal(black, x)",
+            "line": "reveal(x)",
             "line_num": 1,
             "player": "black",
             "values": {"x": XString("test_value")},
@@ -1535,7 +1535,7 @@ def present(state, history, metadata):
 
         elicit_event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(black, y, 10)",
+            "line": "elicit(y, 10)",
             "line_num": 2,
             "player": "black",
             "var_name": "y",
@@ -1595,8 +1595,8 @@ def present(state, history, metadata):
         expanded_game: GameMapConfig = {
             "name": "test_integration",
             "code": """assign(x="initial_value")
-reveal(black, x)
-elicit(black, z, 10)""",
+reveal(x)
+elicit(z, 10)""",
             "map_seed": "test_seed",
             "presentation_function": presentation_code,
         }
@@ -1624,7 +1624,7 @@ elicit(black, z, 10)""",
         # Simulate reveal event
         reveal_event: RevealEvent = {
             "type": "reveal",
-            "line": "reveal(black, x)",
+            "line": "reveal(x)",
             "line_num": 2,
             "player": "black",
             "values": {"x": XString("initial_value")},
@@ -1634,7 +1634,7 @@ elicit(black, z, 10)""",
         # Simulate elicit request event
         elicit_event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(black, z, 10)",
+            "line": "elicit(z, 10)",
             "line_num": 3,
             "player": "black",
             "var_name": "z",
@@ -1687,8 +1687,8 @@ def present(state, history, metadata):
 
         expanded_game: GameMapConfig = {
             "name": "test_fallback",
-            "code": """reveal(black, "test")
-elicit(black, x, 5)""",
+            "code": """reveal("test")
+elicit(x, 5)""",
             "map_seed": "test_seed",
             "presentation_function": broken_presentation,
         }
@@ -1714,7 +1714,7 @@ elicit(black, x, 5)""",
 
         elicit_event: ElicitRequestEvent = {
             "type": "elicit_request",
-            "line": "elicit(black, x, 5)",
+            "line": "elicit(x, 5)",
             "line_num": 2,
             "player": "black",
             "var_name": "x",
@@ -1830,7 +1830,7 @@ class TestRoundBoundaryEvents:
     async def test_round_start_and_finish_events(self, xrt):
         game_code = """
         assign(s='hello')
-        reveal(black, s)
+        reveal(s)
         reward(xent('hello world'))
         """.strip()
 

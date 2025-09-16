@@ -68,6 +68,8 @@ class WebsocketXGP(XGP):
 
     async def _send_xent_event_to_websocket(self, event: XentEvent) -> None:
         try:
+            print(f"Serializing: {event['type']}")
+            print(f"Serializing: {event}")
             serialized_data = dumps({"type": "xent_event", "event": event})
             await self.websocket.send_text(serialized_data)
         except Exception as e:

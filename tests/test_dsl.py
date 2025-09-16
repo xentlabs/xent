@@ -240,7 +240,7 @@ class TestElicitInstruction:
         assert xrt.beacons["previous_elicit"].line_num == 1
 
         # Part 2: Test elicit with explicit player specification
-        await eval_line("elicit(black, t, 10)", 2, xrt)
+        await eval_line("elicit(t, 10)", 2, xrt)
 
         assert "t" in xrt.local_vars
         assert str(xrt.local_vars["t"]) == "mocked_move"
@@ -262,7 +262,7 @@ class TestElicitInstruction:
         assert str(xrt.local_vars["s3"]) == "mocked_move"
 
         # Part 2: Test eliciting multiple variables with explicit player
-        await eval_line("elicit(black, t1, t2, 10)", 2, xrt)
+        await eval_line("elicit(t1, t2, 10)", 2, xrt)
 
         assert "t1" in xrt.local_vars
         assert "t2" in xrt.local_vars
@@ -287,7 +287,7 @@ class TestElicitInstruction:
             await eval_line("elicit(s)", 1, xrt)
 
         with pytest.raises(XentSyntaxError):
-            await eval_line("elicit(black, s)", 1, xrt)
+            await eval_line("elicit(s)", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_elicit_only_positional_args(self, xrt):

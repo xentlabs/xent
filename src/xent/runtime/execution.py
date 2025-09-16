@@ -30,6 +30,7 @@ async def play_game(
     code: str,
     xrt: XentRuntime,
     num_rounds=30,
+    always_return_results: bool = False,  # Used for interactive play that may break at any moment
 ) -> list[GameMapRoundResult]:
     lines = [line.strip() for line in code.split("\n")]
     if len(lines) > 64:
@@ -39,12 +40,21 @@ async def play_game(
     round_results: list[GameMapRoundResult] = []
 
     while rounds_played < num_rounds:
-        result = await play_single_game(lines, xrt, rounds_played)
-        if result is None:
-            return []  # TODO what to do here?
-        rounds_played += 1
-        if result is not None:
-            round_results.append(result)
+        try:
+            result = await play_single_game(lines, xrt, rounds_played)
+            if result is None:
+                return []  # TODO what to do here?
+            rounds_played += 1
+            if result is not None:
+                round_results.append(result)
+        except Exception as e:
+            if always_return_results:
+                logging.info(
+                    "Swallowing exception thrown playing game and returning results"
+                )
+                return round_results
+            else:
+                raise e
 
     logging.info("Game completed successfully")
     return round_results

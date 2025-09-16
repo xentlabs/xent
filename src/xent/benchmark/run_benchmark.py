@@ -24,6 +24,7 @@ async def run_game(
     executable_game_map: ExecutableGameMap,
     judge: Judge | None,
     raise_on_error: bool = False,
+    always_return_results: bool = False,
 ) -> GameMapResults | None:
     game_name = executable_game_map["game_map"]["name"]
     map_seed = executable_game_map["game_map"]["map_seed"]
@@ -47,6 +48,7 @@ async def run_game(
             game_code,
             xrt,
             num_rounds=executable_game_map["metadata"]["num_rounds_per_game"],
+            always_return_results=always_return_results,
         )
         logging.info(f"Game {game_str} completed successfully")
 

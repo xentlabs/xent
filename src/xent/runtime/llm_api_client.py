@@ -581,7 +581,9 @@ class MoonshotClient(LLMClient):
             raise XentConfigurationError(
                 "MOONSHOT_API_KEY environment variable not set."
             )
-        self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.moonshot.ai")
+        self.client = AsyncOpenAI(
+            api_key=api_key, base_url="https://api.moonshot.ai/v1"
+        )
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []

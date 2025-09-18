@@ -1,6 +1,6 @@
 [project]
 name = "xent"
-version = "0.1.2"
+version = "0.2.0"
 description = "Xent LLM Benchmarking System"
 keywords = ["llm", "benchmark", "ai", "evaluation"]
 classifiers = [

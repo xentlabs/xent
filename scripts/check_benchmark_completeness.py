@@ -5,7 +5,9 @@ from typing import cast
 from xent.common.configuration_types import BenchmarkResult
 
 
-def build_expected_pairs(benchmark: BenchmarkResult) -> dict[tuple[str, str, str], dict[str, str]]:
+def build_expected_pairs(
+    benchmark: BenchmarkResult,
+) -> dict[tuple[str, str, str], dict[str, str]]:
     expanded_config = benchmark["expanded_config"]
     players = expanded_config.get("players", [])
     maps = expanded_config.get("maps", [])
@@ -87,12 +89,14 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        with open(args.json_path, "r", encoding="utf-8") as infile:
+        with open(args.json_path, encoding="utf-8") as infile:
             benchmark_data = cast(BenchmarkResult, json.load(infile))
     except FileNotFoundError as exc:
         raise SystemExit(f"Error: '{args.json_path}' not found") from exc
     except json.JSONDecodeError as exc:
-        raise SystemExit(f"Error: could not decode JSON from '{args.json_path}'") from exc
+        raise SystemExit(
+            f"Error: could not decode JSON from '{args.json_path}'"
+        ) from exc
 
     if "expanded_config" not in benchmark_data or "results" not in benchmark_data:
         raise SystemExit("Error: input does not appear to be a BenchmarkResult payload")

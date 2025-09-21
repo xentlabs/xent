@@ -26,6 +26,7 @@ class Judge:
         model_name: str,
         hf_dir_path: str | None = None,
         text_generator: TextGenerator | None = None,
+        max_generation_length: int = 50,
     ) -> None:
         self.tokenizers_by_name: dict[str, PreTrainedTokenizer] = {}
         self.models_by_name: dict[str, PreTrainedModel] = {}
@@ -54,6 +55,9 @@ class Judge:
         if text_generator is None:
             text_generator = JudgeGenerator(self.model, self.tokenizer)
         self.text_generator = text_generator
+        self.max_generation_length: int | None = max_generation_length
+        if max_generation_length <= 0:
+            self.max_generation_length = None
 
     def tokenize(self, string: str | XString) -> torch.Tensor:
         if isinstance(string, XString):
@@ -127,8 +131,8 @@ class Judge:
         result: TokenXentList = self.xed(string, pre_prompt)
         return result * -1
 
-    def generate_text(self, max_length: int = 50) -> str:
-        return self.text_generator.generate_text(max_length)
+    def generate_text(self) -> str:
+        return self.text_generator.generate_text(self.max_generation_length)
 
     def is_true(self, condition: str) -> bool:
         evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".

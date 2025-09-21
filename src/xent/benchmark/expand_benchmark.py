@@ -27,7 +27,9 @@ def expand_benchmark_config(
         )
 
     judge = Judge(
-        condensed_config["metadata"]["judge_model"], text_generator=text_generator
+        condensed_config["metadata"]["judge_model"],
+        text_generator=text_generator,
+        max_generation_length=text_generator_config["max_length"],
     )
     expanded_benchmark_config = ExpandedXentBenchmarkConfig(
         config_type="expanded_xent_config",

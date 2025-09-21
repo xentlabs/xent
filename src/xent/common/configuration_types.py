@@ -36,6 +36,7 @@ TextGeneratorType = Literal["JUDGE", "COMMUNITY_ARCHIVE"]
 class TextGenerationConfig(TypedDict):
     generator_type: TextGeneratorType
     generator_config: dict[str, Any]
+    max_length: int
 
 
 class ExpansionConfig(TypedDict):

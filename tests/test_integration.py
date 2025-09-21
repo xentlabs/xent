@@ -65,6 +65,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
             text_generation_config={
                 "generator_type": "JUDGE",
                 "generator_config": {},
+                "max_length": 50,
             },
         ),
         games=[
@@ -283,6 +284,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             text_generation_config={
                 "generator_type": "JUDGE",
                 "generator_config": {},
+                "max_length": 50,
             },
         ),
         games=[

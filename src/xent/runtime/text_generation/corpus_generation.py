@@ -1,15 +1,11 @@
 import json
 import random
-from enum import Enum
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from xent.common.errors import XentInternalError
 from xent.runtime.text_generation.text_generation import TextGenerator
 
-
-class CommunityArchiveMode(Enum):
-    SEQUENTIAL = 1
-    SHUFFLE = 2
+CommunityArchiveMode = Literal["SEQUENTIAL", "SHUFFLE"]
 
 
 class CommunityArchiveTweet(TypedDict):
@@ -40,15 +36,15 @@ class CommunityArchiveTextGenerator(TextGenerator):
         return tweet
 
     def _get_next_tweet(self) -> str:
-        if self.mode == CommunityArchiveMode.SEQUENTIAL:
+        if self.mode == "SEQUENTIAL":
             tweet = self.archive["tweets"][
                 self.tweet_index % len(self.archive["tweets"])
             ]
             self.tweet_index += 1
-            return tweet["full_text"]
-        elif self.mode == CommunityArchiveMode.SHUFFLE:
+            return tweet["tweet"]["full_text"]
+        elif self.mode == "SHUFFLE":
             tweet = self.rng.choice(self.archive["tweets"])
-            return tweet["full_text"]
+            return tweet["tweet"]["full_text"]
         else:
             raise XentInternalError(
                 "Unknown mode specificed for Community Archive Corpus"

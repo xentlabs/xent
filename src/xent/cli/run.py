@@ -35,6 +35,7 @@ DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
     text_generation_config={
         "generator_type": "JUDGE",
         "generator_config": {},
+        "max_length": 50,
     },
 )
 

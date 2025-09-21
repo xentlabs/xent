@@ -28,7 +28,13 @@ DEFAULT_XENT_METADATA = XentMetadata(
     seed="notrandom",
 )
 
-DEFAULT_EXPANSION_CONFIG = ExpansionConfig(num_maps_per_game=1)
+DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
+    num_maps_per_game=1,
+    text_generation_config={
+        "generator_type": "JUDGE",
+        "generator_config": {},
+    },
+)
 
 
 def game_from_file(game_file_path: Path) -> GameConfig:
@@ -110,7 +116,13 @@ def build_benchmark_config(
             num_rounds_per_game=num_rounds_per_game,
             seed=seed,
         ),
-        expansion_config=ExpansionConfig(num_maps_per_game=num_maps_per_game),
+        expansion_config=ExpansionConfig(
+            num_maps_per_game=num_maps_per_game,
+            text_generation_config={
+                "generator_type": "JUDGE",
+                "generator_config": {},
+            },
+        ),
     )
 
 

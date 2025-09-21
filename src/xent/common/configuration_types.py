@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict, TypeGuard
+from typing import Any, Literal, TypedDict, TypeGuard
 
 from xent.common.xent_event import TokenUsage, XentEvent
 
@@ -29,8 +29,18 @@ class GameConfig(TypedDict):
 # Condensed configuration definitions
 
 
+# TODO later dynamically register text generators
+TextGeneratorType = Literal["JUDGE", "COMMUNITY_ARCHIVE"]
+
+
+class TextGenerationConfig(TypedDict):
+    generator_type: TextGeneratorType
+    generator_config: dict[str, Any]
+
+
 class ExpansionConfig(TypedDict):
     num_maps_per_game: int
+    text_generation_config: TextGenerationConfig
 
 
 class XentMetadata(TypedDict):

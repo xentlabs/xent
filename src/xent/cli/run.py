@@ -30,7 +30,13 @@ DEFAULT_XENT_METADATA = XentMetadata(
     seed="notrandom",
 )
 
-DEFAULT_EXPANSION_CONFIG = ExpansionConfig(num_maps_per_game=1)
+DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
+    num_maps_per_game=1,
+    text_generation_config={
+        "generator_type": "JUDGE",
+        "generator_config": {},
+    },
+)
 
 
 def load_benchmark_config(

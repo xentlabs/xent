@@ -10,12 +10,25 @@ from xent.common.configuration_types import (
     XentMetadata,
 )
 from xent.runtime.judge import Judge
+from xent.runtime.text_generation.corpus_generation import CommunityArchiveTextGenerator
+from xent.runtime.text_generation.text_generation import TextGenerator
 
 
 def expand_benchmark_config(
     condensed_config: CondensedXentBenchmarkConfig,
 ) -> ExpandedXentBenchmarkConfig:
-    judge = Judge(condensed_config["metadata"]["judge_model"])
+    text_generator_config = condensed_config["expansion_config"][
+        "text_generation_config"
+    ]
+    text_generator: TextGenerator | None = None
+    if text_generator_config["generator_type"] == "COMMUNITY_ARCHIVE":
+        text_generator = CommunityArchiveTextGenerator(
+            **text_generator_config["generator_config"]
+        )
+
+    judge = Judge(
+        condensed_config["metadata"]["judge_model"], text_generator=text_generator
+    )
     expanded_benchmark_config = ExpandedXentBenchmarkConfig(
         config_type="expanded_xent_config",
         metadata=XentMetadata(

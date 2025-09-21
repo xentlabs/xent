@@ -62,6 +62,10 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
+            text_generation_config={
+                "generator_type": "JUDGE",
+                "generator_config": {},
+            },
         ),
         games=[
             # Game 1: Simple single player test
@@ -275,7 +279,11 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             seed=DEFAULT_XENT_METADATA["seed"],
         ),
         expansion_config=ExpansionConfig(
-            num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"]
+            num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
+            text_generation_config={
+                "generator_type": "JUDGE",
+                "generator_config": {},
+            },
         ),
         games=[
             GameConfig(

@@ -1,4 +1,7 @@
+# TODO: this file needs to be cleaned up to better fit with the new stateful design of text generation
 import random
+
+from xent.runtime.text_generation.text_generation import TextGenerator
 
 NARRATIVE_SEEDS = {
     # Gemini:
@@ -107,69 +110,83 @@ PARAM_RANGES = {
 }
 
 
-def generate_text(model, tokenizer, max_length: int | None = None):
-    chosen_narrative = random.choice(list(NARRATIVE_SEEDS.keys()))
-    priming_text = NARRATIVE_SEEDS[chosen_narrative]
+class JudgeGenerator(TextGenerator):
+    def __init__(self, model, tokenizer):
+        self.model = model
+        self.tokenizer = tokenizer
 
-    strategy = random.choices(
-        ["sampling", "contrastive_search"], weights=[0.85, 0.15], k=1
-    )[0]
+    def generate_text(self, max_length: int | None = None) -> str:
+        chosen_narrative = random.choice(list(NARRATIVE_SEEDS.keys()))
+        priming_text = NARRATIVE_SEEDS[chosen_narrative]
 
-    params = {}
+        strategy = random.choices(
+            ["sampling", "contrastive_search"], weights=[0.85, 0.15], k=1
+        )[0]
 
-    if strategy == "contrastive_search":
-        params = {
-            "penalty_alpha": random.uniform(*PARAM_RANGES["penalty_alpha"]),
-            "top_k": random.randint(4, 10),  # Contrastive search needs a small top_k
-            "do_sample": False,
-        }
-    else:
-        use_typical_p = random.choice([True, False])
-        if use_typical_p:
-            params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])
+        params = {}
+
+        if strategy == "contrastive_search":
+            params = {
+                "penalty_alpha": random.uniform(*PARAM_RANGES["penalty_alpha"]),
+                "top_k": random.randint(
+                    4, 10
+                ),  # Contrastive search needs a small top_k
+                "do_sample": False,
+            }
         else:
-            params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])
+            use_typical_p = random.choice([True, False])
+            if use_typical_p:
+                params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])
+            else:
+                params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])
+
+            params.update(
+                {
+                    "temperature": random.uniform(*PARAM_RANGES["temperature"]),
+                    "top_k": random.randint(
+                        int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
+                    ),
+                    "do_sample": True,
+                }
+            )
 
         params.update(
             {
-                "temperature": random.uniform(*PARAM_RANGES["temperature"]),
-                "top_k": random.randint(
-                    int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
+                "repetition_penalty": random.uniform(
+                    *PARAM_RANGES["repetition_penalty"]
                 ),
-                "do_sample": True,
+                "encoder_repetition_penalty": random.uniform(
+                    *PARAM_RANGES["encoder_repetition_penalty"]
+                ),
+                "no_repeat_ngram_size": random.choice(
+                    PARAM_RANGES["no_repeat_ngram_size"]
+                ),
             }
         )
 
-    params.update(
-        {
-            "repetition_penalty": random.uniform(*PARAM_RANGES["repetition_penalty"]),
-            "encoder_repetition_penalty": random.uniform(
-                *PARAM_RANGES["encoder_repetition_penalty"]
-            ),
-            "no_repeat_ngram_size": random.choice(PARAM_RANGES["no_repeat_ngram_size"]),
-        }
-    )
-
-    min_tokens = random.randint(
-        int(PARAM_RANGES["min_new_tokens"][0]), int(PARAM_RANGES["min_new_tokens"][1])
-    )
-    max_tokens = (
-        max_length
-        if max_length is not None
-        else random.randint(
-            int(PARAM_RANGES["max_new_tokens"][0]),
-            int(PARAM_RANGES["max_new_tokens"][1]),
+        min_tokens = random.randint(
+            int(PARAM_RANGES["min_new_tokens"][0]),
+            int(PARAM_RANGES["min_new_tokens"][1]),
         )
-    )
-    if min_tokens >= max_tokens:
-        min_tokens = max_tokens - 1
-    params["min_new_tokens"] = min_tokens
-    params["max_new_tokens"] = max_tokens
+        max_tokens = (
+            max_length
+            if max_length is not None
+            else random.randint(
+                int(PARAM_RANGES["max_new_tokens"][0]),
+                int(PARAM_RANGES["max_new_tokens"][1]),
+            )
+        )
+        if min_tokens >= max_tokens:
+            min_tokens = max_tokens - 1
+        params["min_new_tokens"] = min_tokens
+        params["max_new_tokens"] = max_tokens
 
-    inputs = tokenizer(priming_text, return_tensors="pt").to(model.device)
-    outputs = model.generate(**inputs, **params, pad_token_id=tokenizer.eos_token_id)
+        inputs = self.tokenizer(priming_text, return_tensors="pt").to(self.model.device)
+        outputs = self.model.generate(
+            **inputs, **params, pad_token_id=self.tokenizer.eos_token_id
+        )
 
-    generated_completion = tokenizer.decode(
-        outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
-    )
-    return generated_completion
+        generated_completion = self.tokenizer.decode(
+            outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+        )
+        return generated_completion

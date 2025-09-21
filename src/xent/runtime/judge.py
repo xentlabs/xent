@@ -16,11 +16,17 @@ from transformers import (
 
 from xent.common.token_xent_list import TokenXentList
 from xent.common.x_string import XString
-from xent.runtime.text_generation import generate_text
+from xent.runtime.text_generation.judge_generation import JudgeGenerator
+from xent.runtime.text_generation.text_generation import TextGenerator
 
 
 class Judge:
-    def __init__(self, model_name: str, hf_dir_path: str | None = None) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        hf_dir_path: str | None = None,
+        text_generator: TextGenerator | None = None,
+    ) -> None:
         self.tokenizers_by_name: dict[str, PreTrainedTokenizer] = {}
         self.models_by_name: dict[str, PreTrainedModel] = {}
         self.device: torch.device = (
@@ -45,6 +51,9 @@ class Judge:
             )
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        if text_generator is None:
+            text_generator = JudgeGenerator(self.model, self.tokenizer)
+        self.text_generator = text_generator
 
     def tokenize(self, string: str | XString) -> torch.Tensor:
         if isinstance(string, XString):
@@ -119,7 +128,7 @@ class Judge:
         return result * -1
 
     def generate_text(self, max_length: int = 50) -> str:
-        return generate_text(self.model, self.tokenizer, max_length)
+        return self.text_generator.generate_text(max_length)
 
     def is_true(self, condition: str) -> bool:
         evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".

@@ -1,4 +1,4 @@
-from typing import Literal, NotRequired, TypedDict, cast
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 import torch
 from typeguard import check_type
@@ -22,6 +22,7 @@ KNOWN_PROVIDER = Literal[
 class DefaultXGPOptions(TypedDict):
     model: str
     provider: KNOWN_PROVIDER
+    request_params: NotRequired[dict[str, Any]]
 
 
 class DefaultHFXGPOptions(

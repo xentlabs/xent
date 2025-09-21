@@ -112,14 +112,17 @@ class LLMClient(ABC):
 
 
 class OllamaClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         ollama_host = os.environ.get("OLLAMA_HOST")
         self.client = AsyncClient(ollama_host) if ollama_host else AsyncClient()
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         try:
-            response = await self.client.chat(model=self.model, messages=messages)
+            response = await self.client.chat(
+                **self.request_params, model=self.model, messages=messages
+            )
             response_message = response["message"]["content"]
             input_tokens = response.get("prompt_eval_count", 0)
             output_tokens = response.get("eval_count", 0)
@@ -157,12 +160,13 @@ class OllamaClient(LLMClient):
 
 
 class OpenAIClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise XentConfigurationError("OPENAI_API_KEY environment variable not set.")
         self.client = AsyncOpenAI(api_key=api_key)
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         """Send a request to the LLM and return the response."""
@@ -195,6 +199,7 @@ class OpenAIClient(LLMClient):
 
         try:
             response = await self.client.chat.completions.create(
+                **self.request_params,
                 model=self.model,
                 messages=openai_api_messages,
             )
@@ -235,7 +240,7 @@ class OpenAIClient(LLMClient):
 
 
 class AnthropicClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
@@ -243,6 +248,7 @@ class AnthropicClient(LLMClient):
                 "ANTHROPIC_API_KEY environment variable not set."
             )
         self.client = AsyncAnthropic(api_key=api_key)
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         system_message: str | NotGiven = NotGiven()
@@ -275,6 +281,7 @@ class AnthropicClient(LLMClient):
 
         try:
             message = await self.client.messages.create(
+                **self.request_params,
                 max_tokens=4096,
                 messages=anthropic_api_messages,
                 model=self.model,
@@ -318,12 +325,13 @@ class AnthropicClient(LLMClient):
 
 
 class GeminiClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         google_api_key = os.getenv("GEMINI_API_KEY")
         if not google_api_key:
             raise XentConfigurationError("GEMINI_API_KEY environment variable not set.")
         self.client = genai.Client(api_key=google_api_key)
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         gemini_contents: list[Any] = []
@@ -372,6 +380,7 @@ class GeminiClient(LLMClient):
 
         try:
             response = await self.client.aio.models.generate_content(
+                **self.request_params,
                 model=self.model,
                 contents=gemini_contents,
                 config=genai_types.GenerateContentConfig(
@@ -418,12 +427,13 @@ class GeminiClient(LLMClient):
 
 
 class GrokClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         api_key = os.getenv("GROK_API_KEY")
         if not api_key:
             raise XentConfigurationError("GROK_API_KEY environment variable not set.")
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []
@@ -455,6 +465,7 @@ class GrokClient(LLMClient):
 
         try:
             response = await self.client.chat.completions.create(
+                **self.request_params,
                 model=self.model,
                 messages=openai_api_messages,
             )
@@ -495,7 +506,7 @@ class GrokClient(LLMClient):
 
 
 class DeepSeekClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
@@ -503,6 +514,7 @@ class DeepSeekClient(LLMClient):
                 "DEEPSEEK_API_KEY environment variable not set."
             )
         self.client = AsyncOpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []
@@ -534,6 +546,7 @@ class DeepSeekClient(LLMClient):
 
         try:
             response = await self.client.chat.completions.create(
+                **self.request_params,
                 model=self.model,
                 messages=openai_api_messages,
             )
@@ -574,7 +587,7 @@ class DeepSeekClient(LLMClient):
 
 
 class MoonshotClient(LLMClient):
-    def __init__(self, model: str):
+    def __init__(self, model: str, request_params: dict[str, Any]):
         super().__init__(model)
         api_key = os.getenv("MOONSHOT_API_KEY")
         if not api_key:
@@ -584,6 +597,7 @@ class MoonshotClient(LLMClient):
         self.client = AsyncOpenAI(
             api_key=api_key, base_url="https://api.moonshot.ai/v1"
         )
+        self.request_params = request_params
 
     async def request(self, messages: list[LLMMessage]) -> tuple[str, TokenUsage]:
         openai_api_messages: list[ChatCompletionMessageParam] = []
@@ -615,6 +629,7 @@ class MoonshotClient(LLMClient):
 
         try:
             response = await self.client.chat.completions.create(
+                **self.request_params,
                 model=self.model,
                 messages=openai_api_messages,
             )
@@ -812,20 +827,21 @@ class HuggingFaceClient(LLMClient):
 def make_client(unchecked_options: PlayerOptions | None) -> LLMClient:
     options = check_default_xgp_options(unchecked_options)
     provider = options["provider"]
+    request_params = options.get("request_params", {})
     if provider == "openai":
-        return OpenAIClient(options["model"])
+        return OpenAIClient(options["model"], request_params)
     elif provider == "anthropic":
-        return AnthropicClient(options["model"])
+        return AnthropicClient(options["model"], request_params)
     elif provider == "gemini":
-        return GeminiClient(options["model"])
+        return GeminiClient(options["model"], request_params)
     elif provider == "grok":
-        return GrokClient(options["model"])
+        return GrokClient(options["model"], request_params)
     elif provider == "deepseek":
-        return DeepSeekClient(options["model"])
+        return DeepSeekClient(options["model"], request_params)
     elif provider == "moonshot":
-        return MoonshotClient(options["model"])
+        return MoonshotClient(options["model"], request_params)
     elif provider == "ollama":
-        return OllamaClient(options["model"])
+        return OllamaClient(options["model"], request_params)
     elif provider == "huggingface":
         return HuggingFaceClient.from_options(
             check_default_hf_xgp_options(unchecked_options)

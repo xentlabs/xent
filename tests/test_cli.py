@@ -240,13 +240,11 @@ class TestModelParameterParsing:
         assert params == {"temperature": 0.7}
 
         # Multiple parameters with different types
-        model, params = parse_model_spec("claude-3-5-sonnet?max_tokens=8192&temperature=0&streaming=true")
+        model, params = parse_model_spec(
+            "claude-3-5-sonnet?max_tokens=8192&temperature=0&streaming=true"
+        )
         assert model == "claude-3-5-sonnet"
-        assert params == {
-            "max_tokens": 8192,
-            "temperature": 0,
-            "streaming": True
-        }
+        assert params == {"max_tokens": 8192, "temperature": 0, "streaming": True}
 
         # String parameters
         model, params = parse_model_spec("gpt-4o?reasoning_effort=high")
@@ -280,9 +278,12 @@ class TestModelParameterParsing:
         result = runner.invoke(
             configure,
             [
-                "--model", "gpt-4o?temperature=0.7&reasoning_effort=high",
-                "--model", "claude-3-5-sonnet?max_tokens=8192",
-                "--output", str(output_path),
+                "--model",
+                "gpt-4o?temperature=0.7&reasoning_effort=high",
+                "--model",
+                "claude-3-5-sonnet?max_tokens=8192",
+                "--output",
+                str(output_path),
             ],
             catch_exceptions=False,
         )
@@ -302,7 +303,9 @@ class TestModelParameterParsing:
         assert gpt_player["options"]["request_params"]["reasoning_effort"] == "high"
 
         # Check second player (claude)
-        claude_player = next(p for p in config["players"] if p["id"] == "claude-3-5-sonnet")
+        claude_player = next(
+            p for p in config["players"] if p["id"] == "claude-3-5-sonnet"
+        )
         assert claude_player["options"]["model"] == "claude-3-5-sonnet"
         assert claude_player["options"]["provider"] == "anthropic"
         assert "request_params" in claude_player["options"]
@@ -321,7 +324,8 @@ class TestModelParameterParsing:
             [
                 "add-player",
                 str(config_path),
-                "--model", "gpt-4o-mini?temperature=0.9&top_p=0.95",
+                "--model",
+                "gpt-4o-mini?temperature=0.9&top_p=0.95",
             ],
             catch_exceptions=False,
         )
@@ -335,7 +339,9 @@ class TestModelParameterParsing:
             updated_config = json.load(f)
 
         # Find the new player
-        new_player = next(p for p in updated_config["players"] if p["id"] == "gpt-4o-mini")
+        new_player = next(
+            p for p in updated_config["players"] if p["id"] == "gpt-4o-mini"
+        )
         assert new_player["options"]["model"] == "gpt-4o-mini"
         assert new_player["options"]["provider"] == "openai"
         assert "request_params" in new_player["options"]

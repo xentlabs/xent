@@ -1,3 +1,4 @@
+import contextlib
 import json
 from pathlib import Path
 from typing import Any, cast
@@ -82,18 +83,16 @@ def parse_model_spec(spec: str) -> tuple[str, dict[str, Any]]:
         'gpt-4o' -> ('gpt-4o', {})
         'gpt-4o?temperature=0.7&reasoning_effort=high' -> ('gpt-4o', {'temperature': 0.7, 'reasoning_effort': 'high'})
     """
-    if '?' in spec:
-        model, query = spec.split('?', 1)
+    if "?" in spec:
+        model, query = spec.split("?", 1)
         params = {}
         for key, values in parse_qs(query).items():
             value = values[0]  # Take first value
             # Type inference - try to parse as JSON to get numbers, bools, null
-            try:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
                 value = json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                # Keep as string if it's not valid JSON
-                pass
             params[key] = value
+
         return model, params
     return spec, {}
 
@@ -219,8 +218,8 @@ def remove_player_from_config(
     multiple=True,
     default=["gpt-4o"],
     help="Add a model as a player with optional parameters using URL-like syntax. "
-         "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high', "
-         "'claude-3-5-sonnet?max_tokens=8192'. Can be used multiple times.",
+    "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high', "
+    "'claude-3-5-sonnet?max_tokens=8192'. Can be used multiple times.",
 )
 @click.option(
     "--human",
@@ -356,8 +355,8 @@ def configure(
     multiple=True,
     required=True,
     help="Model to add as a player with optional parameters using URL-like syntax. "
-         "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high'. "
-         "Can be used multiple times.",
+    "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high'. "
+    "Can be used multiple times.",
 )
 @click.option(
     "--output",

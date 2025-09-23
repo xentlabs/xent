@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import parse_qs
 
 import click
 
@@ -74,6 +75,29 @@ def games_from_paths(paths: list[Path]) -> list[GameConfig]:
     return [game_from_file(p) for p in all_game_paths]
 
 
+def parse_model_spec(spec: str) -> tuple[str, dict[str, Any]]:
+    """Parse a model specification with optional URL-like parameters.
+
+    Examples:
+        'gpt-4o' -> ('gpt-4o', {})
+        'gpt-4o?temperature=0.7&reasoning_effort=high' -> ('gpt-4o', {'temperature': 0.7, 'reasoning_effort': 'high'})
+    """
+    if '?' in spec:
+        model, query = spec.split('?', 1)
+        params = {}
+        for key, values in parse_qs(query).items():
+            value = values[0]  # Take first value
+            # Type inference - try to parse as JSON to get numbers, bools, null
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                # Keep as string if it's not valid JSON
+                pass
+            params[key] = value
+        return model, params
+    return spec, {}
+
+
 def build_benchmark_config(
     models: list[str],
     human: bool,
@@ -88,18 +112,23 @@ def build_benchmark_config(
 ) -> CondensedXentBenchmarkConfig:
     players = []
     if not human:
-        players = [
-            PlayerConfig(
-                name="black",
-                id=model,
-                player_type="default",
-                options={
-                    "model": model,
-                    "provider": guess_provider_from_model(model),
-                },
+        for model_spec in models:
+            model, request_params = parse_model_spec(model_spec)
+            player_options: dict[str, Any] = {
+                "model": model,
+                "provider": guess_provider_from_model(model),
+            }
+            if request_params:
+                player_options["request_params"] = request_params
+
+            players.append(
+                PlayerConfig(
+                    name="black",
+                    id=model,
+                    player_type="default",
+                    options=player_options,
+                )
             )
-            for model in models
-        ]
     else:
         players.append(
             PlayerConfig(
@@ -189,7 +218,9 @@ def remove_player_from_config(
     "--model",
     multiple=True,
     default=["gpt-4o"],
-    help="Add a model as a player (can be used multiple times)",
+    help="Add a model as a player with optional parameters using URL-like syntax. "
+         "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high', "
+         "'claude-3-5-sonnet?max_tokens=8192'. Can be used multiple times.",
 )
 @click.option(
     "--human",
@@ -324,7 +355,9 @@ def configure(
     "-m",
     multiple=True,
     required=True,
-    help="Model to add as a player (can be used multiple times)",
+    help="Model to add as a player with optional parameters using URL-like syntax. "
+         "Examples: 'gpt-4o', 'gpt-4o?temperature=0.7&reasoning_effort=high'. "
+         "Can be used multiple times.",
 )
 @click.option(
     "--output",
@@ -343,18 +376,26 @@ def add_player_cmd(
         config = json.load(f)
 
     # Add each model as a new player
-    for model_name in model:
+    for model_spec in model:
+        model_name, request_params = parse_model_spec(model_spec)
+        player_options: dict[str, Any] = {
+            "model": model_name,
+            "provider": guess_provider_from_model(model_name),
+        }
+        if request_params:
+            player_options["request_params"] = request_params
+
         new_player = PlayerConfig(
             name="black",
             id=model_name,
             player_type="default",
-            options={
-                "model": model_name,
-                "provider": guess_provider_from_model(model_name),
-            },
+            options=player_options,
         )
         config = add_player_to_config(config, new_player)
-        click.echo(f"Added player: {model_name}")
+        if request_params:
+            click.echo(f"Added player: {model_name} with params: {request_params}")
+        else:
+            click.echo(f"Added player: {model_name}")
 
     # Output
     config_str = dumps(config, indent=2)

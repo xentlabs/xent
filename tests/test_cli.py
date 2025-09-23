@@ -11,6 +11,7 @@ from xent.cli.configure import (
     add_player_to_config,
     configure,
     games_from_paths,
+    parse_model_spec,
     remove_player_from_config,
 )
 from xent.cli.run import check_version
@@ -216,6 +217,130 @@ class TestCLIPresentationIntegration:
             another = next(g for g in games if g["name"] == "another")
             assert another["code"] == 'assign(s="another")'
             assert another["presentation_function"] == get_default_presentation()
+
+
+class TestModelParameterParsing:
+    """Test URL-like model parameter parsing functionality"""
+
+    def test_parse_model_spec_simple(self):
+        """Test parsing simple model names without parameters"""
+        model, params = parse_model_spec("gpt-4o")
+        assert model == "gpt-4o"
+        assert params == {}
+
+        model, params = parse_model_spec("claude-3-5-sonnet")
+        assert model == "claude-3-5-sonnet"
+        assert params == {}
+
+    def test_parse_model_spec_with_params(self):
+        """Test parsing models with URL-like parameters"""
+        # Single parameter
+        model, params = parse_model_spec("gpt-4o?temperature=0.7")
+        assert model == "gpt-4o"
+        assert params == {"temperature": 0.7}
+
+        # Multiple parameters with different types
+        model, params = parse_model_spec("claude-3-5-sonnet?max_tokens=8192&temperature=0&streaming=true")
+        assert model == "claude-3-5-sonnet"
+        assert params == {
+            "max_tokens": 8192,
+            "temperature": 0,
+            "streaming": True
+        }
+
+        # String parameters
+        model, params = parse_model_spec("gpt-4o?reasoning_effort=high")
+        assert model == "gpt-4o"
+        assert params == {"reasoning_effort": "high"}
+
+    def test_parse_model_spec_complex_values(self):
+        """Test parsing with various value types"""
+        # Float values
+        model, params = parse_model_spec("model?top_p=0.95&presence_penalty=0.1")
+        assert model == "model"
+        assert params["top_p"] == 0.95
+        assert params["presence_penalty"] == 0.1
+
+        # Boolean values
+        model, params = parse_model_spec("model?streaming=false&echo=true")
+        assert model == "model"
+        assert params["streaming"] is False
+        assert params["echo"] is True
+
+        # Null value
+        model, params = parse_model_spec("model?stop=null")
+        assert model == "model"
+        assert params["stop"] is None
+
+    def test_configure_with_model_params(self, tmp_path):
+        """Test configure command with URL-like model parameters"""
+        runner = CliRunner()
+        output_path = tmp_path / "config.json"
+
+        result = runner.invoke(
+            configure,
+            [
+                "--model", "gpt-4o?temperature=0.7&reasoning_effort=high",
+                "--model", "claude-3-5-sonnet?max_tokens=8192",
+                "--output", str(output_path),
+            ],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert output_path.exists()
+
+        with open(output_path) as f:
+            config = json.load(f)
+
+        # Check first player (gpt-4o)
+        gpt_player = next(p for p in config["players"] if p["id"] == "gpt-4o")
+        assert gpt_player["options"]["model"] == "gpt-4o"
+        assert gpt_player["options"]["provider"] == "openai"
+        assert "request_params" in gpt_player["options"]
+        assert gpt_player["options"]["request_params"]["temperature"] == 0.7
+        assert gpt_player["options"]["request_params"]["reasoning_effort"] == "high"
+
+        # Check second player (claude)
+        claude_player = next(p for p in config["players"] if p["id"] == "claude-3-5-sonnet")
+        assert claude_player["options"]["model"] == "claude-3-5-sonnet"
+        assert claude_player["options"]["provider"] == "anthropic"
+        assert "request_params" in claude_player["options"]
+        assert claude_player["options"]["request_params"]["max_tokens"] == 8192
+
+    def test_add_player_with_params(self, tmp_path, simple_expanded_config):
+        """Test add-player command with URL-like model parameters"""
+        runner = CliRunner()
+        config_path = tmp_path / "config.json"
+
+        with open(config_path, "w") as f:
+            json.dump(simple_expanded_config, f)
+
+        result = runner.invoke(
+            configure,
+            [
+                "add-player",
+                str(config_path),
+                "--model", "gpt-4o-mini?temperature=0.9&top_p=0.95",
+            ],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert "Added player: gpt-4o-mini with params:" in result.output
+        assert "temperature" in result.output
+        assert "0.9" in result.output
+
+        with open(config_path) as f:
+            updated_config = json.load(f)
+
+        # Find the new player
+        new_player = next(p for p in updated_config["players"] if p["id"] == "gpt-4o-mini")
+        assert new_player["options"]["model"] == "gpt-4o-mini"
+        assert new_player["options"]["provider"] == "openai"
+        assert "request_params" in new_player["options"]
+        assert new_player["options"]["request_params"]["temperature"] == 0.9
+        assert new_player["options"]["request_params"]["top_p"] == 0.95
 
 
 class TestVersionChecking:

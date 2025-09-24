@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Mapping
 from typing import Any, TypedDict
 
 from xent.common.configuration_types import (
@@ -9,6 +10,7 @@ from xent.common.configuration_types import (
 )
 from xent.common.errors import XentApiError, XentConfigurationError, XentInternalError
 from xent.common.util import dumps
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import TokenUsage, XentEvent
 from xent.runtime.base_player import XGP
@@ -54,7 +56,7 @@ class WebsocketXGP(XGP):
         self.score = 0.0
 
     async def make_move(
-        self, var_name: str, register_states: dict[str, XString]
+        self, var_name: str, register_states: Mapping[str, XString | XList]
     ) -> tuple[str, TokenUsage]:
         # `post` for elicit request is made first. So the web client already knows that
         # it needs to make a move. Just wait for the next websocket input.

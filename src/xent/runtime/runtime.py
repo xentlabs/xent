@@ -13,6 +13,7 @@ from xent.common.configuration_types import (
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.x_flag import XFlag
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import (
     ElicitRequestEvent,
@@ -52,12 +53,14 @@ class XentRuntime:
 
     def _reset_register_states(self):
         for var_name, var in self.local_vars.items():
-            if not isinstance(var, XString):
-                continue
-
-            self.local_vars[var_name] = XString(
-                "", static=var.static, public=var.public, name=var.name
-            )
+            if isinstance(var, XString):
+                self.local_vars[var_name] = XString(
+                    "", static=var.static, public=var.public, name=var.name
+                )
+            elif isinstance(var, XList):
+                self.local_vars[var_name] = XList(
+                    [], static=var.static, public=var.public, name=var.name
+                )
 
     def get_results_and_reset(self) -> GameMapRoundResult:
         score = self.score
@@ -131,13 +134,13 @@ class XentRuntime:
         await player.post(event)
         self.history.append(event)
 
-    def _validate_assign_register(self, var_name: str) -> XString:
+    def _validate_assign_register(self, var_name: str) -> XString | XList:
         cur = self.local_vars.get(var_name)
         if cur is None:
             raise XentSyntaxError(f"Register {var_name} does not exist")
-        if not isinstance(cur, XString):
+        if not isinstance(cur, XString) and not isinstance(cur, XList):
             raise XentSyntaxError(
-                f"{var_name} is not a valid assign target. Assign requires a String register"
+                f"{var_name} is not a valid assign target. Assign requires a String or Array register"
             )
         if cur.static:
             raise XentSyntaxError(
@@ -146,14 +149,15 @@ class XentRuntime:
 
         return cur
 
-    def _validate_assign_arg(self, var_name: str, var_value: Any) -> XString:
+    def _validate_assign_arg(self, var_name: str, var_value: Any) -> XString | XList:
         if isinstance(var_value, str):
             var_value = XString(var_value)
-        if not isinstance(var_value, XString):
-            raise XentSyntaxError(
-                f"Value provided to assign is not a String: {var_value}. Assign requires a String value"
-            )
-        return var_value
+
+        if isinstance(var_value, XString | XList):
+            return var_value
+        raise XentSyntaxError(
+            f"Value provided to assign is not a String: {var_value}. Assign requires a String value"
+        )
 
     def assign(self, args: list[Any], kwargs: dict[str, Any]) -> None:
         self.assert_no_args(args, "assign")
@@ -161,8 +165,11 @@ class XentRuntime:
             logging.info(f"Assigning {var_value} to {var_name}")
             cur = self._validate_assign_register(var_name)
             validated_value = self._validate_assign_arg(var_name, var_value)
-            cur.primary_string = validated_value.primary_string
-            cur.prefix = validated_value.prefix
+            if isinstance(cur, XString) and isinstance(validated_value, XString):
+                cur.primary_string = validated_value.primary_string
+                cur.prefix = validated_value.prefix
+            elif isinstance(cur, XList) and isinstance(validated_value, XList):
+                cur.items = validated_value.items
         return None
 
     def _validate_elicit_args(
@@ -203,10 +210,10 @@ class XentRuntime:
                 "Elicit target is static. Elicit requires a non-static register target"
             )
 
-    def _gather_register_states(self, player_name: str) -> dict[str, XString]:
+    def _gather_register_states(self, player_name: str) -> dict[str, XString | XList]:
         register_states = {}
         for var_name, var in self.local_vars.items():
-            if not isinstance(var, XString):
+            if not isinstance(var, XString | XList):
                 continue
 
             if var.public or is_omniscient_player_name(player_name):

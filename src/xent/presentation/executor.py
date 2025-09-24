@@ -1,9 +1,11 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from xent.common.configuration_types import XentEvent, XentMetadata
 from xent.common.errors import XentConfigurationError, XentInternalError
+from xent.common.x_list import XList
+from xent.common.x_string import XString
 
 DEFAULT_PRESENTATION = '''
 from xent.presentation.sdk import (
@@ -93,7 +95,7 @@ class PresentationFunction:
         self.code_string = code_string
         self.compiled_code = None
         self.present_func: (
-            Callable[[dict[str, Any], list[XentEvent], XentMetadata], str] | None
+            Callable[[Mapping[str, Any], list[XentEvent], XentMetadata], str] | None
         ) = None
 
         try:
@@ -124,7 +126,10 @@ class PresentationFunction:
         self.present_func = present_func
 
     def __call__(
-        self, state: dict[str, Any], history: list[XentEvent], metadata: XentMetadata
+        self,
+        state: Mapping[str, XString | XList],
+        history: list[XentEvent],
+        metadata: XentMetadata,
     ) -> str:
         if self.present_func is None:
             raise XentInternalError("Presentation function not properly initialized")

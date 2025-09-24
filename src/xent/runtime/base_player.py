@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Final
 
 from xent.common.configuration_types import (
@@ -6,6 +7,7 @@ from xent.common.configuration_types import (
     PlayerName,
     PlayerOptions,
 )
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import TokenUsage, XentEvent
 
@@ -75,7 +77,7 @@ class XGP(ABC):
 
     @abstractmethod
     async def make_move(
-        self, var_name: str, register_state: dict[str, XString]
+        self, var_name: str, register_state: Mapping[str, XString | XList]
     ) -> tuple[str, TokenUsage]:
         pass
 

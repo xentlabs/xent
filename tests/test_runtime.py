@@ -1761,7 +1761,7 @@ def present(state, history, metadata):
         # Test with realistic game state and history
         from xent.common.token_xent_list import TokenXentList
 
-        state = {"s": "Once upon a time"}
+        state = {"s": XString("Once upon a time")}
         history: list[XentEvent] = [
             {"type": "elicit_response", "response": "magical"},  # type: ignore
             {"type": "reward", "value": TokenXentList([("test", 1.5)])},  # type: ignore

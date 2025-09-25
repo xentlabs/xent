@@ -1,7 +1,7 @@
 import pytest
 
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
-from xent.common.util import dumps
+from xent.common.util import dumps, loads
 from xent.common.x_flag import XFlag
 from xent.common.x_string import XString
 from xent.common.x_list import XList
@@ -1040,7 +1040,7 @@ class TestListDSL:
     async def test_list_registers_initialized_types_and_flags(self, xrt):
         # 'l' is a mutable list register; 'a' is a static list register
         assert isinstance(xrt.local_vars["l"], XList)
-        assert isinstance(xrt.local_vars["a"], XList)
+        assert isinstance(xrt.local_vars["a"], XString)
         assert isinstance(xrt.local_vars["s"], XString)
 
         a = xrt.local_vars["a"]
@@ -1056,11 +1056,10 @@ class TestListDSL:
         assert len(xrt.local_vars["l"]) == 0
 
     @pytest.mark.asyncio
-    async def test_assign_list_with_string_is_ignored_current_behavior(self, xrt):
-        # Currently assigning XString to XList target is a no-op
-        await eval_line("assign(l='hello')", 1, xrt)
-        assert isinstance(xrt.local_vars["l"], XList)
-        assert len(xrt.local_vars["l"]) == 0
+    async def test_assign_list_with_string_raises_type_error(self, xrt):
+        # Now assigning XString to XList target should raise an error
+        with pytest.raises(XentSyntaxError):
+            await eval_line("assign(l='hello')", 1, xrt)
 
     @pytest.mark.asyncio
     async def test_assign_to_static_list_register_disallowed(self, xrt):
@@ -1088,7 +1087,7 @@ class TestListDSL:
         regs = event["registers"]
         assert "l" not in regs
         # Public registers include 'a', 'b', 'p'
-        assert "a" in regs and isinstance(regs["a"], XList)
+        assert "a" in regs and isinstance(regs["a"], XString)
         assert "b" in regs
         assert "p" in regs
 
@@ -1125,4 +1124,9 @@ class TestListDSL:
         await eval_line("elicit(s, 5)", 1, xrt)
         event = next(e for e in xrt.player.event_history if e["type"] == "elicit_request")
         payload = dumps({"type": "xent_event", "event": event})
-        assert "__XList__" in payload
+        # Should serialize list registers as JSON arrays of strings
+        parsed = loads(payload)
+        assert isinstance(parsed["event"]["registers"]["l"], list)
+        # Each item should be a string after encoding
+        for item in parsed["event"]["registers"]["l"]:
+            assert isinstance(item, str)

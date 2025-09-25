@@ -17,7 +17,7 @@ class XEncoder(json.JSONEncoder):
         if isinstance(o, XString):
             return str(o)
         elif isinstance(o, XList):
-            return {"__XList__": True, "items": list(o.items)}
+            return list(o.items)
         elif isinstance(o, tuple):
             return {"__tuple__": True, "items": list(o)}
         elif isinstance(o, TokenXentList):

@@ -140,7 +140,7 @@ class XentRuntime:
             raise XentSyntaxError(f"Register {var_name} does not exist")
         if not isinstance(cur, XString) and not isinstance(cur, XList):
             raise XentSyntaxError(
-                f"{var_name} is not a valid assign target. Assign requires a String or Array register"
+                f"{var_name} is not a valid assign target. Assign requires a String or List register"
             )
         if cur.static:
             raise XentSyntaxError(
@@ -156,7 +156,7 @@ class XentRuntime:
         if isinstance(var_value, XString | XList):
             return var_value
         raise XentSyntaxError(
-            f"Value provided to assign is not a String: {var_value}. Assign requires a String value"
+            f"Value provided to assign is not a String or List: {var_value}. Assign requires a String or List value"
         )
 
     def assign(self, args: list[Any], kwargs: dict[str, Any]) -> None:
@@ -170,6 +170,12 @@ class XentRuntime:
                 cur.prefix = validated_value.prefix
             elif isinstance(cur, XList) and isinstance(validated_value, XList):
                 cur.items = validated_value.items
+            else:
+                target_type = "String" if isinstance(cur, XString) else "List"
+                value_type = "String" if target_type == "List" else "String"
+                raise XentSyntaxError(
+                    f"Attemted to assign incompatible value to register. Register type: {target_type}, value type: {value_type}"
+                )
         return None
 
     def _validate_elicit_args(

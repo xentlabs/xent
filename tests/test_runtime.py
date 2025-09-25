@@ -17,6 +17,7 @@ from xent.common.errors import XentConfigurationError, XentInternalError, XentTy
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.version import get_xent_version, validate_version
 from xent.common.x_string import XString
+from xent.common.x_list import XList
 from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
@@ -325,6 +326,66 @@ class TestXString:
         assert s_empty == ""
         assert s_empty != "hello"
         assert s_empty != s_hello
+
+
+class TestXList:
+    """Unit tests for XList behavior."""
+
+    def test_constructor_and_repr(self):
+        # Default constructor
+        l0 = XList()
+        assert isinstance(l0, XList)
+        assert len(l0) == 0
+        assert l0.static is False
+        assert l0.public is False
+        assert l0.name is None
+        assert "XList(items=[" in repr(l0)
+
+        # Pre-populated with flags
+        items = [XString("a"), XString("b")]
+        l1 = XList(items=items, static=True, public=True, name="l")
+        assert len(l1) == 2
+        assert l1.static is True
+        assert l1.public is True
+        assert l1.name == "l"
+        r = repr(l1)
+        assert "static=True" in r and "public=True" in r and "name='l'" in r
+
+    def test_equality_and_inequality(self):
+        l1 = XList([XString("a"), XString("b")])
+        l2 = XList([XString("a"), XString("b")])
+        l3 = XList([XString("a"), XString("c")])
+
+        assert l1 == l2
+        assert l1 != l3
+
+    def test_add_concatenates_and_type_checks(self):
+        left = XList([XString("a")], static=False, public=True, name="l")
+        right = XList([XString("b"), XString("c")])
+
+        result = left + right
+        assert isinstance(result, XList)
+        assert len(result) == 3
+        # Left metadata is propagated
+        assert result.static is left.static
+        assert result.public is left.public
+        assert result.name == left.name
+
+        # Originals unchanged
+        assert len(left) == 1
+        assert len(right) == 2
+
+        # Type check
+        with pytest.raises(XentTypeError):
+            _ = left + "not_a_list"  # type: ignore[operator]
+
+    def test_len_and_contains(self):
+        l = XList([XString("foo")])
+        assert len(l) == 1
+        # Membership with XString and raw string
+        assert XString("foo") in l
+        assert "foo" in l
+        assert "bar" not in l
 
 
 class TestTokenXentList:

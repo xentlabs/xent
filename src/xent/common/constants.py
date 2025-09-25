@@ -3,7 +3,7 @@ from xent.common.configuration_types import PlayerName
 NUM_VARIABLES_PER_REGISTER = 4
 
 ALL_REGISTERS = ["a", "b", "c", "l", "s", "t", "x", "y", "p"]
-LIST_REGISTERS = ["a", "l"]
+LIST_REGISTERS = ["l"]
 STATIC_REGISTERS = ["a", "b", "c"]
 PUBLIC_REGISTERS = ["a", "b", "p"]
 

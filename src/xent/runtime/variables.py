@@ -69,6 +69,7 @@ def build_globals(judge: Judge):
         first_n_tokens=judge.first_n_tokens,
         num_words=num_words,
         XString=XString,
+        XList=XList,
     )
 
     flag_var_names = ["flag_1", "flag_2"]

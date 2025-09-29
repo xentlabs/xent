@@ -377,7 +377,7 @@ class TestXList:
 
         # Type check
         with pytest.raises(XentTypeError):
-            _ = left + "not_a_list"  # type: ignore[operator]
+            _ = left + "not_a_list"
 
     def test_len_and_contains(self):
         l_value = XList([XString("foo")])

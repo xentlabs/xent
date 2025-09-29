@@ -1043,10 +1043,10 @@ class TestListDSL:
         assert isinstance(xrt.local_vars["a"], XString)
         assert isinstance(xrt.local_vars["s"], XString)
 
-        a = xrt.local_vars["a"]
-        l = xrt.local_vars["l"]
-        assert a.static is True and a.public is True
-        assert l.static is False
+        a_value = xrt.local_vars["a"]
+        l_value = xrt.local_vars["l"]
+        assert a_value.static is True and a_value.public is True
+        assert l_value.static is False
 
     @pytest.mark.asyncio
     async def test_assign_list_concatenation_noop(self, xrt):

@@ -16,8 +16,8 @@ from xent.common.configuration_types import (
 from xent.common.errors import XentConfigurationError, XentInternalError, XentTypeError
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.version import get_xent_version, validate_version
-from xent.common.x_string import XString
 from xent.common.x_list import XList
+from xent.common.x_string import XString
 from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
@@ -380,12 +380,12 @@ class TestXList:
             _ = left + "not_a_list"  # type: ignore[operator]
 
     def test_len_and_contains(self):
-        l = XList([XString("foo")])
-        assert len(l) == 1
+        l_value = XList([XString("foo")])
+        assert len(l_value) == 1
         # Membership with XString and raw string
-        assert XString("foo") in l
-        assert "foo" in l
-        assert "bar" not in l
+        assert XString("foo") in l_value
+        assert "foo" in l_value
+        assert "bar" not in l_value
 
 
 class TestTokenXentList:

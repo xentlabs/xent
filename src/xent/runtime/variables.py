@@ -134,6 +134,7 @@ def remove_words(s: str | XString, words: Iterable[str | XString]) -> XString:
         # not part of the group.
         result = re.sub(pattern, r"\1", result, flags=re.IGNORECASE)
 
+    result = re.sub(r"\s{2,}", " ", result).strip()
     return XString(result)
 
 

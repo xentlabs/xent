@@ -1,5 +1,7 @@
+import random
 import re
 import string
+from collections.abc import Callable
 from typing import Any
 
 from xent.common.configuration_types import ExecutableGameMap
@@ -60,6 +62,7 @@ def build_globals(judge: Judge):
         remove_common_words=remove_common_words,
         only_uses_chars=only_uses_chars,
         only_uses_words=only_uses_words,
+        pick=pick(judge.rng),
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -80,6 +83,16 @@ def build_globals(judge: Judge):
 
 
 remove_punctuation_translation = str.maketrans("", "", string.punctuation)
+
+
+def pick(rng: random.Random) -> Callable[[XList], XString]:
+    def pick_lambda(lst: XList) -> XString:
+        if len(lst.items) == 0:
+            return XString("")
+        item = rng.choice(lst.items)
+        return item
+
+    return pick_lambda
 
 
 def remove_punctuation(string: str | XString):

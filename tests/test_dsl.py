@@ -1,7 +1,9 @@
 import pytest
 
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
+from xent.common.util import dumps, loads
 from xent.common.x_flag import XFlag
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.runtime.execution import eval_line, play_game
 
@@ -1021,10 +1023,119 @@ class TestCombinedOperations:
         assert player.event_history[-2]["type"] == "elicit_request"
         event = player.event_history[-2]
         registers = event["registers"]
-        assert len(registers) == 32  # 4 * 8 registers
+        # 4 slots per register across 9 registers (a,b,c,l,s,t,x,y,p)
+        assert len(registers) == 36
+        # Confirm newly added list register appears in snapshot
+        assert "l" in registers and isinstance(registers["l"], XList)
         assert registers["s1"] == "test1"
         assert registers["s2"] == "test2"
         assert registers["s3"] == "test3"
         assert registers["t1"] == "test4"
         assert registers["t2"] == "test5"
         assert registers["t3"] == "test6"
+
+
+class TestListDSL:
+    @pytest.mark.asyncio
+    async def test_list_registers_initialized_types_and_flags(self, xrt):
+        # 'l' is a mutable list register; 'a' is a static list register
+        assert isinstance(xrt.local_vars["l"], XList)
+        assert isinstance(xrt.local_vars["a"], XString)
+        assert isinstance(xrt.local_vars["s"], XString)
+
+        a_value = xrt.local_vars["a"]
+        l_value = xrt.local_vars["l"]
+        assert a_value.static is True and a_value.public is True
+        assert l_value.static is False
+
+    @pytest.mark.asyncio
+    async def test_assign_list_concatenation_noop(self, xrt):
+        # Default lists are empty; concatenation should work and keep l empty
+        await eval_line("assign(l=l + l1)", 1, xrt)
+        assert isinstance(xrt.local_vars["l"], XList)
+        assert len(xrt.local_vars["l"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_assign_list_with_string_raises_type_error(self, xrt):
+        # Now assigning XString to XList target should raise an error
+        with pytest.raises(XentSyntaxError):
+            await eval_line("assign(l='hello')", 1, xrt)
+
+    @pytest.mark.asyncio
+    async def test_assign_to_static_list_register_disallowed(self, xrt):
+        with pytest.raises(XentSyntaxError):
+            await eval_line("assign(a=l)", 1, xrt)
+
+    @pytest.mark.asyncio
+    async def test_elicit_rejects_list_register_target(self, xrt):
+        with pytest.raises(XentSyntaxError):
+            await eval_line("elicit(l, 5)", 1, xrt)
+
+    @pytest.mark.asyncio
+    async def test_elicit_request_includes_list_for_omniscient_player(self, xrt):
+        await eval_line("elicit(s, 5)", 1, xrt)
+        event = next(
+            e for e in xrt.player.event_history if e["type"] == "elicit_request"
+        )
+        regs = event["registers"]
+        assert "l" in regs and isinstance(regs["l"], XList)
+
+    @pytest.mark.asyncio
+    async def test_elicit_request_excludes_non_public_list_for_non_omniscient_player(
+        self, xrt
+    ):
+        # alice is non-omniscient; snapshot should exclude non-public 'l'
+        await eval_line("elicit(alice, s, 5)", 1, xrt)
+        alice_player = xrt.local_vars["alice"]
+        event = next(
+            e for e in alice_player.event_history if e["type"] == "elicit_request"
+        )
+        regs = event["registers"]
+        assert "l" not in regs
+        # Public registers include 'a', 'b', 'p'
+        assert "a" in regs and isinstance(regs["a"], XString)
+        assert "b" in regs
+        assert "p" in regs
+
+    @pytest.mark.asyncio
+    async def test_reveal_allows_list_values(self, xrt):
+        await eval_line("reveal(l)", 1, xrt)
+        event = next(e for e in xrt.player.event_history if e["type"] == "reveal")
+        assert "l" in event["values"] and isinstance(event["values"]["l"], XList)
+
+    @pytest.mark.asyncio
+    async def test_reveal_mixed_values(self, xrt):
+        await eval_line("assign(s='hi')", 1, xrt)
+        await eval_line("assign(l=['hello', 'world'])", 1, xrt)
+        await eval_line("reveal(s, l)", 2, xrt)
+        event = next(e for e in xrt.player.event_history if e["type"] == "reveal")
+        assert isinstance(event["values"]["s"], XString)
+        assert isinstance(event["values"]["l"], XList)
+
+    @pytest.mark.asyncio
+    async def test_ensure_len_on_list_register(self, xrt):
+        await eval_line("elicit(s, 5)", 1, xrt)
+        result = await eval_line("ensure(len(l) == 0)", 2, xrt)
+        assert result is None
+
+    def test_reset_clears_list_registers(self, xrt):
+        # Manually populate list, then ensure reset clears it
+        xrt.local_vars["l"].items = [XString("foo")]
+        assert len(xrt.local_vars["l"]) == 1
+        _ = xrt.get_results_and_reset()
+        assert isinstance(xrt.local_vars["l"], XList)
+        assert len(xrt.local_vars["l"]) == 0
+
+    @pytest.mark.asyncio
+    async def test_event_serialization_handles_xlist(self, xrt):
+        await eval_line("elicit(s, 5)", 1, xrt)
+        event = next(
+            e for e in xrt.player.event_history if e["type"] == "elicit_request"
+        )
+        payload = dumps({"type": "xent_event", "event": event})
+        # Should serialize list registers as JSON arrays of strings
+        parsed = loads(payload)
+        assert isinstance(parsed["event"]["registers"]["l"], list)
+        # Each item should be a string after encoding
+        for item in parsed["event"]["registers"]["l"]:
+            assert isinstance(item, str)

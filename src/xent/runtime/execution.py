@@ -26,6 +26,31 @@ class StringLiteralToXStringTransformer(ast.NodeTransformer):
         return self.generic_visit(node)
 
 
+class ListLiteralToXListTransformer(ast.NodeTransformer):
+    def visit_List(self, node: ast.List) -> ast.AST:
+        self.generic_visit(node)
+
+        return ast.copy_location(
+            ast.Call(
+                func=ast.Name(id="XList", ctx=ast.Load()),
+                args=[ast.List(elts=node.elts, ctx=ast.Load())],
+                keywords=[],
+            ),
+            node,
+        )
+
+    def visit_ListComp(self, node: ast.ListComp) -> ast.AST:
+        self.generic_visit(node)
+        return ast.copy_location(
+            ast.Call(
+                func=ast.Name(id="XList", ctx=ast.Load()),
+                args=[node],  # let XList consume the comprehension iterable
+                keywords=[],
+            ),
+            node,
+        )
+
+
 async def play_game(
     code: str,
     xrt: XentRuntime,
@@ -215,12 +240,11 @@ def gather_params(
 
 def resolve_arg(arg_node: ast.expr, xrt: XentRuntime, line: str, line_num: int) -> Any:
     try:
-        transformer = StringLiteralToXStringTransformer()
-        transformed_arg_node = transformer.visit(arg_node)
-        ast.fix_missing_locations(transformed_arg_node)
+        arg_node = StringLiteralToXStringTransformer().visit(arg_node)
+        arg_node = ListLiteralToXListTransformer().visit(arg_node)
 
-        expression = ast.Expression(body=transformed_arg_node)
-        code = compile(expression, filename="<ast>", mode="eval")
+        ast.fix_missing_locations(arg_node)
+        code = compile(ast.Expression(body=arg_node), filename="<ast>", mode="eval")
         resolved_arg = eval(code, xrt.globals, xrt.local_vars)
         return resolved_arg
     except Exception as e:

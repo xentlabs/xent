@@ -1,7 +1,9 @@
 # Event types
+from collections.abc import Mapping
 from typing import Literal, TypedDict
 
 from xent.common.token_xent_list import TokenXentList
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 
 
@@ -20,7 +22,7 @@ class ElicitRequestEvent(BaseXentEvent):
     type: Literal["elicit_request"]
     var_name: str
     max_len: int
-    registers: dict[str, XString]
+    registers: Mapping[str, XString | XList]
 
 
 class ElicitResponseEvent(BaseXentEvent):
@@ -32,7 +34,7 @@ class ElicitResponseEvent(BaseXentEvent):
 class RevealEvent(BaseXentEvent):
     type: Literal["reveal"]
     # Map of variable names to their values.
-    values: dict[str, XString]
+    values: Mapping[str, XString | XList]
 
 
 class RewardEvent(BaseXentEvent):

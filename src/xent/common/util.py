@@ -8,6 +8,7 @@ from xent.common.configuration_types import (
     ExpandedXentBenchmarkConfig,
 )
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 
 
@@ -15,6 +16,8 @@ class XEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, XString):
             return str(o)
+        elif isinstance(o, XList):
+            return list(o.items)
         elif isinstance(o, tuple):
             return {"__tuple__": True, "items": list(o)}
         elif isinstance(o, TokenXentList):

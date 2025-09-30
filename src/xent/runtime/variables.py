@@ -6,11 +6,13 @@ from xent.common.configuration_types import ExecutableGameMap
 from xent.common.constants import (
     ALL_PLAYERS,
     ALL_REGISTERS,
+    LIST_REGISTERS,
     NUM_VARIABLES_PER_REGISTER,
     PUBLIC_REGISTERS,
     STATIC_REGISTERS,
 )
 from xent.common.x_flag import XFlag
+from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.runtime.base_player import XGP
 from xent.runtime.default_players import MockXGP
@@ -23,12 +25,20 @@ def build_locals(player: XGP, game_config: ExecutableGameMap):
     for i in range(NUM_VARIABLES_PER_REGISTER):
         for t in ALL_REGISTERS:
             var_name = t if i == 0 else f"{t}{i}"
-            local_vars[var_name] = XString(
-                "",
-                static=t in STATIC_REGISTERS,
-                public=t in PUBLIC_REGISTERS,
-                name=var_name,
-            )
+            if t in LIST_REGISTERS:
+                local_vars[var_name] = XList(
+                    [],
+                    static=t in STATIC_REGISTERS,
+                    public=t in PUBLIC_REGISTERS,
+                    name=var_name,
+                )
+            else:
+                local_vars[var_name] = XString(
+                    "",
+                    static=t in STATIC_REGISTERS,
+                    public=t in PUBLIC_REGISTERS,
+                    name=var_name,
+                )
 
     local_vars[player.name] = player
 
@@ -59,6 +69,7 @@ def build_globals(judge: Judge):
         first_n_tokens=judge.first_n_tokens,
         num_words=num_words,
         XString=XString,
+        XList=XList,
     )
 
     flag_var_names = ["flag_1", "flag_2"]

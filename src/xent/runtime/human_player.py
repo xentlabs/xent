@@ -9,7 +9,7 @@ from xent.common.configuration_types import (
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import TokenUsage, XentEvent
-from xent.runtime.base_player import XGP
+from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.default_players import get_presentation_function
 
 
@@ -37,7 +37,7 @@ class HumanXGP(XGP):
 
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
-    ) -> tuple[str, TokenUsage]:
+    ) -> MoveResult:
         print("************************************************")
         message = self.presentation_function(
             register_states, self.event_history, self.metadata
@@ -47,7 +47,7 @@ class HumanXGP(XGP):
         move = input(
             "You don't have to actually use <move></move> tags since you are a human player. Enter your move: "
         )
-        return move, TokenUsage(input_tokens=0, output_tokens=0)
+        return MoveResult(move, TokenUsage(input_tokens=0, output_tokens=0), [], "")
 
     async def post(self, event: XentEvent) -> None:
         logging.info(f"Player received: {event}")

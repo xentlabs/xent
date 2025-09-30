@@ -24,6 +24,7 @@ FAKE_GAME_MAP: ExecutableGameMap = {
         "num_rounds_per_game": 30,
         "judge_model": "gpt2",
         "seed": "test_seed",
+        "store_full_player_interactions": False,
     },
     "player": {
         "name": "black",

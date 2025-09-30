@@ -40,7 +40,14 @@ async def run_game(
     locals = build_locals(player, executable_game_map)
     globals = build_globals(judge)
 
-    xrt = XentRuntime(player, locals, globals)
+    xrt = XentRuntime(
+        player,
+        locals,
+        globals,
+        store_full_interactions=executable_game_map["metadata"][
+            "store_full_player_interactions"
+        ],
+    )
 
     logging.info(f"Running game: {game_str}")
     try:

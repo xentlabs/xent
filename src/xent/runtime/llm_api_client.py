@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Literal, TypedDict
+from typing import Any
 
 import google.genai as genai
 import google.genai.types as genai_types
@@ -40,19 +40,12 @@ from xent.common.errors import (
     XentInvalidRequestError,
     XentRateLimitError,
 )
-from xent.common.xent_event import TokenUsage
+from xent.common.xent_event import LLMMessage, TokenUsage
 from xent.runtime.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,
     check_default_xgp_options,
 )
-
-LLMRole = Literal["user", "assistant", "system"]
-
-
-class LLMMessage(TypedDict):
-    role: LLMRole
-    content: str
 
 
 def guess_provider_from_model(model: str) -> str:

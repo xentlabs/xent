@@ -34,6 +34,7 @@ def simple_expanded_config() -> ExpandedXentBenchmarkConfig:
             "judge_model": "gpt-4",
             "num_rounds_per_game": 30,
             "seed": "test-seed",
+            "store_full_player_interactions": False,
         },
         "games": [
             {

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import namedtuple
 from collections.abc import Mapping
 from typing import Final
 
@@ -9,7 +10,7 @@ from xent.common.configuration_types import (
 )
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.common.xent_event import TokenUsage, XentEvent
+from xent.common.xent_event import XentEvent
 
 """
 Xent Game Player (XGP) base class
@@ -23,6 +24,10 @@ If you want to create a new player, then you should do 3 things:
 Once you have done these steps, you can use your new player type in the game configuration by specifying
 the PlayerType you have added.
 """
+
+MoveResult = namedtuple(
+    "MoveResult", ["response", "token_usage", "prompts", "full_response"]
+)
 
 
 class XGP(ABC):
@@ -78,7 +83,7 @@ class XGP(ABC):
     @abstractmethod
     async def make_move(
         self, var_name: str, register_state: Mapping[str, XString | XList]
-    ) -> tuple[str, TokenUsage]:
+    ) -> MoveResult:
         pass
 
     @abstractmethod

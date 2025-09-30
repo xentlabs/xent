@@ -10,10 +10,10 @@ from xent.common.configuration_types import (
 from xent.common.util import dumps
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.common.xent_event import TokenUsage, XentEvent
+from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
 from xent.presentation.executor import PresentationFunction
-from xent.runtime.base_player import XGP
-from xent.runtime.llm_api_client import LLMMessage, make_client
+from xent.runtime.base_player import XGP, MoveResult
+from xent.runtime.llm_api_client import make_client
 
 
 class MockXGP(XGP):
@@ -47,14 +47,16 @@ class MockXGP(XGP):
 
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
-    ) -> tuple[str, TokenUsage]:
+    ) -> MoveResult:
         message = self.presentation_function(
             register_states, self.event_history, self.metadata
         )
 
         self.last_message_to_llm = message
 
-        return ("mocked_move", self.token_usage_per_move.copy())
+        return MoveResult(
+            "mocked_move", self.token_usage_per_move.copy(), [], "full mocked_move"
+        )
 
     async def post(self, event: XentEvent) -> None:
         logging.info(f"Player received: {event}")
@@ -89,7 +91,7 @@ class DefaultXGP(XGP):
 
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
-    ) -> tuple[str, TokenUsage]:
+    ) -> MoveResult:
         message = self.presentation_function(
             register_states, self.event_history, self.metadata
         )
@@ -97,9 +99,9 @@ class DefaultXGP(XGP):
 
         logging.info("Sending message to LLM")
         logging.info(f"conversation: {dumps(self.conversation)}")
-        reply, token_usage = await self.client.request(self.conversation)
-        logging.info(f"Received response from LLM: {dumps(reply)}")
-        reply = re.sub(r"<think>.*?</think>", "", reply or "", flags=re.DOTALL)
+        full_reply, token_usage = await self.client.request(self.conversation)
+        logging.info(f"Received response from LLM: {dumps(full_reply)}")
+        reply = re.sub(r"<think>.*?</think>", "", full_reply or "", flags=re.DOTALL)
 
         move_matches = re.findall(r"<move>(.*?)</move>", reply, flags=re.DOTALL)
         if move_matches:
@@ -111,7 +113,7 @@ class DefaultXGP(XGP):
             )
             result = reply
         logging.info(f"Parsed LLM move: {result}")
-        return result, token_usage
+        return MoveResult(result, token_usage, self.conversation, reply)
 
     async def post(self, event: XentEvent) -> None:
         self.event_history.append(event)

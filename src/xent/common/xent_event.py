@@ -1,10 +1,17 @@
 # Event types
 from collections.abc import Mapping
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from xent.common.token_xent_list import TokenXentList
 from xent.common.x_list import XList
 from xent.common.x_string import XString
+
+LLMRole = Literal["user", "assistant", "system"]
+
+
+class LLMMessage(TypedDict):
+    role: LLMRole
+    content: str
 
 
 class TokenUsage(TypedDict):
@@ -29,6 +36,8 @@ class ElicitResponseEvent(BaseXentEvent):
     type: Literal["elicit_response"]
     response: str
     token_usage: TokenUsage
+    prompts: NotRequired[list[LLMMessage]]
+    full_response: NotRequired[list[LLMMessage]]
 
 
 class RevealEvent(BaseXentEvent):

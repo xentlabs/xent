@@ -13,7 +13,7 @@ from xent.common.util import dumps
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import TokenUsage, XentEvent
-from xent.runtime.base_player import XGP
+from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.default_players import get_presentation_function
 
 
@@ -57,11 +57,11 @@ class WebsocketXGP(XGP):
 
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
-    ) -> tuple[str, TokenUsage]:
+    ) -> MoveResult:
         # `post` for elicit request is made first. So the web client already knows that
         # it needs to make a move. Just wait for the next websocket input.
         move = await self._wait_for_websocket_input()
-        return move, TokenUsage(input_tokens=0, output_tokens=0)
+        return MoveResult(move, TokenUsage(input_tokens=0, output_tokens=0), [], "")
 
     async def post(self, event: XentEvent) -> None:
         logging.info(f"Sending event to websocket: {event}")

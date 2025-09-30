@@ -59,6 +59,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
             num_rounds_per_game=1,
             judge_model=DEFAULT_XENT_METADATA["judge_model"],
             seed=DEFAULT_XENT_METADATA["seed"],
+            store_full_player_interactions=False,
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],

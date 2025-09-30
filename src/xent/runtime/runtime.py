@@ -33,7 +33,13 @@ MAX_ENSURE_FAILURES = 10
 
 
 class XentRuntime:
-    def __init__(self, player: XGP, locals: dict[str, Any], globals: dict[str, Any]):
+    def __init__(
+        self,
+        player: XGP,
+        locals: dict[str, Any],
+        globals: dict[str, Any],
+        store_full_interactions: bool = False,
+    ):
         self.local_vars = locals
         self.player = player
         self.score = 0.0
@@ -43,6 +49,7 @@ class XentRuntime:
         self.history: list[XentEvent] = []
         # Map from line number to the number of times the replay has been called since reset
         self.replay_counters: dict[int, int] = {}
+        self.store_full_interactions = store_full_interactions
 
     def add_token_usage(self, token_usage: TokenUsage) -> None:
         self.token_usage["input_tokens"] += token_usage["input_tokens"]
@@ -252,7 +259,12 @@ class XentRuntime:
             )
             await self.send_event(player, request_event)
 
-            player_move, token_usage = await player.make_move(var.name, register_states)
+            move_result = await player.make_move(var.name, register_states)
+            player_move = move_result.response
+            token_usage = move_result.token_usage
+            prompts = move_result.prompts
+            full_response = move_result.full_response
+
             print(f"Player {player.name} move: {player_move}")
             trimmed_move = self._first_n_tokens(player_move, max_len)
             if player_move != trimmed_move:
@@ -268,6 +280,10 @@ class XentRuntime:
                 response=str(trimmed_move),
                 token_usage=token_usage,
             )
+            if self.store_full_interactions:
+                response_event["prompts"] = prompts
+                response_event["full_response"] = full_response
+
             await self.send_event(player, response_event)
             self.add_token_usage(token_usage)
 

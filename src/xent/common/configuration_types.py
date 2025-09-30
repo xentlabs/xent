@@ -1,4 +1,4 @@
-from typing import Any, Literal, TypedDict, TypeGuard
+from typing import Any, Literal, NotRequired, TypedDict, TypeGuard
 
 from xent.common.xent_event import TokenUsage, XentEvent
 
@@ -50,6 +50,7 @@ class XentMetadata(TypedDict):
     judge_model: str
     num_rounds_per_game: int
     seed: str
+    store_full_player_interactions: NotRequired[bool]
 
 
 class CondensedXentBenchmarkConfig(TypedDict):

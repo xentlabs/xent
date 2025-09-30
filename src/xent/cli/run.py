@@ -28,6 +28,7 @@ DEFAULT_XENT_METADATA = XentMetadata(
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
+    store_full_player_interactions=False,
 )
 
 DEFAULT_EXPANSION_CONFIG = ExpansionConfig(

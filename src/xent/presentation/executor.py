@@ -43,6 +43,7 @@ SAMPLE_METADATA: XentMetadata = XentMetadata(
     judge_model="judge",
     num_rounds_per_game=2,
     seed="seed",
+    store_full_player_interactions=False,
 )
 
 SINGLE_PRESENTATION = '''

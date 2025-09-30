@@ -30,6 +30,7 @@ DEFAULT_XENT_METADATA = XentMetadata(
     judge_model="gpt2",
     num_rounds_per_game=30,
     seed="notrandom",
+    store_full_player_interactions=False,
 )
 
 DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
@@ -108,6 +109,7 @@ def build_benchmark_config(
     num_maps_per_game: int,
     text_generation_mode: str,
     corpus_path: str,
+    store_full_interaction,
 ) -> CondensedXentBenchmarkConfig:
     players = []
     if not human:
@@ -162,6 +164,7 @@ def build_benchmark_config(
             judge_model=judge,
             num_rounds_per_game=num_rounds_per_game,
             seed=seed,
+            store_full_player_interactions=store_full_interaction,
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=num_maps_per_game,
@@ -268,6 +271,11 @@ def remove_player_from_config(
     help="Fully expand the benchmark. This will generate a much more verbose configuration. This is useful for generating reproducible benchmarks, but the output will be much larger and more difficult to modify manually",
 )
 @click.option(
+    "--store-full-interaction",
+    is_flag=True,
+    help="Store the full player interactions in benchmark results. Specificially, this will record the prompting and full model response (including thinking and other tokens) into the event history",
+)
+@click.option(
     "--print-config",
     is_flag=True,
     help="Print the configuration to stdout instead of writing to a file",
@@ -286,6 +294,7 @@ def configure(
     seed: str,
     num_maps_per_game: int,
     print_config: bool,
+    store_full_interaction: bool,
     expand_config: bool,
 ):
     """Build Xent benchmark configuration"""
@@ -319,6 +328,7 @@ def configure(
         num_maps_per_game,
         text_generation_mode,
         corpus_path,
+        store_full_interaction,
     )
 
     if expand_config:

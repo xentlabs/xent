@@ -39,6 +39,9 @@ def expand_benchmark_config(
             seed=condensed_config["metadata"]["seed"],
             benchmark_id=condensed_config["metadata"]["benchmark_id"],
             xent_version=condensed_config["metadata"]["xent_version"],
+            store_full_player_interactions=condensed_config["metadata"].get(
+                "store_full_player_interactions", False
+            ),
         ),
         players=condensed_config["players"],
         games=condensed_config["games"],

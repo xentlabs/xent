@@ -27,6 +27,10 @@ from xent.common.configuration_types import (
 )
 from xent.common.util import dumps
 from xent.presentation.executor import get_default_presentation
+from xent.runtime.default_players import MockXGP
+from xent.runtime.execution import play_game
+from xent.runtime.runtime import XentRuntime
+from xent.runtime.variables import build_locals
 from xent.storage.directory_storage import DirectoryBenchmarkStorage
 
 
@@ -195,6 +199,68 @@ def test_benchmark_structure(shared_benchmark_results):
         "round_finished",
     ]
     assert event_types == expected_types
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_full_interaction_flag_records_extra_data():
+    """Full interaction flag records prompts and responses in history."""
+
+    presentation_code = (
+        """def present(state, history, metadata):\n    return 'prompt'\n"""
+    )
+
+    async def run_case(store_flag: bool):
+        executable_game_map = {
+            "game_map": {
+                "name": "simple",
+                "code": "elicit(x, 5)",
+                "map_seed": "seed",
+                "presentation_function": presentation_code,
+            },
+            "metadata": {
+                "benchmark_id": "bench",
+                "xent_version": "0.0.0",
+                "num_rounds_per_game": 1,
+                "judge_model": "test",
+                "seed": "seed",
+                "store_full_player_interactions": store_flag,
+            },
+            "player": {
+                "name": "black",
+                "id": "mock",
+                "player_type": "mock",
+                "options": {},
+            },
+        }
+
+        player = MockXGP("black", "mock", {}, executable_game_map)
+        locals_dict = build_locals(player, executable_game_map)
+        globals_dict = {
+            "__builtins__": {"len": len},
+            "first_n_tokens": lambda text, n: str(text)[:n],
+        }
+
+        xrt = XentRuntime(
+            player,
+            locals_dict,
+            globals_dict,
+            store_full_interactions=store_flag,
+        )
+
+        results = await play_game(
+            executable_game_map["game_map"]["code"], xrt, num_rounds=1
+        )
+        history = results[0]["history"]
+        return next(event for event in history if event["type"] == "elicit_response")
+
+    enriched_event = await run_case(True)
+    baseline_event = await run_case(False)
+
+    assert enriched_event["prompts"] == []
+    assert enriched_event["full_response"] == "full mocked_move"
+    assert "prompts" not in baseline_event
+    assert "full_response" not in baseline_event
 
 
 @pytest.mark.integration

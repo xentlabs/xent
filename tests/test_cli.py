@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
+from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.cli.configure import (
     add_player_to_config,
     configure,
@@ -81,6 +82,28 @@ def simple_expanded_config() -> ExpandedXentBenchmarkConfig:
 
 class TestConfigureCommands:
     """Test configure CLI command functions"""
+
+    def test_store_full_interaction_flag_passthrough(self, tmp_path):
+        """Ensure CLI flag sets metadata and survives expansion."""
+        runner = CliRunner()
+        output_path = tmp_path / "config.json"
+
+        result = runner.invoke(
+            configure,
+            ["--store-full-interaction", "--output", str(output_path)],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        assert output_path.exists()
+
+        with output_path.open() as f:
+            config = json.load(f)
+
+        assert config["metadata"]["store_full_player_interactions"] is True
+
+        expanded = expand_benchmark_config(config)
+        assert expanded["metadata"]["store_full_player_interactions"] is True
 
     def test_remove_player_success(self, tmp_path, simple_expanded_config):
         """Test removing a player both directly and via CLI command."""

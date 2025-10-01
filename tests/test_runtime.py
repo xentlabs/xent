@@ -1713,7 +1713,7 @@ elicit(z, 10)""",
 
         # Call make_move - this is the crucial integration point
         move_result = await mock_player.make_move("z", register_states)
-        move, tokens = (move_result.response, move_result.token_usage)
+        move, _tokens = (move_result.response, move_result.token_usage)
 
         # Verify the move was made
         assert move == "mocked_move"
@@ -1789,8 +1789,7 @@ elicit(x, 5)""",
 
         register_states = {"test": XString("test_value")}
         with pytest.raises(XentConfigurationError):
-            move_result = await mock_player.make_move("x", register_states)
-            move, tokens = (move_result.response, move_result.token_usage)
+            await mock_player.make_move("x", register_states)
 
     def test_real_game_presentation_with_sdk(self):
         """Test that a real game presentation works with SDK imports"""

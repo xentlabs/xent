@@ -3,38 +3,62 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from xent.common.configuration_types import BenchmarkResult, GameMapResults
+
 PlayerId = str
 GameName = str
 PlayerScores = dict[PlayerId, float]
 
 
-def group_game_results_by_player_and_game(benchmark_result):
+def group_game_results_by_player_and_game(
+    benchmark_result: BenchmarkResult,
+) -> dict[str, dict[str, list[GameMapResults]]]:
     """
-    Groups game results first by player ID and then by game name.
+    Returns dict[player_id -> dict[game_name -> list[GameMapResults]]
     """
-    games_by_player = defaultdict(list)
+    games_by_player: dict[str, list[GameMapResults]] = defaultdict(list[GameMapResults])
 
-    for game_result in benchmark_result.get("game_results", []):
-        players = game_result.get("game", {}).get("players", [])
-        if players:
-            player_id = players[0].get("id")
-            if player_id:
-                games_by_player[player_id].append(game_result)
+    for game_result in benchmark_result["results"]:
+        player_id = game_result["player"]["id"]
+        games_by_player[player_id].append(game_result)
 
     result = {}
     for player_id, game_results in games_by_player.items():
-        games_by_name = defaultdict(list)
+        games_by_name: dict[str, list[GameMapResults]] = defaultdict(
+            list[GameMapResults]
+        )
         for game_result in game_results:
-            game_name = game_result.get("game", {}).get("game", {}).get("name")
-            if game_name:
-                games_by_name[game_name].append(game_result)
+            game_name = game_result["game_map"]["name"]
+            games_by_name[game_name].append(game_result)
 
-        result[player_id] = dict(games_by_name)
+        result[player_id] = games_by_name
 
     return result
 
 
-def get_player_id_score_sum(grouped_data) -> PlayerScores:
+def compute_game_map_max_scores(
+    benchmark_result: BenchmarkResult,
+) -> dict[GameName, dict[str, float]]:
+    """Collect the maximum raw score observed per game/map combination."""
+    game_map_max_scores: dict[GameName, dict[str, float]] = {}
+
+    for game_result in benchmark_result["results"]:
+        game_name = game_result["game_map"]["name"]
+        map_seed = game_result["game_map"]["map_seed"]
+        score = game_result["score"]
+
+        game_maxes = game_map_max_scores.setdefault(game_name, {})
+        current_max = game_maxes.get(map_seed)
+        if current_max is None or score > current_max:
+            game_maxes[map_seed] = score
+
+    return game_map_max_scores
+
+
+def get_player_id_score_sum(
+    grouped_data: dict[str, dict[str, list[GameMapResults]]],
+    game_map_max_scores: dict[GameName, dict[str, float]],
+) -> PlayerScores:
     """
     Calculates the total score for each player across all their games.
     """
@@ -42,16 +66,29 @@ def get_player_id_score_sum(grouped_data) -> PlayerScores:
 
     for player_id, games in grouped_data.items():
         per_game_sums = []
-        for game_results in games.values():
-            game_sum = 0.0
-            for game_result in game_results:
-                game_sum += game_result.get("scores", {}).get("black", 0.0)
-            per_game_sums.append(game_sum / len(game_results))
+        for game_name, game_results in games.items():
+            normalized_sum = 0.0
+            valid_map_count = 0
 
-        total_average = 0.0
-        for per_game_sum in per_game_sums:
-            total_average += per_game_sum
-        total_average = total_average / len(per_game_sums)
+            for game_result in game_results:
+                map_seed = game_result["game_map"]["map_seed"]
+                max_score = game_map_max_scores.get(game_name, {}).get(map_seed)
+
+                if max_score is None or abs(max_score) == 0:
+                    continue
+
+                normalized_score = game_result["score"] / abs(max_score)
+                normalized_sum += normalized_score
+                valid_map_count += 1
+
+            if valid_map_count > 0:
+                per_game_sums.append(normalized_sum / valid_map_count)
+
+        if per_game_sums:
+            total_average = sum(per_game_sums) / len(per_game_sums)
+        else:
+            total_average = 0.0
+
         player_id_score_sum[player_id] = total_average * 100.0
 
     return player_id_score_sum
@@ -103,8 +140,9 @@ if __name__ == "__main__":
         benchmark_data = json.load(f)
 
     # --- 2. Process data to get player scores ---
+    game_map_max_scores = compute_game_map_max_scores(benchmark_data)
     grouped_data = group_game_results_by_player_and_game(benchmark_data)
-    player_scores = get_player_id_score_sum(grouped_data)
+    player_scores = get_player_id_score_sum(grouped_data, game_map_max_scores)
 
     # --- 3. Generate the Markdown table ---
     markdown_output = create_leaderboard_markdown(player_scores)

@@ -50,6 +50,7 @@ class Judge:
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name, device_map="auto"
             )
+        self.rng = random.Random()
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
         if text_generator is None:
@@ -170,6 +171,7 @@ Evaluation: """)
         torch.manual_seed(int_seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(int_seed)
+        self.rng = random.Random(seed)
 
     def full_seed(self, seed: str, map_seed: str) -> str:
         return f"{seed}_{map_seed}"

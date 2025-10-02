@@ -50,6 +50,7 @@ class XentRuntime:
         # Map from line number to the number of times the replay has been called since reset
         self.replay_counters: dict[int, int] = {}
         self.store_full_interactions = store_full_interactions
+        self.last_elicit_player: XGP | None = None
 
     def add_token_usage(self, token_usage: TokenUsage) -> None:
         self.token_usage["input_tokens"] += token_usage["input_tokens"]

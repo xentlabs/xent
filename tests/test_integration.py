@@ -99,6 +99,18 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                 """,
                 presentation_function=get_default_presentation(),
             ),
+            GameConfig(
+                name="test_lists",
+                code="""
+                    assign(l=["a bunch of", "different words", "for testing purposes"])
+                    reveal(l)
+                    elicit(s, 10)
+                    assign(t=pick(l))
+                    reveal(t)
+                    reward(xent(t | s))
+                """,
+                presentation_function=get_default_presentation(),
+            ),
         ],
         players=[
             PlayerConfig(
@@ -160,9 +172,9 @@ def test_benchmark_structure(shared_benchmark_results):
         == benchmark_config["metadata"]["xent_version"]
     )
 
-    # Verify we have results for both games
+    # Verify we have results for all games
     game_results = benchmark_results["results"]
-    assert len(game_results) == 2
+    assert len(game_results) == 3
 
     # Test Game 1 (simple single player)
     game1_result = game_results[0]
@@ -199,6 +211,27 @@ def test_benchmark_structure(shared_benchmark_results):
         "round_finished",
     ]
     assert event_types == expected_types
+
+    # Test Game 3 (test-lists)
+    game3_result = game_results[2]
+    assert len(game3_result["round_results"]) == 1  # Single round
+
+    game3_iteration = game3_result["round_results"][0]
+    event_types = [e["type"] for e in game3_iteration["history"]]
+    expected_types = [
+        "round_started",
+        "reveal",
+        "elicit_request",
+        "elicit_response",
+        "reveal",
+        "reward",
+        "round_finished",
+    ]
+    assert event_types == expected_types
+    # Inspect the first reveal to confirm that lists are revealed properly
+    list_reveal = game3_iteration["history"][1]
+    assert list_reveal["type"] == "reveal"
+    assert isinstance(list_reveal["values"]["l"], list)
 
 
 @pytest.mark.integration

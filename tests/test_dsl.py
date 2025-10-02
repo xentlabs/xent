@@ -797,6 +797,35 @@ class TestDSLFunctions:
         assert str(xrt.local_vars["s3"]) == expected
 
     @pytest.mark.asyncio
+    async def test_only_uses_words_basic(self, xrt):
+        # Do elicit to make sure it has a last elicit player set for failed ensures
+        await eval_line("elicit(s, 10)", 1, xrt)
+        result = await eval_line(
+            "ensure(only_uses_words('red blue', 'red blue'))", 1, xrt
+        )
+        assert result is None
+
+        result = await eval_line(
+            "ensure(only_uses_words('red blue', 'red green'))", 2, xrt
+        )
+        assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_only_uses_words_and_remove_common_words_xlist(self, xrt):
+        # Do elicit to make sure it has a last elicit player set for failed ensures
+        await eval_line("elicit(s, 10)", 1, xrt)
+        await eval_line("assign(l=['red', 'green'])", 1, xrt)
+
+        result = await eval_line("ensure(only_uses_words(l, 'red green'))", 2, xrt)
+        assert result is None
+
+        result = await eval_line("ensure(only_uses_words(l, 'red blue'))", 3, xrt)
+        assert result is not None
+
+        await eval_line("assign(s1=remove_common_words('blue red green', l))", 4, xrt)
+        assert str(xrt.local_vars["s1"]) == "blue"
+
+    @pytest.mark.asyncio
     async def test_xent_comprehensive(self, xrt):
         """Comprehensive test for xent() function with and without prefix."""
         # Part 1: Test basic xent() function

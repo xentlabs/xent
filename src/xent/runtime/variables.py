@@ -1,5 +1,7 @@
+import random
 import re
 import string
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from xent.common.configuration_types import ExecutableGameMap
@@ -60,6 +62,7 @@ def build_globals(judge: Judge):
         remove_common_words=remove_common_words,
         only_uses_chars=only_uses_chars,
         only_uses_words=only_uses_words,
+        pick=pick(judge.rng),
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -80,6 +83,16 @@ def build_globals(judge: Judge):
 
 
 remove_punctuation_translation = str.maketrans("", "", string.punctuation)
+
+
+def pick(rng: random.Random) -> Callable[[XList], XString]:
+    def pick_lambda(lst: XList) -> XString:
+        if len(lst.items) == 0:
+            return XString("")
+        item = rng.choice(lst.items)
+        return item
+
+    return pick_lambda
 
 
 def remove_punctuation(string: str | XString):
@@ -106,16 +119,14 @@ def common_word_set(s1: str | XString, s2: str | XString):
     return word_set(s1).intersection(word_set(s2))
 
 
-def remove_common_words(s1: str | XString, s2: str | XString) -> XString:
-    common_words = common_word_set(s1, s2)
-
+def remove_words(s: str | XString, words: Iterable[str | XString]) -> XString:
     # Define separators as whitespace or ASCII punctuation
     # This matches our tokenization (split on whitespace, ignore punctuation)
     separator_class = re.escape(string.punctuation) + r"\s"
 
-    result = str(s1)
-    for word in common_words:
-        escaped = re.escape(word)
+    result = str(s)
+    for word in words:
+        escaped = re.escape(str(word))
         # We use a positive lookahead for the right separator: it allows it
         # to be the left separator of the next word and not be consumed.
         pattern = rf"(^|[{separator_class}]){escaped}(?=$|[{separator_class}])"
@@ -125,6 +136,15 @@ def remove_common_words(s1: str | XString, s2: str | XString) -> XString:
 
     result = re.sub(r"\s{2,}", " ", result).strip()
     return XString(result)
+
+
+def remove_common_words(target: str | XString, other: str | XString | XList) -> XString:
+    if isinstance(other, XList):
+        common_words = other.items
+    else:
+        common_words = common_word_set(target, other)
+
+    return remove_words(target, common_words)
 
 
 def only_uses_chars(allowed_chars: str | XString, text: str | XString) -> bool:
@@ -137,10 +157,17 @@ def only_uses_chars(allowed_chars: str | XString, text: str | XString) -> bool:
     return all(char in allowed_set for char in text)
 
 
-def only_uses_words(allowed_words: str | XString, text: str | XString) -> bool:
+def only_uses_words(allowed_words: str | XString | XList, text: str | XString) -> bool:
+    allowed_words_list: list[str] = []
     if isinstance(allowed_words, XString):
-        allowed_words = str(allowed_words)
+        allowed_words_list = str(allowed_words).split(" ")
+    elif isinstance(allowed_words, str):
+        allowed_words_list = allowed_words.split(" ")
+    else:  # XList
+        allowed_words_list = [str(i) for i in allowed_words.items]
+
     if isinstance(text, XString):
         text = str(text)
+    text_words = text.split(" ")
 
-    return all(word in allowed_words for word in text.split(" "))
+    return all(word in allowed_words_list for word in text_words)

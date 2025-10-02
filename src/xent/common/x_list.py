@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 from xent.common.errors import XentTypeError
 from xent.common.x_string import XString
 
@@ -56,3 +58,6 @@ class XList:
 
     def __contains__(self, item):
         return item in self.items
+
+    def __iter__(self) -> Iterator[XString]:
+        return iter(self.items)

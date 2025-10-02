@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from xent.common.errors import XentTypeError
+
+if TYPE_CHECKING:
+    from xent.common.x_list import XList
 
 
 class XString:
@@ -128,3 +133,44 @@ class XString:
 
     def __contains__(self, item):
         return str(item) in self.primary_string
+
+    def join(self, items: XList) -> XString:
+        from xent.common.x_list import XList
+
+        if not isinstance(items, XList):
+            raise XentTypeError(
+                f"XString.join requires an XList argument. Got: {type(items).__name__}"
+            )
+
+        joined_parts: list[str] = []
+        for element in items:
+            if not isinstance(element, XString):
+                raise XentTypeError(
+                    "XString.join requires all elements of the XList to be XString instances. "
+                    f"Got: {type(element).__name__}"
+                )
+            joined_parts.append(element.primary_string)
+
+        return XString(self.primary_string.join(joined_parts))
+
+    def split(
+        self,
+        separator: str | XString | None = None,
+    ) -> XList:
+        from xent.common.x_list import XList
+
+        if separator is None:
+            sep_value: str | None = None
+        elif isinstance(separator, XString):
+            sep_value = separator.primary_string
+        elif isinstance(separator, str):
+            sep_value = separator
+        else:
+            raise XentTypeError(
+                "XString.split separator must be None, str, or XString. "
+                f"Got: {type(separator).__name__}"
+            )
+
+        split_result = self.primary_string.split(sep_value)
+
+        return XList([XString(part) for part in split_result])

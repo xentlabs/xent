@@ -156,6 +156,54 @@ class TestXString:
         with pytest.raises(XentTypeError):
             123 + s1
 
+    def test_join_with_xlist(self):
+        separator = XString(",") | XString("ignored_prefix")
+        item_a = XString("alpha") | XString("p1")
+        item_b = XString("beta") | XString("p2")
+        item_c = XString("gamma")
+        items = XList([item_a, item_b, item_c])
+
+        result = separator.join(items)
+
+        assert isinstance(result, XString)
+        assert result.primary_string == "alpha,beta,gamma"
+        assert result.prefix == ""
+        # Ensure original prefixes remain untouched
+        assert separator.prefix == "ignored_prefix"
+        assert item_a.prefix == "p1"
+        assert item_b.prefix == "p2"
+        assert item_c.prefix == ""
+
+    def test_join_rejects_invalid_inputs(self):
+        separator = XString(",")
+        with pytest.raises(XentTypeError):
+            separator.join([XString("alpha")])  # type: ignore[arg-type]
+
+        items = XList([XString("alpha")])
+        items.items.append("beta")  # type: ignore[arg-type]
+        with pytest.raises(XentTypeError):
+            separator.join(items)
+
+    def test_split_with_separator_and_prefix_handling(self):
+        source = XString("alpha::beta::gamma") | XString("src_prefix")
+        parts = source.split(XString("::"))
+
+        assert isinstance(parts, XList)
+        extracted = [part.primary_string for part in parts]
+        assert extracted == ["alpha", "beta", "gamma"]
+        assert all(part.prefix == "" for part in parts)
+        assert source.prefix == "src_prefix"
+
+    def test_split_whitespace(self):
+        source = XString("  one   two three   four  ")
+        parts_all = source.split()
+        assert [part.primary_string for part in parts_all] == [
+            "one",
+            "two",
+            "three",
+            "four",
+        ]
+
     def test_operator_cut_front(self):
         """Tests the '//' operator."""
         s_main = XString("HelloWorldAgain")
@@ -358,6 +406,16 @@ class TestXList:
 
         assert l1 == l2
         assert l1 != l3
+
+    def test_iteration_yields_xstrings(self):
+        elements = [XString("alpha"), XString("beta")]
+        xlist = XList(elements)
+
+        collected = list(xlist)
+
+        assert len(collected) == 2
+        assert all(isinstance(item, XString) for item in collected)
+        assert [item.primary_string for item in collected] == ["alpha", "beta"]
 
     def test_add_concatenates_and_type_checks(self):
         left = XList([XString("a")], static=False, public=True, name="l")

@@ -18,6 +18,7 @@ def serve(port: int, host: str, no_browser: bool):
     click.echo(f"Starting XENT web interface on {url}")
 
     if not no_browser:
+
         def open_browser():
             time.sleep(1.5)
             webbrowser.open(url)

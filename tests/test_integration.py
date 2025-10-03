@@ -19,6 +19,7 @@ from xent.cli.configure import DEFAULT_EXPANSION_CONFIG
 from xent.cli.run import DEFAULT_XENT_METADATA
 from xent.common.configuration_types import (
     CondensedXentBenchmarkConfig,
+    ExecutableGameMap,
     ExpandedXentBenchmarkConfig,
     ExpansionConfig,
     GameConfig,
@@ -106,6 +107,8 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                     reveal(l)
                     elicit(s, 10)
                     assign(t=pick(l))
+                    assign(l2=shuffle(l))
+                    reveal(l2)
                     reveal(t)
                     reward(xent(t | s))
                 """,
@@ -224,14 +227,32 @@ def test_benchmark_structure(shared_benchmark_results):
         "elicit_request",
         "elicit_response",
         "reveal",
+        "reveal",
         "reward",
         "round_finished",
     ]
     assert event_types == expected_types
-    # Inspect the first reveal to confirm that lists are revealed properly
-    list_reveal = game3_iteration["history"][1]
-    assert list_reveal["type"] == "reveal"
-    assert isinstance(list_reveal["values"]["l"], list)
+
+    reveal_events = [
+        event for event in game3_iteration["history"] if event["type"] == "reveal"
+    ]
+    assert len(reveal_events) == 3
+
+    original_list = reveal_events[0]["values"]["l"]
+    assert isinstance(original_list, list)
+    assert original_list == [
+        "a bunch of",
+        "different words",
+        "for testing purposes",
+    ]
+
+    shuffled_list = reveal_events[1]["values"]["l2"]
+    assert isinstance(shuffled_list, list)
+    assert shuffled_list != original_list
+    assert sorted(shuffled_list) == sorted(original_list)
+
+    picked_value = reveal_events[2]["values"]["t"]
+    assert isinstance(picked_value, str)
 
 
 @pytest.mark.integration
@@ -244,7 +265,7 @@ async def test_full_interaction_flag_records_extra_data():
     )
 
     async def run_case(store_flag: bool):
-        executable_game_map = {
+        executable_game_map: ExecutableGameMap = {
             "game_map": {
                 "name": "simple",
                 "code": "elicit(x, 5)",

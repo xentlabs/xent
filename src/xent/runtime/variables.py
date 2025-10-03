@@ -63,6 +63,7 @@ def build_globals(judge: Judge):
         only_uses_chars=only_uses_chars,
         only_uses_words=only_uses_words,
         pick=pick(judge.rng),
+        shuffle=shuffle(judge.rng),
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -93,6 +94,20 @@ def pick(rng: random.Random) -> Callable[[XList], XString]:
         return item
 
     return pick_lambda
+
+
+def shuffle(rng: random.Random) -> Callable[[XList], XList]:
+    def shuffle_lambda(lst: XList) -> XList:
+        shuffled_items = list(lst)
+        rng.shuffle(shuffled_items)
+        return XList(
+            shuffled_items,
+            static=lst.static,
+            public=lst.public,
+            name=lst.name,
+        )
+
+    return shuffle_lambda
 
 
 def remove_punctuation(string: str | XString):

@@ -334,7 +334,7 @@ def configure(
     if expand_config:
         config = expand_benchmark_config(config)
         print(
-            f"Configuration expanded with xent version {config.get('xent_version', 'unknown')}"
+            f"Configuration expanded with xent version {config['metadata']['xent_version']}"
         )
 
     config_str = dumps(config, indent=2)

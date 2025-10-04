@@ -62,7 +62,7 @@ def build_globals(judge: Judge):
         remove_common_words=remove_common_words,
         only_uses_chars=only_uses_chars,
         only_uses_words=only_uses_words,
-        pick=pick(judge.rng),
+        sample=sample(judge.rng),
         shuffle=shuffle(judge.rng),
         xent=judge.xent,
         xed=judge.xed,
@@ -86,14 +86,14 @@ def build_globals(judge: Judge):
 remove_punctuation_translation = str.maketrans("", "", string.punctuation)
 
 
-def pick(rng: random.Random) -> Callable[[XList], XString]:
-    def pick_lambda(lst: XList) -> XString:
+def sample(rng: random.Random) -> Callable[[XList], XString]:
+    def sample_lambda(lst: XList) -> XString:
         if len(lst.items) == 0:
             return XString("")
         item = rng.choice(lst.items)
         return item
 
-    return pick_lambda
+    return sample_lambda
 
 
 def shuffle(rng: random.Random) -> Callable[[XList], XList]:

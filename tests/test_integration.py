@@ -106,7 +106,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                     assign(l=["a bunch of", "different words", "for testing purposes"])
                     reveal(l)
                     elicit(s, 10)
-                    assign(t=pick(l))
+                    assign(t=sample(l))
                     assign(l2=shuffle(l))
                     reveal(l2)
                     reveal(t)
@@ -251,8 +251,8 @@ def test_benchmark_structure(shared_benchmark_results):
     assert shuffled_list != original_list
     assert sorted(shuffled_list) == sorted(original_list)
 
-    picked_value = reveal_events[2]["values"]["t"]
-    assert isinstance(picked_value, str)
+    sampled_value = reveal_events[2]["values"]["t"]
+    assert isinstance(sampled_value, str)
 
 
 @pytest.mark.integration

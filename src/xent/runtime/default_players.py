@@ -33,7 +33,6 @@ class MockXGP(XGP):
         }
 
         self.presentation_function = get_presentation_function(executable_game_map)
-        self.metadata = executable_game_map["metadata"]
         self.last_message_to_llm = ""
 
     def add_score(self, score: float | int) -> None:
@@ -77,7 +76,6 @@ class DefaultXGP(XGP):
         self.event_history: list[XentEvent] = []
         self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
-        self.metadata = executable_game_map["metadata"]
         self.presentation_function = get_presentation_function(executable_game_map)
 
     def add_score(self, score: float | int) -> None:

@@ -44,6 +44,7 @@ class XGP(ABC):
         self._id: Final[str] = id
         self._options: Final[PlayerOptions | None] = options
         self._executable_game_map: Final[ExecutableGameMap] = executable_game_map
+        self._metadata: Final[XentMetadata] = executable_game_map["metadata"]
 
     @property
     def score(self) -> float:
@@ -71,7 +72,7 @@ class XGP(ABC):
 
     @property
     def metadata(self) -> XentMetadata:
-        return self._executable_game_map["metadata"]
+        return self._metadata
 
     @abstractmethod
     def add_score(self, score: float) -> None:

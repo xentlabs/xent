@@ -32,9 +32,13 @@ def remove_game_from_benchmark(
     results = updated_benchmark.get("results", [])
 
     filtered_games = [game for game in games if game.get("name") != game_name]
-    filtered_maps = [game_map for game_map in maps_ if game_map.get("name") != game_name]
+    filtered_maps = [
+        game_map for game_map in maps_ if game_map.get("name") != game_name
+    ]
     filtered_results = [
-        result for result in results if result.get("game_map", {}).get("name") != game_name
+        result
+        for result in results
+        if result.get("game_map", {}).get("name") != game_name
     ]
 
     if (
@@ -72,7 +76,7 @@ def main() -> None:
     output_path = args.output or derive_output_path(input_path, game_name)
 
     try:
-        with open(input_path, "r", encoding="utf-8") as infile:
+        with open(input_path, encoding="utf-8") as infile:
             benchmark_data = cast(BenchmarkResult, json.load(infile))
 
         updated_benchmark = remove_game_from_benchmark(benchmark_data, game_name)

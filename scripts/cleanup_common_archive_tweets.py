@@ -39,7 +39,7 @@ def modify_full_text(text: str) -> str:
         tags_segment = match.group("tags").strip()
         tags = tags_segment.split()
         if len(tags) > 1:
-            remainder = without_links[match.end():].lstrip()
+            remainder = without_links[match.end() :].lstrip()
             without_links = tags[0]
             if remainder:
                 without_links = f"{without_links} {remainder}"

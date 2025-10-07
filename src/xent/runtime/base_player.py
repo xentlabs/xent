@@ -7,6 +7,7 @@ from xent.common.configuration_types import (
     ExecutableGameMap,
     PlayerName,
     PlayerOptions,
+    XentMetadata,
 )
 from xent.common.x_list import XList
 from xent.common.x_string import XString
@@ -67,6 +68,10 @@ class XGP(ABC):
     @property
     def executable_game_map(self) -> ExecutableGameMap:
         return self._executable_game_map
+
+    @property
+    def metadata(self) -> XentMetadata:
+        return self._executable_game_map["metadata"]
 
     @abstractmethod
     def add_score(self, score: float) -> None:

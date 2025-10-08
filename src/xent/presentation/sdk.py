@@ -10,6 +10,7 @@ from xent.common.xent_event import (
     RewardEvent,
     XentEvent,
 )
+from xent.common.xent_event import LLMMessage
 
 PRESENTATION_SCORE_SCALE = 10
 
@@ -323,3 +324,50 @@ def format_registers_display(registers: dict[str, str]) -> str:
         register_lines.append(f"  {name}: {value}")
 
     return "Current registers:\n" + "\n".join(register_lines)
+
+
+class ChatBuilder:
+    """
+    Lightweight helper to build append-only chat messages for LLMs.
+
+    Typical usage in a presentation function:
+
+        b = ChatBuilder()
+        b.system("Game rules…")
+        b.user("Round summary…")
+        return b.render()
+
+    Notes:
+    - Presentations should generally emit only 'system' or 'user' messages.
+    - Assistant messages are typically produced by the model and appended by the runtime.
+    """
+
+    def __init__(self) -> None:
+        self._messages: list[LLMMessage] = []
+
+    def add(self, role: str, content: str) -> "ChatBuilder":
+        # Basic guard to avoid empty content spam
+        if content is None or str(content).strip() == "":
+            return self
+        self._messages.append({"role": role, "content": str(content)})
+        return self
+
+    def system(self, content: str) -> "ChatBuilder":
+        return self.add("system", content)
+
+    def user(self, content: str) -> "ChatBuilder":
+        return self.add("user", content)
+
+    def assistant(self, content: str) -> "ChatBuilder":
+        # Exposed for completeness; generally not used by presentations
+        return self.add("assistant", content)
+
+    def extend(self, messages: list[LLMMessage]) -> "ChatBuilder":
+        for m in messages:
+            role = m.get("role", "user")  # type: ignore[arg-type]
+            content = m.get("content", "")  # type: ignore[arg-type]
+            self.add(str(role), str(content))
+        return self
+
+    def render(self) -> list[LLMMessage]:
+        return list(self._messages)

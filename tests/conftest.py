@@ -5,7 +5,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from xent.common.configuration_types import ExecutableGameMap
 from xent.common.version import get_xent_version
-from xent.presentation.executor import get_default_presentation
+from xent.presentation.executor import get_default_turn_presentation
 from xent.runtime.default_players import MockXGP
 from xent.runtime.judge import Judge
 from xent.runtime.runtime import XentRuntime
@@ -16,7 +16,7 @@ FAKE_GAME_MAP: ExecutableGameMap = {
         "name": "Fake Game",
         "code": "fake_code",
         "map_seed": "test_seed_0",
-        "presentation_function": get_default_presentation(),
+        "presentation_function": get_default_turn_presentation(),
     },
     "metadata": {
         "benchmark_id": "",

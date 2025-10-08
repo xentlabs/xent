@@ -28,8 +28,8 @@ from xent.common.xent_event import (
 )
 from xent.presentation.executor import (
     SAMPLE_METADATA,
-    PresentationFunction,
-    get_default_presentation,
+    TurnPresentationFunction,
+    get_default_turn_presentation,
 )
 from xent.presentation.sdk import (
     format_elicit_request,
@@ -795,7 +795,7 @@ class TestTokenUsage:
             "name": "Token Usage Test",
             "code": "test_code",
             "map_seed": "test_seed_0",
-            "presentation_function": get_default_presentation(),
+            "presentation_function": get_default_turn_presentation(),
         },
         "player": {
             "name": "alice",
@@ -1352,31 +1352,37 @@ class TestSDKFunctions:
 class TestPresentationFunction:
     def test_simple_presentation_function(self):
         code = """
-def present(state, history, metadata):
-    return "Simple presentation"
+from xent.presentation.sdk import ChatBuilder
+
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    b = ChatBuilder()
+    b.user("Simple presentation")
+    return b.render()
 """
-        func = PresentationFunction(code)
-        result = func({}, [], SAMPLE_METADATA)
+        func = TurnPresentationFunction(code)
+        messages, _ = func({}, [], SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
         assert result == "Simple presentation"
 
     def test_presentation_with_sdk_functions(self):
         code = """
-from xent.presentation.sdk import format_elicit_request, format_reveal
+from xent.presentation.sdk import format_elicit_request, format_reveal, ChatBuilder
 
-def present(state, history, metadata):
-    if not history:
-        return "No events yet"
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if not since_events:
+        return [dict(role="user", content="No events yet")]
 
     lines = []
-    for event in history:
+    for event in since_events:
         if event['type'] == 'elicit_request':
             lines.append(format_elicit_request(event))
         elif event['type'] == 'reveal':
             lines.append(format_reveal(event))
 
-    return "\\n".join(lines)
+    sep = chr(10)
+    return [dict(role="user", content=sep.join(lines))]
 """
-        func = PresentationFunction(code)
+        func = TurnPresentationFunction(code)
 
         events: list[XentEvent] = [
             {
@@ -1390,50 +1396,46 @@ def present(state, history, metadata):
             }
         ]
 
-        result = func({}, events, SAMPLE_METADATA)
+        messages, _ = func({}, events, SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
         assert "Request: move (max 10 tokens)" in result
 
     def test_presentation_function_validation(self):
         valid_code = """
-def present(state, history, metadata):
-    return "Valid function"
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    return [dict(role="user", content="Valid function")]
 """
-        func = PresentationFunction(valid_code)
+        func = TurnPresentationFunction(valid_code)
         assert func.validate()
 
     def test_invalid_syntax(self):
         with pytest.raises(XentInternalError):
-            PresentationFunction(
-                "def present(state history, metadata):"
+            TurnPresentationFunction(
+                "def present_turn(state since_events, metadata): pass"
             )  # Missing comma
 
     def test_missing_present_function(self):
         with pytest.raises(XentConfigurationError):
-            PresentationFunction("def other_function(): pass")
+            TurnPresentationFunction("def other_function(): pass")
 
     def test_non_callable_present(self):
         with pytest.raises(XentInternalError):
-            PresentationFunction("present = 'not a function'")
+            TurnPresentationFunction("present_turn = 'not a function'")
 
     def test_sdk_utilities_with_imports(self):
         """Test that SDK utilities work correctly when imported"""
         code = """
-from xent.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round
+from xent.presentation.sdk import split_rounds, extract_rewards, get_scores_by_round, ChatBuilder
 from xent.common.token_xent_list import TokenXentList
 
-def present(state, history, metadata):
-    # Test split_rounds
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    history = full_history if full_history is not None else since_events
     rounds = split_rounds(history)
-
-    # Test extract_rewards
     all_rewards = extract_rewards(history)
-
-    # Test get_scores_by_round
     scores = get_scores_by_round(history)
-
-    return f"Rounds: {len(rounds)}, Rewards: {len(all_rewards)}, Scores: {len(scores)}"
+    return [dict(role="user", content=f"Rounds: {len(rounds)}, Rewards: {len(all_rewards)}, Scores: {len(scores)}")]
 """
-        func = PresentationFunction(code)
+        func = TurnPresentationFunction(code)
 
         # Create test history with multiple rounds
         history: list[XentEvent] = [
@@ -1447,7 +1449,8 @@ def present(state, history, metadata):
             {"type": "round_finished", "round_index": 2},  # type: ignore
         ]
 
-        result = func({}, history, SAMPLE_METADATA)
+        messages, _ = func({}, [], SAMPLE_METADATA, full_history=history)
+        result = "\n".join(m["content"] for m in messages)
         assert "Rounds: 2" in result
         assert "Rewards: 2" in result
         assert "Scores: 2" in result
@@ -1455,9 +1458,9 @@ def present(state, history, metadata):
     def test_presentation_builder(self):
         """Test PresentationBuilder functionality"""
         code = """
-from xent.presentation.sdk import PresentationBuilder
+from xent.presentation.sdk import PresentationBuilder, ChatBuilder
 
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     builder = PresentationBuilder()
     builder.add_header("Test Header")
     builder.add_line("Test Line")
@@ -1466,11 +1469,12 @@ def present(state, history, metadata):
     builder.end_section()
     builder.start_section("withAttr", key="value")
     builder.add_line("With Attributes")
-    # Test auto-close on render
-    return builder.render()
+    content = builder.render()
+    return [dict(role="user", content=content)]
 """
-        func = PresentationFunction(code)
-        result = func({}, [], SAMPLE_METADATA)
+        func = TurnPresentationFunction(code)
+        messages, _ = func({}, [], SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
 
         assert "Test Header" in result
         assert "Test Line" in result
@@ -1487,7 +1491,7 @@ def present(state, history, metadata):
 from xent.presentation.sdk import format_token_xent_list, format_reward
 from xent.common.token_xent_list import TokenXentList
 
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     # Test format_token_xent_list
     txl = TokenXentList([("hello", 1.5), ("world", 2.0)])
     formatted = format_token_xent_list(txl)
@@ -1496,10 +1500,11 @@ def present(state, history, metadata):
     reward_event = {"value": txl}
     reward_text, reward_score = format_reward(reward_event)
 
-    return f"Formatted: {formatted}\\nReward: {reward_text}\\nScore: {reward_score}"
+    return [dict(role="user", content=f"Formatted: {formatted}\\nReward: {reward_text}\\nScore: {reward_score}")]
 """
-        func = PresentationFunction(code)
-        result = func({}, [], SAMPLE_METADATA)
+        func = TurnPresentationFunction(code)
+        messages, _ = func({}, [], SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
 
         assert "hello|15 world|20" in result  # rounded values
         assert "Total:" in result
@@ -1511,10 +1516,8 @@ def present(state, history, metadata):
 def game_config():
     """Create a game config with a custom presentation function"""
     presentation_code = """
-def present(state, history, metadata):
-    if not history:
-        return "No events yet"
-
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    history = full_history if full_history is not None else since_events
     lines = []
     for event in history:
         if event['type'] == 'elicit_request':
@@ -1524,8 +1527,8 @@ def present(state, history, metadata):
             lines.append(f"CUSTOM: Revealed {', '.join(var_names)}")
         else:
             lines.append(f"CUSTOM: {event['type']}")
-
-    return "\\n".join(lines)
+    sep = chr(10)
+    return [dict(role='user', content=sep.join(lines))]
 """
 
     expanded_game: GameMapConfig = {
@@ -1600,7 +1603,10 @@ class TestPresentationIntegration:
         player.event_history = [reveal_event, elicit_event]
 
         # Test the presentation function directly
-        result = player.presentation_function({}, player.event_history, SAMPLE_METADATA)
+        messages, _ = player.presentation_function(
+            {}, player.event_history, SAMPLE_METADATA, full_history=player.event_history, ctx={}
+        )
+        result = "\n".join(m["content"] for m in messages)
 
         assert "CUSTOM: Revealed x" in result
         assert "CUSTOM: y requested (max 10)" in result
@@ -1609,7 +1615,7 @@ class TestPresentationIntegration:
     def test_presentation_function_throws_error(self, game_config):
         # Create a game config with a broken presentation function
         broken_code = """
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     raise ValueError("Intentional error")
 """
         game_config["game_map"]["presentation_function"] = broken_code
@@ -1640,8 +1646,8 @@ def present(state, history, metadata):
     def test_default_presentation_function(self):
         """Test that the default presentation function produces expected output"""
 
-        default_code = get_default_presentation()
-        func = PresentationFunction(default_code)
+        default_code = get_default_turn_presentation()
+        func = TurnPresentationFunction(default_code)
 
         # Test with sample events
         reveal_event: RevealEvent = {
@@ -1663,7 +1669,8 @@ def present(state, history, metadata):
         }
 
         history: list[XentEvent] = [reveal_event, elicit_event]
-        result = func({}, history, SAMPLE_METADATA)
+        messages, _ = func({}, history, SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
 
         # Should match the format produced by SDK functions
         expected_lines = [
@@ -1680,22 +1687,18 @@ def present(state, history, metadata):
 
         # Create a presentation function that includes register state info
         presentation_code = """
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    history = full_history if full_history is not None else since_events
     lines = []
-
-    # Include register state to verify it's being passed
     if state:
         register_values = []
         for name, value in state.items():
-            # Simply try to convert to string - no hasattr needed
             try:
                 register_values.append(f"{name}={str(value)[:20]}")
             except:
                 pass
         if register_values:
             lines.append(f"REGISTERS: {', '.join(register_values)}")
-
-    # Process history with custom formatting
     for event in history:
         if event['type'] == 'reveal':
             lines.append("CUSTOM_REVEAL: Values shown")
@@ -1703,11 +1706,10 @@ def present(state, history, metadata):
             lines.append(f"CUSTOM_ELICIT: Need {event['var_name']}")
         elif event['type'] == 'reward':
             lines.append("CUSTOM_REWARD: Score updated")
-
     if not lines:
         lines.append("CUSTOM_START: Game beginning")
-
-    return "\\n".join(lines)
+    sep = chr(10)
+    return [dict(role='user', content=sep.join(lines))]
 """
 
         # Create game configuration
@@ -1776,23 +1778,20 @@ elicit(z, 10)""",
         # Verify the move was made
         assert move == "mocked_move"
 
-        # Verify presentation function was used in make_move
-        assert mock_player.last_message_to_llm is not None
-        message = mock_player.last_message_to_llm
-
-        # Check for custom presentation markers
-        assert "CUSTOM_" in message, f"Custom presentation not found in: {message}"
-        assert "CUSTOM_REVEAL" in message
-        assert "CUSTOM_ELICIT" in message
+        # Verify presentation function was used in make_move by inspecting conversation
+        joined = "\n".join(m["content"] for m in mock_player.conversation if m["role"] == "user")
+        assert "CUSTOM_" in joined
+        assert "CUSTOM_REVEAL" in joined
+        assert "CUSTOM_ELICIT" in joined
 
         # Verify registers were passed (non-empty state)
-        assert "REGISTERS:" in message, "Register state not passed to presentation"
-        assert "x=" in message, "Register x not in presentation output"
-        assert "y=" in message, "Register y not in presentation output"
+        assert "REGISTERS:" in joined, "Register state not passed to presentation"
+        assert "x=" in joined, "Register x not in presentation output"
+        assert "y=" in joined, "Register y not in presentation output"
 
         # Verify default formatting is NOT present
-        assert "02-<reveal>" not in message, "Default formatting should not be present"
-        assert "03-<elicit>" not in message, "Default formatting should not be present"
+        assert "02-<reveal>" not in joined, "Default formatting should not be present"
+        assert "03-<elicit>" not in joined, "Default formatting should not be present"
 
     @pytest.mark.asyncio
     async def test_presentation_throws_with_mock_player(self):
@@ -1800,9 +1799,8 @@ elicit(z, 10)""",
 
         # Create a broken presentation function
         broken_presentation = """
-def present(state, history, metadata):
-    # Intentionally cause an error to test fallback
-    return 1 / 0  # Division by zero error
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    return 1 / 0
 """
 
         expanded_game: GameMapConfig = {
@@ -1851,7 +1849,7 @@ elicit(x, 5)""",
 
     def test_real_game_presentation_with_sdk(self):
         """Test that a real game presentation works with SDK imports"""
-        # Simplified version of Condense presentation using SDK
+        # Simplified version of Condense presentation using SDK (turn-based)
         condense_presentation = """
 from xent.presentation.sdk import (
     PresentationBuilder,
@@ -1860,11 +1858,11 @@ from xent.presentation.sdk import (
     split_rounds,
 )
 
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    history = full_history if full_history is not None else since_events
     builder = PresentationBuilder()
     builder.add_header("Condense Game Test")
     builder.add_game_state(story=state.get("s", "test story"))
-
     scores_by_round = get_scores_by_round(history)
     if scores_by_round:
         builder.start_section("history")
@@ -1873,11 +1871,10 @@ def present(state, history, metadata):
         builder.end_section()
     else:
         builder.add_line("No history yet")
-
-    return builder.render()
+    return [dict(role='user', content=builder.render())]
 """
 
-        func = PresentationFunction(condense_presentation)
+        func = TurnPresentationFunction(condense_presentation)
 
         # Test with realistic game state and history
         from xent.common.token_xent_list import TokenXentList
@@ -1888,7 +1885,8 @@ def present(state, history, metadata):
             {"type": "reward", "value": TokenXentList([("test", 1.5)])},  # type: ignore
         ]
 
-        result = func(state, history, SAMPLE_METADATA)
+        messages, _ = func(state, history, SAMPLE_METADATA)
+        result = "\n".join(m["content"] for m in messages)
         assert "Condense Game Test" in result
         assert "Once upon a time" in result
         assert "Round 0: 1.5" in result
@@ -1898,24 +1896,23 @@ def present(state, history, metadata):
         test_presentation = """
 from xent.presentation.sdk import split_rounds, get_scores_by_round, extract_rewards
 
-def present(state, history, metadata):
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    history = full_history if full_history is not None else since_events
     rounds = split_rounds(history)
     scores = get_scores_by_round(history)
     all_rewards = extract_rewards(history)
-
     lines = [f"Total rounds: {len(rounds)}"]
     lines.append(f"Total rewards: {len(all_rewards)}")
     lines.append(f"Scores calculated: {len(scores)}")
-
     if scores:
         total_scores = [s['total'] for s in scores]
         lines.append(f"Best score: {max(total_scores):.3f}")
         lines.append(f"Worst score: {min(total_scores):.3f}")
-
-    return "\\n".join(lines)
+    sep = chr(10)
+    return [dict(role='user', content=sep.join(lines))]
 """
 
-        func = PresentationFunction(test_presentation)
+        func = TurnPresentationFunction(test_presentation)
 
         # Create realistic multi-round history
 
@@ -1937,7 +1934,8 @@ def present(state, history, metadata):
             {"type": "round_finished", "round_index": 0},  # type: ignore
         ]
 
-        result = func({}, history, SAMPLE_METADATA)
+        messages, _ = func({}, [], SAMPLE_METADATA, full_history=history)
+        result = "\n".join(m["content"] for m in messages)
 
         assert "Total rounds: 3" in result
         assert "Total rewards: 3" in result

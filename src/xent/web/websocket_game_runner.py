@@ -12,6 +12,7 @@ from xent.common.configuration_types import (
     XentMetadata,
 )
 from xent.common.version import get_xent_version
+from xent.presentation.executor import get_default_turn_presentation
 from xent.runtime.judge import Judge
 
 
@@ -78,21 +79,10 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
 
 
 def _get_default_presentation_function() -> str:
-    """Get a simple default presentation function for websocket games"""
-    return """def present(state, history, metadata):
-    \"\"\"Default presentation function for websocket games\"\"\"
-    output = []
-    for event in history:
-        if event['type'] == 'elicit_request':
-            output.append(f"Input requested for variable: {event['var_name']}")
-        elif event['type'] == 'elicit_response':
-            output.append(f"You provided: {event['response']}")
-        elif event['type'] == 'reveal':
-            output.append(f"Revealed: {event['values']}")
-        elif event['type'] == 'reward':
-            output.append(f"Score: {event['value']}")
-        elif event['type'] == 'failed_ensure':
-            output.append(f"Failed ensure - moving to {event['beacon']}")
-        else:
-            output.append(f"Event: {event}")
-    return '\\n'.join(output)"""
+    """Return a default turn-based presentation function for websocket games.
+
+    Although the websocket player streams raw events to the client and does not
+    consume the presentation itself, we still provide a valid turn-based
+    presentation function to satisfy configuration and compilation.
+    """
+    return get_default_turn_presentation()

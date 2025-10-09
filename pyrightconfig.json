@@ -12,5 +12,6 @@
   "reportUnknownVariableType": "none",
   "reportUnknownArgumentType": "none",
   "reportUnknownMemberType": "none",
-  "reportMissingTypeStubs": "none"
+  "reportMissingTypeStubs": "none",
+  "reportPrivateImportUsage": "warning"
 }

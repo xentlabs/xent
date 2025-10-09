@@ -82,11 +82,13 @@ def get_max_score(
 ) -> tuple[float, RewardEvent | None]:
     if score_fn is None:
 
-        def score_fn(r):
+        def _score_fn(r):
             val = r["value"].total_xent()
             if scaled:
                 val = val * PRESENTATION_SCORE_SCALE
             return val
+
+        score_fn = _score_fn
 
     rewards = extract_rewards(events)
     if not rewards:

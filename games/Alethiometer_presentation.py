@@ -1,7 +1,6 @@
 from xent.presentation.sdk import (
     ChatBuilder,
     PresentationBuilder,
-    extract_rewards,
     format_reward,
     split_rounds,
 )

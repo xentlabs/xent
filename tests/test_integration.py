@@ -260,8 +260,7 @@ def test_benchmark_structure(shared_benchmark_results):
 async def test_full_interaction_flag_records_extra_data():
     """Full interaction flag records prompts and responses in history."""
 
-    presentation_code = (
-        """
+    presentation_code = """
 from xent.presentation.sdk import ChatBuilder
 
 def present_turn(state, since_events, metadata, full_history=None, ctx=None):
@@ -269,7 +268,6 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     b.user('prompt')
     return b.render()
 """
-    )
 
     async def run_case(store_flag: bool):
         executable_game_map: ExecutableGameMap = {

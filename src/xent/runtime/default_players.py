@@ -49,7 +49,9 @@ class MockXGP(XGP):
     ) -> MoveResult:
         # Compute since_events based on last elicit_request
         elicit_idxs = [
-            i for i, e in enumerate(self.event_history) if e.get("type") == "elicit_request"
+            i
+            for i, e in enumerate(self.event_history)
+            if e.get("type") == "elicit_request"
         ]
         if not elicit_idxs:
             since_events: list[XentEvent] = list(self.event_history)
@@ -69,7 +71,10 @@ class MockXGP(XGP):
         self.conversation.extend(messages)
 
         return MoveResult(
-            "mocked_move", self.token_usage_per_move.copy(), self.conversation, "full mocked_move"
+            "mocked_move",
+            self.token_usage_per_move.copy(),
+            self.conversation,
+            "full mocked_move",
         )
 
     async def post(self, event: XentEvent) -> None:
@@ -108,7 +113,9 @@ class DefaultXGP(XGP):
     ) -> MoveResult:
         # Compute since_events as everything after previous elicit_request up to this elicit_request (inclusive)
         elicit_idxs = [
-            i for i, e in enumerate(self.event_history) if e.get("type") == "elicit_request"
+            i
+            for i, e in enumerate(self.event_history)
+            if e.get("type") == "elicit_request"
         ]
         if not elicit_idxs:
             since_events: list[XentEvent] = list(self.event_history)

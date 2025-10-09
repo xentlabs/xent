@@ -1604,7 +1604,11 @@ class TestPresentationIntegration:
 
         # Test the presentation function directly
         messages, _ = player.presentation_function(
-            {}, player.event_history, SAMPLE_METADATA, full_history=player.event_history, ctx={}
+            {},
+            player.event_history,
+            SAMPLE_METADATA,
+            full_history=player.event_history,
+            ctx={},
         )
         result = "\n".join(m["content"] for m in messages)
 
@@ -1779,7 +1783,9 @@ elicit(z, 10)""",
         assert move == "mocked_move"
 
         # Verify presentation function was used in make_move by inspecting conversation
-        joined = "\n".join(m["content"] for m in mock_player.conversation if m["role"] == "user")
+        joined = "\n".join(
+            m["content"] for m in mock_player.conversation if m["role"] == "user"
+        )
         assert "CUSTOM_" in joined
         assert "CUSTOM_REVEAL" in joined
         assert "CUSTOM_ELICIT" in joined

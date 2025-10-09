@@ -6,11 +6,11 @@ from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
     FailedEnsureEvent,
+    LLMMessage,
     RevealEvent,
     RewardEvent,
     XentEvent,
 )
-from xent.common.xent_event import LLMMessage
 
 PRESENTATION_SCORE_SCALE = 10
 

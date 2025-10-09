@@ -91,7 +91,9 @@ You will be able to play multiple rounds of this game. You will see your choices
     if not t1_success:
         # If last attempt failed, show failure message
         if t1_attempts and t1_attempts[-1]["failed"]:
-            builder.add_line("Failed to beat baseline comparison for likelihood of `t1`.")
+            builder.add_line(
+                "Failed to beat baseline comparison for likelihood of `t1`."
+            )
         builder.add_line("You must now attempt to set `t1`.")
         builder.add_line("Provide your move within the <move></move> tags.")
         b.user(builder.render())
@@ -106,7 +108,9 @@ You will be able to play multiple rounds of this game. You will see your choices
 
     if not t2_success:
         if t2_attempts and t2_attempts[-1]["failed"]:
-            builder.add_line("Failed to beat baseline comparison for likelihood of `t2`.")
+            builder.add_line(
+                "Failed to beat baseline comparison for likelihood of `t2`."
+            )
         builder.add_line("Make another move to successfully set `t2`.")
         builder.add_line("Provide your move within the <move></move> tags.")
         b.user(builder.render())

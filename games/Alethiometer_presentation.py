@@ -1,23 +1,26 @@
 from xent.presentation.sdk import (
+    ChatBuilder,
     PresentationBuilder,
-    extract_attempts,
     extract_rewards,
-    format_attempt,
     format_reward,
     split_rounds,
 )
 
 
-def present(state, history, metadata):
-    # Extract game state
-    story = state["s"]
-    valid_symbols = state["s1"]
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-    # Build presentation
-    builder = PresentationBuilder()
+    history = full_history if full_history is not None else since_events
+    b = ChatBuilder()
 
-    # Rich header with complete game explanation
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+    # One-time introduction with target story and valid symbols
+    if not ctx.get("intro_sent", False):
+        story = state.get("s", "")
+        valid_symbols = state.get("s1", "")
+
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -52,111 +55,58 @@ Your symbol sequence can be up to 40 characters long. You MUST use only the vali
 
 Provide your symbol sequence in <move></move> tags. Any other text in your response will be ignored."""
 
-    builder.add_header(header)
-    builder.add_line("")
-    builder.add_line(f"<targetStory>{story}</targetStory>")
-    builder.add_line("")
-    builder.add_line("<validSymbols>")
-    builder.add_line(str(valid_symbols))
-    builder.add_line("</validSymbols>")
+        builder.add_header(header)
+        builder.add_line("")
+        builder.add_line(f"<targetStory>{story}</targetStory>")
+        builder.add_line("")
+        builder.add_line("<validSymbols>")
+        builder.add_line(str(valid_symbols))
+        builder.add_line("</validSymbols>")
+        builder.add_line("")
+        builder.add_line("Provide your symbol sequence in <move></move> tags.")
 
-    # Split history into rounds
-    rounds = split_rounds(history)
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
 
-    # Track best score
-    best_score = None
+    # Subsequent turns: either show reward or failed ensure, then prompt
+    builder = PresentationBuilder()
 
-    # Process and display history
-    builder.add_line("")
-    builder.add_line("A history of your play so far:")
-    builder.add_line("")
-    builder.start_section("fullHistory")
-
-    # Process each round
-    for i in range(len(rounds) - 1):
-        # This is a completed round
-        round_score = render_complete_round(rounds[i], builder, i + 1)
-        if round_score is not None and (best_score is None or round_score > best_score):
-            best_score = round_score
-
-    # Handle current round (if it has any attempts)
-    current_round = rounds[-1]
-    render_current_round(current_round, builder, len(rounds))
-
-    builder.end_section()
-
-    # Show current game status
-    builder.add_line("")
-    builder.add_line("Current game status:")
-    builder.add_line(f"Target story: {story}")
-
-    if best_score is not None:
-        builder.add_line(f"Best score achieved: {best_score:.1f}")
-
-    builder.add_line("")
-    builder.add_line(
-        "Remember: Use only the valid symbols shown above. Each symbol can appear multiple times."
-    )
-    builder.add_line("")
-    builder.add_line("Provide your symbol sequence in <move></move> tags.")
-
-    return builder.render()
-
-
-def render_complete_round(round_events, builder, round_num):
-    """Render a completed round with all attempts and final score"""
-
-    # Extract attempts with failure tracking
-    attempts = extract_attempts(
-        round_events, reason="Contains invalid symbols not in the allowed set"
-    )
-
-    if not attempts:
-        return None
-
-    builder.start_section(f"round{round_num}")
-    builder.start_section("symbolSelection")
-
-    # Show all attempts
-    for attempt in attempts:
-        builder.add_line(format_attempt(**attempt))
-
-    builder.end_section()
-
-    # Get and display score
-    rewards = extract_rewards(round_events)
-    if rewards:
-        reward = rewards[0]
-        reward_str, reward_score = format_reward(reward)
+    # Check for reward since last elicit
+    recent_rewards = [e for e in since_events if e.get("type") == "reward"]
+    if recent_rewards:
+        # Show last reward summary
+        reward_event = recent_rewards[-1]
         builder.start_section("score")
-        builder.add_lines(reward_str)
+        builder.add_lines(format_reward(reward_event)[0])
         builder.end_section()
+        builder.add_line("")
 
-        builder.end_section()
-        return reward_score
+        # Best score so far (across history)
+        rounds = split_rounds(history)
+        all_rewards = []
+        for r in rounds:
+            all_rewards.extend([e for e in r if e.get("type") == "reward"])
+        if all_rewards:
+            best = None
+            for r in all_rewards:
+                _s, val = format_reward(r)
+                if best is None or val > best:
+                    best = val
+            if best is not None:
+                builder.add_line(f"Best score achieved: {best}")
+                builder.add_line("")
 
-    builder.end_section()
-    return None
+        builder.add_line(
+            "Remember: Use only the valid symbols shown above. Each symbol can appear multiple times."
+        )
+        builder.add_line("")
+        builder.add_line("Provide your symbol sequence in <move></move> tags.")
+        b.user(builder.render())
+        return b.render(), ctx
 
-
-def render_current_round(round_events, builder, round_num):
-    """Render the current incomplete round"""
-
-    # Extract attempts
-    attempts = extract_attempts(
-        round_events, reason="Contains invalid symbols not in the allowed set"
-    )
-
-    builder.start_section(f"round{round_num}")
-    builder.start_section("symbolSelection")
-
-    # Show any failed attempts
-    for attempt in attempts:
-        if attempt["failed"]:
-            builder.add_line(format_attempt(**attempt))
-
-    # Show where we are
-    builder.add_line("You are HERE. Provide a valid symbol sequence.")
-
-    builder.end_section()
-    builder.end_section()
+    # Otherwise, assume failed ensure since the previous move
+    builder.add_line("Contains invalid symbols not in the allowed set.")
+    builder.add_line("Provide your symbol sequence in <move></move> tags.")
+    b.user(builder.render())
+    return b.render(), ctx

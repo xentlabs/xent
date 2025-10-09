@@ -31,9 +31,9 @@ class MockXGP(XGP):
             "input_tokens": 1,
             "output_tokens": 1,
         }
-
         self.presentation_function = get_presentation_function(executable_game_map)
-        self.last_message_to_llm = ""
+        self.presentation_ctx: dict[str, object] = {}
+        self.conversation: list[LLMMessage] = []
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -47,14 +47,34 @@ class MockXGP(XGP):
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
     ) -> MoveResult:
-        message = self.presentation_function(
-            register_states, self.event_history, self.metadata
-        )
+        # Compute since_events based on last elicit_request
+        elicit_idxs = [
+            i
+            for i, e in enumerate(self.event_history)
+            if e.get("type") == "elicit_request"
+        ]
+        if not elicit_idxs:
+            since_events: list[XentEvent] = list(self.event_history)
+        else:
+            start = elicit_idxs[-2] + 1 if len(elicit_idxs) > 1 else 0
+            end = elicit_idxs[-1] + 1
+            since_events = self.event_history[start:end]
 
-        self.last_message_to_llm = message
+        messages, self.presentation_ctx = self.presentation_function(
+            register_states,
+            since_events,
+            self.metadata,
+            full_history=self.event_history,
+            ctx=self.presentation_ctx,
+        )
+        # Append the new messages to the conversation (append-only)
+        self.conversation.extend(messages)
 
         return MoveResult(
-            "mocked_move", self.token_usage_per_move.copy(), [], "full mocked_move"
+            "mocked_move",
+            self.token_usage_per_move.copy(),
+            self.conversation,
+            "full mocked_move",
         )
 
     async def post(self, event: XentEvent) -> None:
@@ -77,6 +97,7 @@ class DefaultXGP(XGP):
         self.conversation: list[LLMMessage] = []
         self.reminder_message: LLMMessage | None = None
         self.presentation_function = get_presentation_function(executable_game_map)
+        self.presentation_ctx: dict[str, object] = {}
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -90,10 +111,30 @@ class DefaultXGP(XGP):
     async def make_move(
         self, var_name: str, register_states: Mapping[str, XString | XList]
     ) -> MoveResult:
-        message = self.presentation_function(
-            register_states, self.event_history, self.metadata
+        # Compute since_events as everything after previous elicit_request up to this elicit_request (inclusive)
+        elicit_idxs = [
+            i
+            for i, e in enumerate(self.event_history)
+            if e.get("type") == "elicit_request"
+        ]
+        if not elicit_idxs:
+            since_events: list[XentEvent] = list(self.event_history)
+        else:
+            start = elicit_idxs[-2] + 1 if len(elicit_idxs) > 1 else 0
+            end = elicit_idxs[-1] + 1
+            since_events = self.event_history[start:end]
+
+        messages, self.presentation_ctx = self.presentation_function(
+            register_states,
+            since_events,
+            self.metadata,
+            full_history=self.event_history,
+            ctx=self.presentation_ctx,
         )
-        self.conversation = [LLMMessage(role="user", content=message)]
+
+        # Append the new messages for this turn to the persistent conversation (append-only)
+        if messages:
+            self.conversation.extend(messages)
 
         logging.info("Sending message to LLM")
         logging.info(f"conversation: {dumps(self.conversation)}")
@@ -101,14 +142,20 @@ class DefaultXGP(XGP):
         logging.info(f"Received response from LLM: {dumps(full_reply)}")
         reply = re.sub(r"<think>.*?</think>", "", full_reply or "", flags=re.DOTALL)
 
+        # Append the assistant reply to the conversation
+        self.conversation.append(LLMMessage(role="assistant", content=reply))
+
         move_matches = re.findall(r"<move>(.*?)</move>", reply, flags=re.DOTALL)
         if move_matches:
             result = move_matches[-1]
         else:
-            self.reminder_message = LLMMessage(
+            reminder = LLMMessage(
                 role="user",
                 content="No move specified. Make sure that you provide your move within the <move></move> tags.",
             )
+            # Append a reminder to the chat so next turn sees the guidance
+            self.conversation.append(reminder)
+            self.reminder_message = reminder
             result = reply
         logging.info(f"Parsed LLM move: {result}")
         return MoveResult(result, token_usage, self.conversation, reply)

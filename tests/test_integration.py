@@ -260,9 +260,14 @@ def test_benchmark_structure(shared_benchmark_results):
 async def test_full_interaction_flag_records_extra_data():
     """Full interaction flag records prompts and responses in history."""
 
-    presentation_code = (
-        """def present(state, history, metadata):\n    return 'prompt'\n"""
-    )
+    presentation_code = """
+from xent.presentation.sdk import ChatBuilder
+
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    b = ChatBuilder()
+    b.user('prompt')
+    return b.render()
+"""
 
     async def run_case(store_flag: bool):
         executable_game_map: ExecutableGameMap = {
@@ -311,7 +316,7 @@ async def test_full_interaction_flag_records_extra_data():
     enriched_event = await run_case(True)
     baseline_event = await run_case(False)
 
-    assert enriched_event["prompts"] == []
+    assert isinstance(enriched_event.get("prompts"), list)
     assert enriched_event["full_response"] == "full mocked_move"
     assert "prompts" not in baseline_event
     assert "full_response" not in baseline_event

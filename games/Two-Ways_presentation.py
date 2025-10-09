@@ -1,4 +1,5 @@
 from xent.presentation.sdk import (
+    ChatBuilder,
     PresentationBuilder,
     extract_rewards,
     format_token_xent_list,
@@ -6,16 +7,19 @@ from xent.presentation.sdk import (
 )
 
 
-def present(state, history, metadata):
-    # Extract game state
-    story_a = state["s1"]
-    story_c = state["s2"]
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-    # Build presentation
-    builder = PresentationBuilder()
+    history = full_history if full_history is not None else since_events
+    rounds = split_rounds(history)
 
-    # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+    b = ChatBuilder()
+
+    # One-time introduction and current status
+    if not ctx.get("intro_sent", False):
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s1=story(), s2=story())
@@ -38,42 +42,70 @@ You will have multiple attempts to improve your score. After each attempt, you w
 
 Your move can only be 10 tokens long in total. Anything beyond that will be truncated. Provide your move in <move></move> tags. Any other text in your response will be ignored."""
 
-    builder.add_header(header)
-
-    # Split history into rounds
-    rounds = split_rounds(history)
-
-    # Track best score
-    best_score = None
-
-    # Show game history if any completed rounds exist
-    if rounds and any(extract_rewards(r) for r in rounds):
+        builder.add_header(header)
         builder.add_line("")
-        builder.start_section("gameHistory")
 
-        for i, round_events in enumerate(rounds):
-            rewards = extract_rewards(round_events)
-            if rewards and len(rewards) >= 2:  # Only show completed rounds with scores
-                render_complete_round(round_events, builder, i + 1)
+        story_a = state.get("s1", "")
+        story_c = state.get("s2", "")
+        builder.add_line("Current game status:")
+        builder.add_line(f"<storyA>{story_a}</storyA>")
+        builder.add_line(f"<storyC>{story_c}</storyC>")
+        builder.add_line("")
+        builder.add_line(
+            'Your goal: Create a bridge text B that makes both "A→B→C" and "C→B→A" flow naturally.'
+        )
+        builder.add_line("")
+        builder.add_line("Provide your bridge text in <move></move> tags.")
 
-                # Track best score (first two rewards only)
-                total_score = (
-                    rewards[0]["value"].total_xent() + rewards[1]["value"].total_xent()
-                )
-                if best_score is None or total_score > best_score:
-                    best_score = total_score
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
 
+    # Subsequent turns: summarize latest completed round and prompt
+    builder = PresentationBuilder()
+
+    # Identify the most recent completed round (needs at least 2 rewards)
+    last_completed_index = None
+    for i in range(len(rounds) - 1, -1, -1):
+        rewards = extract_rewards(rounds[i])
+        if len(rewards) >= 2:
+            last_completed_index = i
+            break
+
+    # Compute best score so far
+    best_score = None
+    for i in range(len(rounds)):
+        rewards = extract_rewards(rounds[i])
+        if len(rewards) >= 2:
+            abc = rewards[0]["value"].total_xent()
+            cba = rewards[1]["value"].total_xent()
+            total = abc + cba
+            if best_score is None or total > best_score:
+                best_score = total
+
+    if last_completed_index is not None:
+        round_events = rounds[last_completed_index]
+        rewards = extract_rewards(round_events)
+        builder.add_line(f"Round {last_completed_index}:")
+
+        # Scores for ABC and CBA, total
+        abc_reward = rewards[0]
+        abc_score = abc_reward["value"].total_xent()
+        builder.start_section("scoreABC")
+        builder.add_line(f"Total: {abc_score:.3f}")
+        builder.add_line(f"Per-token: {format_token_xent_list(abc_reward['value'])}")
         builder.end_section()
 
-    # Show current game status
-    builder.add_line("")
-    builder.add_line("Current game status:")
-    builder.add_line(f"<storyA>{story_a}</storyA>")
-    builder.add_line(f"<storyC>{story_c}</storyC>")
-    builder.add_line("")
-    builder.add_line(
-        'Your goal: Create a bridge text B that makes both "A→B→C" and "C→B→A" flow naturally.'
-    )
+        cba_reward = rewards[1]
+        cba_score = cba_reward["value"].total_xent()
+        builder.start_section("scoreCBA")
+        builder.add_line(f"Total: {cba_score:.3f}")
+        builder.add_line(f"Per-token: {format_token_xent_list(cba_reward['value'])}")
+        builder.end_section()
+
+        total_score = abc_score + cba_score
+        builder.add_line(f"<totalScore>{total_score:.3f}</totalScore>")
+        builder.add_line("")
 
     if best_score is not None:
         builder.add_line(f"Best score so far: {best_score:.3f}")
@@ -81,46 +113,5 @@ Your move can only be 10 tokens long in total. Anything beyond that will be trun
     builder.add_line("")
     builder.add_line("Provide your bridge text in <move></move> tags.")
 
-    return builder.render()
-
-
-def render_complete_round(round_events, builder, round_num):
-    # Extract the response (bridge text)
-    response_event = next(
-        (e for e in round_events if e["type"] == "elicit_response"), None
-    )
-
-    if not response_event:
-        return
-
-    # Get rewards (only first two are actual scores)
-    rewards = extract_rewards(round_events)
-    if len(rewards) < 2:
-        return
-
-    builder.start_section(f"round{round_num}")
-
-    # Show the bridge text
-    builder.add_line(f"<bridge>{response_event['response']}</bridge>")
-
-    # Score ABC (first reward)
-    abc_reward = rewards[0]
-    abc_score = abc_reward["value"].total_xent()
-    builder.start_section("scoreABC")
-    builder.add_line(f"Total: {abc_score:.3f}")
-    builder.add_line(f"Per-token: {format_token_xent_list(abc_reward['value'])}")
-    builder.end_section()
-
-    # Score CBA (second reward)
-    cba_reward = rewards[1]
-    cba_score = cba_reward["value"].total_xent()
-    builder.start_section("scoreCBA")
-    builder.add_line(f"Total: {cba_score:.3f}")
-    builder.add_line(f"Per-token: {format_token_xent_list(cba_reward['value'])}")
-    builder.end_section()
-
-    # Combined total
-    total_score = abc_score + cba_score
-    builder.add_line(f"<totalScore>{total_score:.3f}</totalScore>")
-
-    builder.end_section()
+    b.user(builder.render())
+    return b.render(), ctx

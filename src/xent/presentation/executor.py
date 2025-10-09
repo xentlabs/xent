@@ -6,9 +6,13 @@ from xent.common.configuration_types import XentEvent, XentMetadata
 from xent.common.errors import XentConfigurationError, XentInternalError
 from xent.common.x_list import XList
 from xent.common.x_string import XString
+from xent.common.xent_event import LLMMessage
 
-DEFAULT_PRESENTATION = '''
+# A default example for presentation
+DEFAULT_PRESENTATION = """
+from typing import Any
 from xent.presentation.sdk import (
+    ChatBuilder,
     format_elicit_request,
     format_elicit_response,
     format_reveal,
@@ -16,26 +20,42 @@ from xent.presentation.sdk import (
     format_failed_ensure,
 )
 
-def present(state, history, metadata):
-    """Default presentation matching current system output"""
-    output = []
-    for event in history:
-        if event['type'] == 'elicit_request':
-            output.append(format_elicit_request(event))
-        elif event['type'] == 'elicit_response':
-            output.append(format_elicit_response(event))
-        elif event['type'] == 'reveal':
-            output.append(format_reveal(event))
-        elif event['type'] == 'reward':
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
+
+    b = ChatBuilder()
+
+    # Send a one-time introduction/instructions
+    if not ctx.get('intro_sent', False):
+        b.user(
+            "You are playing a text game. Provide your move inside <move></move> tags. Any other text will be ignored."
+        )
+        ctx['intro_sent'] = True
+
+    # Summarize what happened since the last elicit
+    for event in since_events:
+        t = event.get('type')
+        if t == 'elicit_request':
+            b.user(format_elicit_request(event))
+        elif t == 'elicit_response':
+            b.user(format_elicit_response(event))
+        elif t == 'reveal':
+            b.user(format_reveal(event))
+        elif t == 'reward':
             formatted, _ = format_reward(event)
-            output.append(formatted)
-        elif event['type'] == 'failed_ensure':
-            output.append(format_failed_ensure(event))
+            b.user("Score update:\\n" + str(formatted))
+        elif t == 'failed_ensure':
+            b.user(format_failed_ensure(event))
         else:
-            # Fallback for unknown event types
-            output.append(f"Unknown event: {event}")
-    return '\\n'.join(output)
-'''
+            b.user("Event: " + str(event))
+
+    # Close with a concise instruction cue
+    b.user("Now provide your next move inside <move></move> tags.")
+
+    return b.render(), ctx
+"""
+
 
 SAMPLE_METADATA: XentMetadata = XentMetadata(
     benchmark_id="bid",
@@ -46,124 +66,138 @@ SAMPLE_METADATA: XentMetadata = XentMetadata(
     store_full_player_interactions=False,
 )
 
-SINGLE_PRESENTATION = '''
-def present(state, history, metadata):
-    story = state["s"]
-    game_overview = f"""I am going to give you a short text. Your job is to provide a string that will prefix that text. Your goal is to minimize the cross-entropy of the text given the prefix you provide. You should respond with what will make the text as likely as possible.
-
-The text is: "{story}"
-
-Your response will be used as the prefix to that text and you will be scored on how well it helps predict that text. You may not use any words from the text in your response, regardless of case or punctuation. You can only use a maximum of 10 tokens for your prefix."""
-    previous_attempts = []
-
-    for event in history:
-        if event["type"] == "elicit_response":
-            previous_attempts.append("<attempt>")
-            previous_attempts.append("You provided: " + event["response"])
-        elif event["type"] == "reward":
-            score = round(event["value"].total_xent(), 2)
-            previous_attempts.append(f"Total score for that response: {score}")
-            previous_attempts.append(
-                f"Per token score for that response: {str(event['value'])}"
-            )
-            previous_attempts.append("</attempt>")
-
-    if len(previous_attempts) == 0:
-        instructions = "Provide your prefix inside of `<move></move>` tags. Any other text in your response will be ignored. You will be given feedback on your prefix and a chance to improve your prefix."
-        output = [game_overview, "", instructions]
-    else:
-        instructions = "Use your previous attempts above to further optimize your prefix. Provide your prefix inside of `<move></move>` tags. Any other text in your response will be ignored."
-        output = (
-            [game_overview, "", "<previousAttempts>"]
-            + previous_attempts
-            + ["</previousAttempts>", "", instructions]
-        )
-
-    return "\\n".join(output)
-'''
-
 
 def get_default_presentation() -> str:
     return DEFAULT_PRESENTATION.strip()
 
 
-def get_single_presentation() -> str:
-    return SINGLE_PRESENTATION.strip()
-
-
 class PresentationFunction:
+    """
+    Loader/executor for presentation functions that implement:
+
+        present_turn(state, since_events, metadata, full_history=None, ctx=None)
+            -> list[LLMMessage] | tuple[list[LLMMessage], dict[str, Any]]
+
+    The __call__ normalizes the return into (messages, new_ctx).
+    """
+
     def __init__(self, code_string: str):
         self.code_string = code_string
         self.compiled_code = None
-        self.present_func: (
-            Callable[[Mapping[str, Any], list[XentEvent], XentMetadata], str] | None
+        self.present_turn_func: (
+            Callable[
+                [
+                    Mapping[str, Any],
+                    list[XentEvent],
+                    XentMetadata,
+                    list[XentEvent] | None,
+                    dict[str, Any] | None,
+                ],
+                Any,
+            ]
+            | None
         ) = None
 
         try:
-            self.compiled_code = compile(code_string, "<presentation>", "exec")
+            self.compiled_code = compile(code_string, "<presentation_turn>", "exec")
         except SyntaxError as e:
-            raise XentInternalError(f"Presentation function syntax error: {e}") from e
+            raise XentInternalError(
+                f"Turn presentation function syntax error: {e}"
+            ) from e
 
-        # Allow full Python imports - presentations are trusted code
         self.namespace: Any = {}
 
         try:
             exec(self.compiled_code, self.namespace)
         except Exception as e:
             raise XentConfigurationError(
-                f"Error executing presentation function: {e}"
+                f"Error executing turn presentation function: {e}"
             ) from e
 
-        if "present" not in self.namespace:
+        if "present_turn" not in self.namespace:
             raise XentConfigurationError(
-                "Presentation function must define a 'present' function"
+                "Turn presentation must define a 'present_turn' function"
             )
 
-        present_func = self.namespace["present"]
-        if not callable(present_func):
-            raise XentInternalError("'present' must be a callable function")
+        present_turn_func = self.namespace["present_turn"]
+        if not callable(present_turn_func):
+            raise XentInternalError("'present_turn' must be a callable function")
 
-        self.present_func = present_func  # type: ignore
+        self.present_turn_func = present_turn_func  # type: ignore
 
     def __call__(
         self,
         state: Mapping[str, XString | XList],
-        history: list[XentEvent],
+        since_events: list[XentEvent],
         metadata: XentMetadata,
-    ) -> str:
-        if self.present_func is None:
-            raise XentInternalError("Presentation function not properly initialized")
+        full_history: list[XentEvent] | None = None,
+        ctx: dict[str, Any] | None = None,
+    ) -> tuple[list[LLMMessage], dict[str, Any]]:
+        if self.present_turn_func is None:
+            raise XentInternalError(
+                "Turn presentation function not properly initialized"
+            )
 
         try:
-            result = self.present_func(state, history, metadata)
-            if not isinstance(result, str):
-                logging.warning(
-                    f"Presentation function returned non-string: {type(result)}. Converting to string."
+            result = self.present_turn_func(
+                state, since_events, metadata, full_history, ctx
+            )
+            # Accept either list[LLMMessage] or (list[LLMMessage], ctx)
+            messages: list[LLMMessage]
+            new_ctx: dict[str, Any]
+
+            if isinstance(result, tuple) and len(result) == 2:
+                messages_candidate, ctx_candidate = result
+                messages = (
+                    list(messages_candidate) if messages_candidate is not None else []
                 )
-                return str(result)
-            return result
+                new_ctx = (
+                    dict(ctx_candidate)
+                    if isinstance(ctx_candidate, dict)
+                    else (ctx or {})
+                )
+            else:
+                messages = list(result) if result is not None else []
+                new_ctx = ctx or {}
+
+            # Coerce message shapes to LLMMessage
+            normalized: list[LLMMessage] = []
+            for m in messages:
+                role = getattr(m, "role", None) or (
+                    m.get("role") if isinstance(m, dict) else None
+                )
+                content = getattr(m, "content", None) or (
+                    m.get("content") if isinstance(m, dict) else None
+                )
+                if not role or not content:
+                    logging.warning(f"Invalid message in turn presentation output: {m}")
+                    continue
+                normalized.append({"role": str(role), "content": str(content)})  # type: ignore[typeddict-item]
+
+            return normalized, new_ctx
         except Exception as e:
-            logging.error(f"Error in presentation function execution: {e}")
+            logging.error(f"Error in turn presentation function execution: {e}")
             raise XentConfigurationError(
-                "Error in presentation function execution"
+                "Error in turn presentation function execution"
             ) from e
 
     def validate(
         self,
         sample_state: dict[str, Any] | None = None,
-        sample_history: list[XentEvent] | None = None,
+        sample_since_events: list[XentEvent] | None = None,
         sample_metadata: XentMetadata | None = None,
     ) -> bool:
         if sample_state is None:
             sample_state = {}
-        if sample_history is None:
-            sample_history = []
+        if sample_since_events is None:
+            sample_since_events = []
         if sample_metadata is None:
             sample_metadata = SAMPLE_METADATA
 
         try:
-            result = self(sample_state, sample_history, sample_metadata)
-            return isinstance(result, str)
+            messages, _ctx = self(sample_state, sample_since_events, sample_metadata)
+            valid = isinstance(messages, list)
+            return valid
         except Exception as e:
             logging.error(f"Presentation function validation failed: {e}")
             return False

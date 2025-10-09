@@ -1,4 +1,5 @@
 from xent.presentation.sdk import (
+    ChatBuilder,
     PresentationBuilder,
     extract_reveals,
     extract_rewards,
@@ -7,21 +8,18 @@ from xent.presentation.sdk import (
 )
 
 
-def present(state, history, metadata):
-    # Extract game state
-    s1 = state["s1"]
-    s2 = state["s2"]
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-    # Parse history and track best score
+    history = full_history if full_history is not None else since_events
     rounds = split_rounds(history)
-    best_contrast_score = None
-    completed_round_count = 0
 
-    # Build presentation
-    builder = PresentationBuilder()
+    b = ChatBuilder()
 
-    # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+    if not ctx.get("intro_sent", False):
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -46,79 +44,69 @@ You cannot use any words that appear in either story (regardless of case or punc
 
 Provide your prefix in <move></move> tags. Any other text in your response will be ignored."""
 
-    builder.add_header(header)
-    builder.add_line("")
-
-    # Present the two stories
-    builder.add_line("The two stories to contrast:")
-    builder.add_line(f"Make this predictable: <story1>{s1}</story1>")
-    builder.add_line(f"Make this surprising: <story2>{s2}</story2>")
-
-    if len(rounds) == 1:
+        builder.add_header(header)
+        builder.add_line("")
+        s1 = state.get("s1", "")
+        s2 = state.get("s2", "")
+        builder.add_line("The two stories to contrast:")
+        builder.add_line(f"Make this predictable: <story1>{s1}</story1>")
+        builder.add_line(f"Make this surprising: <story2>{s2}</story2>")
         builder.add_line("")
         builder.add_line("Round 1 starting.")
-    else:
         builder.add_line("")
-        builder.add_line("--- Play History ---")
-        builder.add_line("")
-        builder.start_section("gameHistory")
+        builder.add_line("Provide your prefix in <move></move> tags.")
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
 
-        for round_num in range(len(rounds) - 1):
-            round_events = rounds[round_num]
-            rewards = extract_rewards(round_events)
-            completed_round_count += 1
+    builder = PresentationBuilder()
 
-            # Get the response for this round
-            response = next(e for e in round_events if e["type"] == "elicit_response")[
-                "response"
-            ]
-            prefix = extract_reveals(round_events)[0]["values"]["x1"]
+    last_completed_index = None
+    for i in range(len(rounds) - 1, -1, -1):
+        if extract_rewards(rounds[i]):
+            last_completed_index = i
+            break
 
-            # Calculate scores
-            (story1_score_str, story1_score) = format_reward(rewards[0])
-            (story2_score_str, story2_score) = format_reward(rewards[1])
-            contrast_score = round(story1_score + story2_score, 3)
+    best_contrast_score = None
+    for i in range(len(rounds)):
+        rewards = extract_rewards(rounds[i])
+        if len(rewards) >= 2:
+            story1_val = format_reward(rewards[0])[1]
+            story2_val = format_reward(rewards[1])[1]
+            total = round(story1_val + story2_val, 3)
+            if best_contrast_score is None or total > best_contrast_score:
+                best_contrast_score = total
 
-            # Track best score
-            if best_contrast_score is None or contrast_score > best_contrast_score:
-                best_contrast_score = contrast_score
-
-            # Render this round immediately
-            builder.start_section(f"round{round_num}")
-            if response == prefix:
-                builder.add_line(f"<prefix>{response}</prefix>")
-            else:
-                builder.add_line(f"<move>{response}</move>")
+    if last_completed_index is not None:
+        round_events = rounds[last_completed_index]
+        rewards = extract_rewards(round_events)
+        builder.add_line(f"Round {last_completed_index}:")
+        reveals = extract_reveals(round_events)
+        if reveals:
+            prefix = reveals[0]["values"].get("x1")
+            if prefix is not None:
                 builder.add_line(f"<prefix>{prefix}</prefix>")
+        if len(rewards) >= 2:
             builder.start_section("scores")
-
-            # Story 1 score (predictability boost)
+            story1_str, story1_val = format_reward(rewards[0])
             builder.start_section("story1_predictability")
-            builder.add_lines(story1_score_str)
+            builder.add_lines(story1_str)
             builder.end_section()
-
-            # Story 2 score (surprise factor)
+            story2_str, story2_val = format_reward(rewards[1])
             builder.start_section("story2_surprise")
-            builder.add_lines(story2_score_str)
+            builder.add_lines(story2_str)
             builder.end_section()
-
-            # Combined contrast score
+            contrast_score = round(story1_val + story2_val, 3)
             builder.add_line(f"<contrastScore>{contrast_score}</contrastScore>")
             builder.end_section()
-            builder.end_section()
-
-        # Current round marker
-        builder.add_current_round_marker(completed_round_count)
-        builder.end_section()
-
-        builder.add_line("")
-        if best_contrast_score is not None:
-            builder.add_line(f"Best contrast score achieved: {best_contrast_score}")
-            builder.add_line(
-                "Remember: maximize your score by helping story 1 while hindering story 2!"
-            )
         builder.add_line("")
 
+    if best_contrast_score is not None:
+        builder.add_line(f"Best contrast score achieved: {best_contrast_score}")
+        builder.add_line(
+            "Remember: maximize your score by helping story 1 while hindering story 2!"
+        )
+    builder.add_line("")
     builder.add_line("Provide your prefix in <move></move> tags.")
-
-    return builder.render()
+    b.user(builder.render())
+    return b.render(), ctx

@@ -199,17 +199,27 @@ class TestCLIPresentationIntegration:
             custom_path = temp_dir / "custom.xent"
             custom_path.write_text('assign(s="custom")\nreveal(s)')
             custom_pres_path = temp_dir / "custom_presentation.py"
-            custom_pres_path.write_text("""def present(state, history, metadata):
-    return "Custom presentation"
-""")
+            custom_pres_path.write_text(
+                """
+from xent.presentation.sdk import ChatBuilder
+
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    b = ChatBuilder()
+    b.user("Custom presentation")
+    return b.render()
+"""
+            )
 
             # Scenario 3: Game with non-standard presentation (warnings)
             warning_path = temp_dir / "warning.xent"
             warning_path.write_text('assign(s="warning")')
             warning_pres_path = temp_dir / "warning_presentation.py"
-            warning_pres_path.write_text("""def present(game_state, events, metadata):  # Non-standard names
-    return "Works with warnings"
-""")
+            warning_pres_path.write_text(
+                """
+def present_turn(game_state, since_events, metadata, full_history=None, ctx=None):  # Non-standard names
+    return [dict(role="user", content="Works with warnings")]
+"""
+            )
 
             # Scenario 4: Another game without presentation to test mixed scenario
             another_path = temp_dir / "another.xent"
@@ -228,10 +238,7 @@ class TestCLIPresentationIntegration:
             assert custom["code"] == 'assign(s="custom")\nreveal(s)'
             assert custom["presentation_function"] is not None
             assert "Custom presentation" in custom["presentation_function"]
-            assert (
-                "def present(state, history, metadata):"
-                in custom["presentation_function"]
-            )
+            assert "def present_turn(" in custom["presentation_function"]
 
             warning = next(g for g in games if g["name"] == "warning")
             assert warning["code"] == 'assign(s="warning")'

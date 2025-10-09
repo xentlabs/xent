@@ -7,6 +7,7 @@ from xent.common.xent_event import (
     ElicitResponseEvent,
     FailedEnsureEvent,
     LLMMessage,
+    LLMRole,
     RevealEvent,
     RewardEvent,
     XentEvent,
@@ -345,7 +346,7 @@ class ChatBuilder:
     def __init__(self) -> None:
         self._messages: list[LLMMessage] = []
 
-    def add(self, role: str, content: str) -> "ChatBuilder":
+    def add(self, role: LLMRole, content: str) -> "ChatBuilder":
         # Basic guard to avoid empty content spam
         if content is None or str(content).strip() == "":
             return self
@@ -364,9 +365,9 @@ class ChatBuilder:
 
     def extend(self, messages: list[LLMMessage]) -> "ChatBuilder":
         for m in messages:
-            role = m.get("role", "user")  # type: ignore[arg-type]
-            content = m.get("content", "")  # type: ignore[arg-type]
-            self.add(str(role), str(content))
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            self.add(str(role), str(content))  # type: ignore[arg-type]
         return self
 
     def render(self) -> list[LLMMessage]:

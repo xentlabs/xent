@@ -178,7 +178,7 @@ class TurnPresentationFunction:
                 if not role or not content:
                     logging.warning(f"Invalid message in turn presentation output: {m}")
                     continue
-                normalized.append({"role": str(role), "content": str(content)})
+                normalized.append({"role": str(role), "content": str(content)})  # type: ignore[typeddict-item]
 
             return normalized, new_ctx
         except Exception as e:

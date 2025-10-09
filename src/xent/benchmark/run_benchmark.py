@@ -44,9 +44,9 @@ async def run_game(
         player,
         locals,
         globals,
-        store_full_interactions=executable_game_map["metadata"][
-            "store_full_player_interactions"
-        ],
+        store_full_interactions=executable_game_map["metadata"].get(
+            "store_full_player_interactions", False
+        ),
     )
 
     logging.info(f"Running game: {game_str}")

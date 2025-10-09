@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 import google.genai as genai
+import google.genai.errors as genai_errors
 import google.genai.types as genai_types
 import torch
 from anthropic import APIError as AnthropicAPIError
@@ -403,7 +404,7 @@ class GeminiClient(LLMClient):
                     provider="gemini",
                 )
 
-        except genai.errors.ClientError as e:
+        except genai_errors.ClientError as e:
             # Map specific client errors based on status code
             if e.code == 429:
                 raise XentRateLimitError(str(e), provider="gemini") from e
@@ -411,7 +412,7 @@ class GeminiClient(LLMClient):
                 raise XentAuthenticationError(str(e), provider="gemini") from e
             else:
                 raise XentInvalidRequestError(str(e), provider="gemini") from e
-        except genai.errors.ServerError as e:
+        except genai_errors.ServerError as e:
             raise XentInternalServerError(str(e), provider="gemini") from e
         except Exception as e:
             raise XentApiError(

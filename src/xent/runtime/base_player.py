@@ -88,7 +88,7 @@ class XGP(ABC):
 
     @abstractmethod
     async def make_move(
-        self, var_name: str, register_state: Mapping[str, XString | XList]
+        self, var_name: str, register_states: Mapping[str, XString | XList]
     ) -> MoveResult:
         pass
 

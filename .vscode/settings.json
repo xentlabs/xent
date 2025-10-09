@@ -16,18 +16,8 @@
   // Ruff extension settings (using new format)
   "ruff.path": ["${workspaceFolder}/.venv/bin/ruff"],
 
-  "mypy-type-checker.interpreter": ["${workspaceFolder}/.venv/bin/python"],
-  // MyPy type checking - using daemon for speed
-  // Disabled daemon due to a bug in mypy I think
-  "mypy-type-checker.preferDaemon": false,
-  "mypy-type-checker.reportingScope": "workspace",
-  "mypy-type-checker.args": [
-    "--config-file=${workspaceFolder}/pyproject.toml",
-    "--cache-dir=${workspaceFolder}/.mypy_cache",
-  ],
-  "mypy-type-checker.ignorePatterns": [
-    "**/games/**",
-  ],
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
 
   // Testing
   "python.testing.pytestArgs": [

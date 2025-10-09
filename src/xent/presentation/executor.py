@@ -123,8 +123,7 @@ class PresentationFunction:
         if not callable(present_func):
             raise XentInternalError("'present' must be a callable function")
 
-        # Type narrowing - we know it's callable now
-        self.present_func = present_func
+        self.present_func = present_func  # type: ignore
 
     def __call__(
         self,

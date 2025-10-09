@@ -9,7 +9,6 @@ from xent.common.configuration_types import (
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
-from xent.common.util import dumps
 from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.default_players import get_presentation_function
 
@@ -42,7 +41,9 @@ class HumanXGP(XGP):
     ) -> MoveResult:
         # Compute since_events: from after previous elicit_request up to and including current elicit_request
         elicit_idxs = [
-            i for i, e in enumerate(self.event_history) if e.get("type") == "elicit_request"
+            i
+            for i, e in enumerate(self.event_history)
+            if e.get("type") == "elicit_request"
         ]
         if not elicit_idxs:
             since_events: list[XentEvent] = list(self.event_history)
@@ -64,8 +65,10 @@ class HumanXGP(XGP):
             self.conversation.extend(messages)
 
         print("************************************************")
-        print("Conversation so far:")
-        print(dumps(self.conversation, indent=2, ensure_ascii=False))
+        for message in self.conversation:
+            print("---------------------------------------------")
+            print(f"Role: {message['role']}")
+            print(message["content"])
         print("************************************************")
 
         move = input(
@@ -75,7 +78,9 @@ class HumanXGP(XGP):
         # Append the human's response as an assistant message to preserve chat continuity
         self.conversation.append(LLMMessage(role="assistant", content=move))
 
-        return MoveResult(move, TokenUsage(input_tokens=0, output_tokens=0), self.conversation, "")
+        return MoveResult(
+            move, TokenUsage(input_tokens=0, output_tokens=0), self.conversation, ""
+        )
 
     async def post(self, event: XentEvent) -> None:
         logging.info(f"Player received: {event}")

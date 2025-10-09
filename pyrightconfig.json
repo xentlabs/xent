@@ -1,0 +1,16 @@
+{
+  "pythonVersion": "3.13",
+  "include": ["src/xent"],
+  "exclude": ["**/__pycache__", "**/.venv", "games"],
+  "venvPath": ".",
+  "venv": ".venv",
+
+  "extraPaths": ["src"],
+
+  "typeCheckingMode": "basic",
+
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownMemberType": "none",
+  "reportMissingTypeStubs": "none"
+}

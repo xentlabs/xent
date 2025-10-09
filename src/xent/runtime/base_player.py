@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
-from collections import namedtuple
 from collections.abc import Mapping
-from typing import Final
+from typing import Final, NamedTuple
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
@@ -26,7 +25,7 @@ Once you have done these steps, you can use your new player type in the game con
 the PlayerType you have added.
 """
 
-MoveResult = namedtuple(
+MoveResult = NamedTuple(
     "MoveResult", ["response", "token_usage", "prompts", "full_response"]
 )
 
@@ -88,7 +87,7 @@ class XGP(ABC):
 
     @abstractmethod
     async def make_move(
-        self, var_name: str, register_state: Mapping[str, XString | XList]
+        self, var_name: str, register_states: Mapping[str, XString | XList]
     ) -> MoveResult:
         pass
 

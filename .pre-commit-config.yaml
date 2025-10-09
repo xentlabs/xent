@@ -7,11 +7,9 @@ repos:
       - id: ruff-format
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: uv run mypy
+      - id: pyright
+        name: pyright
         language: system
+        entry: bash -lc 'uvx --from pyright pyright'
         types: [python]
-        exclude: ^games/
-        pass_filenames: false
-        args: [--config-file=pyproject.toml, --no-incremental, src/xent]
+        pass_filenames: false  # run once per commit over configured "include"

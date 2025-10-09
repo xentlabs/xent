@@ -54,7 +54,7 @@ class ListLiteralToXListTransformer(ast.NodeTransformer):
 async def play_game(
     code: str,
     xrt: XentRuntime,
-    num_rounds=30,
+    num_rounds: int = 30,
     always_return_results: bool = False,  # Used for interactive play that may break at any moment
 ) -> list[GameMapRoundResult]:
     lines = [line.strip() for line in code.split("\n")]
@@ -70,8 +70,7 @@ async def play_game(
             if result is None:
                 return []  # TODO what to do here?
             rounds_played += 1
-            if result is not None:
-                round_results.append(result)
+            round_results.append(result)
         except Exception as e:
             if always_return_results:
                 logging.info(
@@ -145,11 +144,6 @@ async def eval_line(line: str, line_num: int, xrt: XentRuntime) -> XFlag | None:
         raise XentSyntaxError(
             f"Syntax error in expression: {line} (line {line_num})"
         ) from None
-
-    if not isinstance(tree, ast.Expression):
-        raise XentSyntaxError(
-            f"Invalid expression: {line} (line {line_num}): Not an Expression"
-        )
 
     instruction_name, call_node = get_validated_call_info(
         tree, xrt.instruction_names(), line, line_num

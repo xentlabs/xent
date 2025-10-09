@@ -28,8 +28,8 @@ from xent.common.xent_event import (
 )
 from xent.presentation.executor import (
     SAMPLE_METADATA,
-    TurnPresentationFunction,
-    get_default_turn_presentation,
+    PresentationFunction,
+    get_default_presentation,
 )
 from xent.presentation.sdk import (
     format_elicit_request,
@@ -795,7 +795,7 @@ class TestTokenUsage:
             "name": "Token Usage Test",
             "code": "test_code",
             "map_seed": "test_seed_0",
-            "presentation_function": get_default_turn_presentation(),
+            "presentation_function": get_default_presentation(),
         },
         "player": {
             "name": "alice",
@@ -1359,7 +1359,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     b.user("Simple presentation")
     return b.render()
 """
-        func = TurnPresentationFunction(code)
+        func = PresentationFunction(code)
         messages, _ = func({}, [], SAMPLE_METADATA)
         result = "\n".join(m["content"] for m in messages)
         assert result == "Simple presentation"
@@ -1382,7 +1382,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     sep = chr(10)
     return [dict(role="user", content=sep.join(lines))]
 """
-        func = TurnPresentationFunction(code)
+        func = PresentationFunction(code)
 
         events: list[XentEvent] = [
             {
@@ -1405,22 +1405,22 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
 def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     return [dict(role="user", content="Valid function")]
 """
-        func = TurnPresentationFunction(valid_code)
+        func = PresentationFunction(valid_code)
         assert func.validate()
 
     def test_invalid_syntax(self):
         with pytest.raises(XentInternalError):
-            TurnPresentationFunction(
+            PresentationFunction(
                 "def present_turn(state since_events, metadata): pass"
             )  # Missing comma
 
     def test_missing_present_function(self):
         with pytest.raises(XentConfigurationError):
-            TurnPresentationFunction("def other_function(): pass")
+            PresentationFunction("def other_function(): pass")
 
     def test_non_callable_present(self):
         with pytest.raises(XentInternalError):
-            TurnPresentationFunction("present_turn = 'not a function'")
+            PresentationFunction("present_turn = 'not a function'")
 
     def test_sdk_utilities_with_imports(self):
         """Test that SDK utilities work correctly when imported"""
@@ -1435,7 +1435,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     scores = get_scores_by_round(history)
     return [dict(role="user", content=f"Rounds: {len(rounds)}, Rewards: {len(all_rewards)}, Scores: {len(scores)}")]
 """
-        func = TurnPresentationFunction(code)
+        func = PresentationFunction(code)
 
         # Create test history with multiple rounds
         history: list[XentEvent] = [
@@ -1472,7 +1472,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     content = builder.render()
     return [dict(role="user", content=content)]
 """
-        func = TurnPresentationFunction(code)
+        func = PresentationFunction(code)
         messages, _ = func({}, [], SAMPLE_METADATA)
         result = "\n".join(m["content"] for m in messages)
 
@@ -1502,7 +1502,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
 
     return [dict(role="user", content=f"Formatted: {formatted}\\nReward: {reward_text}\\nScore: {reward_score}")]
 """
-        func = TurnPresentationFunction(code)
+        func = PresentationFunction(code)
         messages, _ = func({}, [], SAMPLE_METADATA)
         result = "\n".join(m["content"] for m in messages)
 
@@ -1650,8 +1650,8 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     def test_default_presentation_function(self):
         """Test that the default presentation function produces expected output"""
 
-        default_code = get_default_turn_presentation()
-        func = TurnPresentationFunction(default_code)
+        default_code = get_default_presentation()
+        func = PresentationFunction(default_code)
 
         # Test with sample events
         reveal_event: RevealEvent = {
@@ -1880,7 +1880,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     return [dict(role='user', content=builder.render())]
 """
 
-        func = TurnPresentationFunction(condense_presentation)
+        func = PresentationFunction(condense_presentation)
 
         # Test with realistic game state and history
         from xent.common.token_xent_list import TokenXentList
@@ -1918,7 +1918,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     return [dict(role='user', content=sep.join(lines))]
 """
 
-        func = TurnPresentationFunction(test_presentation)
+        func = PresentationFunction(test_presentation)
 
         # Create realistic multi-round history
 

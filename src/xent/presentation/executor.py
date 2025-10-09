@@ -8,8 +8,8 @@ from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import LLMMessage
 
-# A default example for turn-based presentation (append-only chat)
-DEFAULT_TURN_PRESENTATION = '''
+# A default example for presentation
+DEFAULT_PRESENTATION = """
 from typing import Any
 from xent.presentation.sdk import (
     ChatBuilder,
@@ -21,12 +21,6 @@ from xent.presentation.sdk import (
 )
 
 def present_turn(state, since_events, metadata, full_history=None, ctx=None):
-    """Default turn-based presentation.
-
-    - Emits an intro once per game using ctx.
-    - Renders the delta events since the previous elicit.
-    - Ends with a brief instruction for the next move.
-    """
     if ctx is None:
         ctx = {}
 
@@ -60,7 +54,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     b.user("Now provide your next move inside <move></move> tags.")
 
     return b.render(), ctx
-'''
+"""
 
 
 SAMPLE_METADATA: XentMetadata = XentMetadata(
@@ -73,13 +67,13 @@ SAMPLE_METADATA: XentMetadata = XentMetadata(
 )
 
 
-def get_default_turn_presentation() -> str:
-    return DEFAULT_TURN_PRESENTATION.strip()
+def get_default_presentation() -> str:
+    return DEFAULT_PRESENTATION.strip()
 
 
-class TurnPresentationFunction:
+class PresentationFunction:
     """
-    Loader/executor for turn-based presentation functions that implement:
+    Loader/executor for presentation functions that implement:
 
         present_turn(state, since_events, metadata, full_history=None, ctx=None)
             -> list[LLMMessage] | tuple[list[LLMMessage], dict[str, Any]]
@@ -205,5 +199,5 @@ class TurnPresentationFunction:
             valid = isinstance(messages, list)
             return valid
         except Exception as e:
-            logging.error(f"Turn presentation function validation failed: {e}")
+            logging.error(f"Presentation function validation failed: {e}")
             return False

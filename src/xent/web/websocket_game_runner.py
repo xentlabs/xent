@@ -12,7 +12,7 @@ from xent.common.configuration_types import (
     XentMetadata,
 )
 from xent.common.version import get_xent_version
-from xent.presentation.executor import get_default_turn_presentation
+from xent.presentation.executor import get_default_presentation
 from xent.runtime.judge import Judge
 
 
@@ -85,4 +85,4 @@ def _get_default_presentation_function() -> str:
     consume the presentation itself, we still provide a valid turn-based
     presentation function to satisfy configuration and compilation.
     """
-    return get_default_turn_presentation()
+    return get_default_presentation()

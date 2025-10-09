@@ -11,7 +11,7 @@ from xent.common.util import dumps
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
-from xent.presentation.executor import TurnPresentationFunction
+from xent.presentation.executor import PresentationFunction
 from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.llm_api_client import make_client
 
@@ -166,6 +166,6 @@ class DefaultXGP(XGP):
 
 def get_presentation_function(
     executable_game_map: ExecutableGameMap,
-) -> TurnPresentationFunction:
+) -> PresentationFunction:
     presentation_code = executable_game_map["game_map"]["presentation_function"]
-    return TurnPresentationFunction(presentation_code)
+    return PresentationFunction(presentation_code)

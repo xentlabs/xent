@@ -27,7 +27,7 @@ from xent.common.configuration_types import (
     XentMetadata,
 )
 from xent.common.util import dumps
-from xent.presentation.executor import get_default_turn_presentation
+from xent.presentation.executor import get_default_presentation
 from xent.runtime.default_players import MockXGP
 from xent.runtime.execution import play_game
 from xent.runtime.runtime import XentRuntime
@@ -85,7 +85,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                     reward(xent(x | s1))
                     reward(-xent(s2 | (s1+x)))
                 """,
-                presentation_function=get_default_turn_presentation(),
+                presentation_function=get_default_presentation(),
             ),
             # Game 2: Multi-step test
             GameConfig(
@@ -98,7 +98,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                     reveal(t2)
                     reward(-xent(t2 | y))
                 """,
-                presentation_function=get_default_turn_presentation(),
+                presentation_function=get_default_presentation(),
             ),
             GameConfig(
                 name="test_lists",
@@ -112,7 +112,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
                     reveal(t)
                     reward(xent(t | s))
                 """,
-                presentation_function=get_default_turn_presentation(),
+                presentation_function=get_default_presentation(),
             ),
         ],
         players=[
@@ -417,7 +417,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             GameConfig(
                 name="smoke",
                 code="assign(s=story())\nreveal(s)\nelicit(x, 5)\nreward(xent(x | s))",
-                presentation_function=get_default_turn_presentation(),
+                presentation_function=get_default_presentation(),
             ),
         ],
         players=[

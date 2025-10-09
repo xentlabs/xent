@@ -21,7 +21,7 @@ from xent.common.configuration_types import (
     PlayerConfig,
 )
 from xent.common.version import get_xent_version
-from xent.presentation.executor import get_default_turn_presentation
+from xent.presentation.executor import get_default_presentation
 
 
 @pytest.fixture
@@ -232,7 +232,7 @@ def present_turn(game_state, since_events, metadata, full_history=None, ctx=None
             # Verify each game
             simple = next(g for g in games if g["name"] == "simple")
             assert simple["code"] == 'assign(s="test")\nreveal(s)'
-            assert simple["presentation_function"] == get_default_turn_presentation()
+            assert simple["presentation_function"] == get_default_presentation()
 
             custom = next(g for g in games if g["name"] == "custom")
             assert custom["code"] == 'assign(s="custom")\nreveal(s)'
@@ -247,7 +247,7 @@ def present_turn(game_state, since_events, metadata, full_history=None, ctx=None
 
             another = next(g for g in games if g["name"] == "another")
             assert another["code"] == 'assign(s="another")'
-            assert another["presentation_function"] == get_default_turn_presentation()
+            assert another["presentation_function"] == get_default_presentation()
 
 
 class TestModelParameterParsing:

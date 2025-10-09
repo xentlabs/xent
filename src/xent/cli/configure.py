@@ -21,7 +21,7 @@ from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.errors import XentConfigurationError
 from xent.common.util import dumps
 from xent.common.version import get_xent_version
-from xent.presentation.executor import get_default_turn_presentation
+from xent.presentation.executor import get_default_presentation
 from xent.runtime.llm_api_client import guess_provider_from_model
 
 DEFAULT_XENT_METADATA = XentMetadata(
@@ -47,7 +47,7 @@ def game_from_file(game_file_path: Path) -> GameConfig:
     game_name = game_file_path.stem
     game_code = game_file_path.read_text()
 
-    presentation_function = get_default_turn_presentation()
+    presentation_function = get_default_presentation()
     presentation_path = game_file_path.with_name(f"{game_name}_presentation.py")
     try:
         presentation_function = presentation_path.read_text()
@@ -311,7 +311,7 @@ def configure(
             GameConfig(
                 name="simple_game",
                 code=SIMPLE_GAME_CODE,
-                presentation_function=get_default_turn_presentation(),
+                presentation_function=get_default_presentation(),
             )
         ]
     else:

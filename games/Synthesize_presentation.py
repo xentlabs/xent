@@ -1,4 +1,5 @@
 from xent.presentation.sdk import (
+    ChatBuilder,
     PresentationBuilder,
     extract_reveals,
     extract_rewards,
@@ -7,12 +8,19 @@ from xent.presentation.sdk import (
 )
 
 
-def present(state, history, metadata):
-    # Build presentation
-    builder = PresentationBuilder()
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-    # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+    history = full_history if full_history is not None else since_events
+    rounds = split_rounds(history)
+
+    b = ChatBuilder()
+
+    # One-time header and three stories
+    if not ctx.get("intro_sent", False):
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s1=story(), s2=story(), s3=story())
@@ -37,69 +45,76 @@ You cannot use any words that appear in any of the three stories (regardless of 
 
 Provide your prefix in <move></move> tags. Any other text in your response will be ignored."""
 
-    builder.add_header(header)
-    builder.add_line("")
+        builder.add_header(header)
+        builder.add_line("")
 
-    # Extract game state
-    s1 = state["s1"]
-    s2 = state["s2"]
-    s3 = state["s3"]
+        s1 = state.get("s1", "")
+        s2 = state.get("s2", "")
+        s3 = state.get("s3", "")
 
-    # Present the three stories
-    builder.add_line("The three stories to synthesize:")
-    builder.add_line(f"<story1>{s1}</story1>")
-    builder.add_line(f"<story2>{s2}</story2>")
-    builder.add_line(f"<story3>{s3}</story3>")
+        builder.add_line("The three stories to synthesize:")
+        builder.add_line(f"<story1>{s1}</story1>")
+        builder.add_line(f"<story2>{s2}</story2>")
+        builder.add_line(f"<story3>{s3}</story3>")
+        builder.add_line("")
+        builder.add_line("Provide your prefix in <move></move> tags.")
 
-    best_round_score = None
-    rounds = split_rounds(history)
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
 
-    builder.add_line("")
-    builder.add_line("--- Play History ---")
-    builder.add_line("")
-    builder.start_section("gameHistory")
+    # Subsequent turns: summarize last completed round and prompt for the next
+    builder = PresentationBuilder()
 
-    for i in range(len(rounds) - 1):
-        round_events = rounds[i]
-        response = next(e for e in round_events if e["type"] == "elicit_response")[
-            "response"
-        ]
-        prefix = extract_reveals(round_events)[0]["values"]["x1"]
+    # Find the most recent completed round (with rewards)
+    last_completed_index = None
+    for i in range(len(rounds) - 1, -1, -1):
+        if extract_rewards(rounds[i]):
+            last_completed_index = i
+            break
 
+    best_total = None
+    # Compute best total so far across all completed rounds
+    for i in range(len(rounds)):
+        rewards = extract_rewards(rounds[i])
+        if rewards:
+            total = 0
+            for r in rewards:
+                _text, score_val = format_reward(r)
+                total += score_val
+            if best_total is None or total > best_total:
+                best_total = total
+
+    if last_completed_index is not None:
+        round_events = rounds[last_completed_index]
         rewards = extract_rewards(round_events)
 
-        # Render this round immediately - no manual calculation needed!
-        builder.start_section(f"round{i}")
-        if response == prefix:
-            builder.add_line(f"<prefix>{response}</prefix>")
-        else:
-            builder.add_line(f"<move>{response}</move>")
-            builder.add_line(f"<prefix>{prefix}</prefix>")
-        builder.start_section("scores")
+        builder.add_line(f"Round {last_completed_index}:")
 
-        total_reward = 0
-        # Individual story scores - inline the rendering
-        for story_num, reward in enumerate(rewards):
-            builder.start_section(f"story{story_num + 1}")
-            (reward_str, reward_score) = format_reward(reward)
-            total_reward += reward_score
-            builder.add_lines(reward_str)
+        # Show normalized prefix (omit the move as it's already in chat)
+        reveals = extract_reveals(round_events)
+        if reveals:
+            prefix = reveals[0]["values"].get("x1")
+            if prefix is not None:
+                builder.add_line(f"<prefix>{prefix}</prefix>")
+
+        # Scores per story and total
+        if rewards:
+            builder.start_section("scores")
+            total_reward = 0
+            for story_num, reward in enumerate(rewards):
+                builder.start_section(f"story{story_num + 1}")
+                reward_str, reward_score = format_reward(reward)
+                total_reward += reward_score
+                builder.add_lines(reward_str)
+                builder.end_section()
+            builder.add_line(f"<totalScore>{total_reward}</totalScore>")
             builder.end_section()
 
-        # Total combined score - provided by SDK!
-        builder.add_line(f"<totalScore>{total_reward}</totalScore>")
-        if best_round_score is None or total_reward > best_round_score:
-            best_round_score = total_reward
-        builder.end_section()
-        builder.end_section()
+        builder.add_line("")
 
-    # Current round marker
-    builder.add_current_round_marker(len(rounds) - 1)
-    builder.end_section()
-
-    builder.add_line("")
-    if best_round_score is not None:
-        builder.add_line(f"Best total score achieved: {best_round_score}")
+    if best_total is not None:
+        builder.add_line(f"Best total score achieved: {best_total}")
         builder.add_line(
             "Remember: You want to maximize your total score across all three stories!"
         )
@@ -107,4 +122,5 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
 
     builder.add_line("Provide your prefix in <move></move> tags.")
 
-    return builder.render()
+    b.user(builder.render())
+    return b.render(), ctx

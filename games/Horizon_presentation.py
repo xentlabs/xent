@@ -1,21 +1,27 @@
 from xent.presentation.sdk import (
+    ChatBuilder,
     PresentationBuilder,
     extract_attempts,
     extract_rewards,
-    format_attempt,
     format_reward,
     split_rounds,
 )
 
 
-def present(state, history, metadata):
-    story = state["s"]
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-    # Build presentation
-    builder = PresentationBuilder()
+    history = full_history if full_history is not None else since_events
+    rounds = split_rounds(history)
 
-    # Game header
-    header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+    b = ChatBuilder()
+
+    # One-time header with rules and start text
+    if not ctx.get("intro_sent", False):
+        story = state.get("s", "")
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
 
 <gameCode>
 assign(s=story())
@@ -48,86 +54,66 @@ Here is the start text `t0` for this game:
 You will be able to play multiple rounds of this game. You will see your choices and attempts from all previous rounds. Use the history of your previous attempts to inform better choices and decisions in current play. Your final score is the maximum score you obtain over {metadata["num_rounds_per_game"]} rounds, so you should not worry about decreasing temporarily your score.
 
 """
+        builder.add_header(header)
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
 
-    builder.add_header(header)
-    rounds = split_rounds(history)
+    # After intro: provide concise guidance for current step
+    builder = PresentationBuilder()
 
-    builder.add_line("A history of your play so far:")
-    builder.add_line("")
-    builder.start_section("fullHistory")
+    # Reward summary if a previous round just completed
+    last_completed_idx = None
+    for i in range(len(rounds) - 2, -1, -1):  # look in earlier rounds
+        if extract_rewards(rounds[i]):
+            last_completed_idx = i
+            break
+    if last_completed_idx is not None:
+        rewards = extract_rewards(rounds[last_completed_idx])
+        if rewards:
+            builder.start_section("reward")
+            builder.add_lines(format_reward(rewards[0])[0])
+            builder.end_section()
+            builder.add_line("")
 
-    for i in range(len(rounds) - 1):
-        round = rounds[i]
-        builder.start_section(f"round_{i}")
-        render_complete_round(round, builder)
-        builder.end_section()
+    # Determine current round phase
+    cur_round = rounds[-1] if rounds else []
+    # t1 items are from earlier lines; threshold consistent with original presentation
+    first_elicit_items = [item for item in cur_round if item["line_num"] < 7]
+    second_elicit_items = [item for item in cur_round if item["line_num"] >= 7]
 
-    builder.start_section(f"round_{len(rounds) - 1}")
-    render_current_round(rounds[-1], builder)
-    builder.end_section()
-    builder.end_section()
-
-    builder.add_line("")
-    builder.add_line("Now provide your next move within the <move></move> tags.")
-
-    return builder.render()
-
-
-def render_complete_round(round, builder):
-    first_elicit_items = [item for item in round if item["line_num"] < 6]
-    first_elicit_attempts = extract_attempts(
+    t1_attempts = extract_attempts(
         first_elicit_items,
         reason="Failed to beat baseline comparison for likelihood of `t1`",
     )
-    builder.start_section("t1_selection")
-    for attempt in first_elicit_attempts:
-        builder.add_line(format_attempt(**attempt))
-    builder.end_section()
+    t1_success = any(not a["failed"] for a in t1_attempts)
 
-    builder.start_section("t2_selection")
-    second_elicit_items = [item for item in round if item["line_num"] >= 6]
-    second_elicit_attempts = extract_attempts(
+    if not t1_success:
+        # If last attempt failed, show failure message
+        if t1_attempts and t1_attempts[-1]["failed"]:
+            builder.add_line("Failed to beat baseline comparison for likelihood of `t1`.")
+        builder.add_line("You must now attempt to set `t1`.")
+        builder.add_line("Provide your move within the <move></move> tags.")
+        b.user(builder.render())
+        return b.render(), ctx
+
+    # t1 accepted; handle t2
+    t2_attempts = extract_attempts(
         second_elicit_items,
         reason="Failed to beat baseline comparison for likelihood of `t2`",
     )
-    for attempt in second_elicit_attempts:
-        builder.add_line(format_attempt(**attempt))
-    builder.end_section()
+    t2_success = any(not a["failed"] for a in t2_attempts)
 
-    reward = extract_rewards(round)[0]
-    builder.start_section("reward")
-    builder.add_line(format_reward(reward)[0])
-    builder.end_section()
+    if not t2_success:
+        if t2_attempts and t2_attempts[-1]["failed"]:
+            builder.add_line("Failed to beat baseline comparison for likelihood of `t2`.")
+        builder.add_line("Make another move to successfully set `t2`.")
+        builder.add_line("Provide your move within the <move></move> tags.")
+        b.user(builder.render())
+        return b.render(), ctx
 
-
-def render_current_round(round, builder):
-    first_elicit_items = [item for item in round if item["line_num"] < 7]
-    first_elicit_attempts = extract_attempts(
-        first_elicit_items,
-        reason="Failed to beat baseline comparison for likelihood of `t1`",
-    )
-    builder.start_section("t1_selection")
-    success = False
-    for attempt in first_elicit_attempts:
-        if not attempt["failed"]:
-            success = True
-        builder.add_line(format_attempt(**attempt))
-
-    if not success:
-        builder.add_line("You are HERE. You must now attempt to set `t1`")
-        builder.end_section()
-        return
-
-    builder.end_section()
-    builder.start_section("t2_selection")
-
-    second_elicit_items = [item for item in round if item["line_num"] >= 7]
-    second_elicit_attempts = extract_attempts(
-        second_elicit_items,
-        reason="Failed to beat baseline comparison for likelihood of `t2`",
-    )
-    for attempt in second_elicit_attempts:
-        builder.add_line(format_attempt(**attempt))
-
-    builder.add_line("You are HERE. Make another move to successfully set `t2`")
-    builder.end_section()
+    # If we reach here, both t1 and t2 were successful; next round will prompt t1 on next turn
+    builder.add_line("You must now attempt to set `t1`.")
+    builder.add_line("Provide your move within the <move></move> tags.")
+    b.user(builder.render())
+    return b.render(), ctx

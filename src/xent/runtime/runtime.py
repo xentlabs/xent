@@ -8,6 +8,7 @@ from typing import Any
 
 from xent.common.configuration_types import (
     GameMapRoundResult,
+    PlayerName,
     is_omniscient_player_name,
 )
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
@@ -35,15 +36,13 @@ MAX_ENSURE_FAILURES = 10
 class XentRuntime:
     def __init__(
         self,
-        player: XGP,
+        players: list[XGP],
         locals: dict[str, Any],
         globals: dict[str, Any],
         store_full_interactions: bool = False,
     ):
         self.local_vars = locals
-        self.player = player
-        self.score = 0.0
-        self.token_usage: TokenUsage = {"input_tokens": 0, "output_tokens": 0}
+        self.players = players
         self.globals = globals
         self.beacons: dict[str, XFlag] = {}
         self.history: list[XentEvent] = []
@@ -52,9 +51,17 @@ class XentRuntime:
         self.store_full_interactions = store_full_interactions
         self.last_elicit_player: XGP | None = None
 
-    def add_token_usage(self, token_usage: TokenUsage) -> None:
-        self.token_usage["input_tokens"] += token_usage["input_tokens"]
-        self.token_usage["output_tokens"] += token_usage["output_tokens"]
+    def reset_per_player_state(self):
+        self.scores: dict[PlayerName, float] = {}
+        self.token_usage: dict[PlayerName, TokenUsage] = {}
+        for player in self.players:
+            player.reset_score()
+            self.scores[player.name] = 0
+            self.token_usage[player.name] = {"input_tokens": 0, "output_tokens": 0}
+
+    def add_token_usage(self, player_name: PlayerName, token_usage: TokenUsage) -> None:
+        self.token_usage[player_name]["input_tokens"] += token_usage["input_tokens"]
+        self.token_usage[player_name]["output_tokens"] += token_usage["output_tokens"]
 
     def instruction_names(self) -> set[str]:
         return {"assign", "elicit", "reveal", "reward", "ensure", "beacon", "replay"}
@@ -71,15 +78,12 @@ class XentRuntime:
                 )
 
     def get_results_and_reset(self) -> GameMapRoundResult:
-        score = self.score
-        self.score = 0
-        self.player.reset_score()
-
+        scores = self.scores
         token_usage = self.token_usage
-        self.token_usage = {"input_tokens": 0, "output_tokens": 0}
+        self.reset_per_player_state()
 
         game_result = GameMapRoundResult(
-            score=score, history=self.history, token_usage=token_usage
+            scores=scores, history=self.history, token_usage=token_usage
         )
         self.history = []
         self.replay_counters = {}

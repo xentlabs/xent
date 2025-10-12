@@ -88,15 +88,15 @@ class ExpandedXentBenchmarkConfig(TypedDict):
 class ExecutableGameMap(TypedDict):
     game_map: GameMapConfig
     metadata: XentMetadata
-    player: PlayerConfig
+    players: list[PlayerConfig]
 
 
 # Result definitions
 
 
 class GameMapRoundResult(TypedDict):
-    score: float
-    token_usage: TokenUsage
+    scores: dict[PlayerName, float]
+    token_usage: dict[PlayerName, TokenUsage]
     history: list[XentEvent]
 
 
@@ -104,8 +104,8 @@ class GameMapResults(TypedDict):
     game_map: GameMapConfig
     metadata: XentMetadata
     player: PlayerConfig
-    score: float
-    token_usage: TokenUsage
+    scores: dict[PlayerName, float]
+    token_usage: dict[PlayerName, TokenUsage]
     round_results: list[GameMapRoundResult]
 
 

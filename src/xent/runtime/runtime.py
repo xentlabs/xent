@@ -1,7 +1,3 @@
-# NB: This code has gone back-and-forth from supporting multi-player and not. Currently,
-# it does not support multi-player games. Extending it should be relatively simple.
-# There is some amount of cruft due to this back-and-forth that should eventually be
-# removed, or fully updated to work properly in multi-player conditions.
 import logging
 import re
 from typing import Any
@@ -11,6 +7,7 @@ from xent.common.configuration_types import (
     PlayerName,
     is_omniscient_player_name,
 )
+from xent.common.constants import ZERO_SUM_PLAYER_PAIRS
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.x_flag import XFlag
@@ -290,7 +287,7 @@ class XentRuntime:
                 response_event["full_response"] = full_response
 
             await self.send_event(player, response_event)
-            self.add_token_usage(token_usage)
+            self.add_token_usage(player.name, token_usage)
 
             logging.info(f'Setting {var.name} to "{trimmed_move}"')
             var.primary_string = trimmed_move
@@ -309,12 +306,16 @@ class XentRuntime:
                 "Reveal requires at least one positional argument, got none"
             )
 
-        player = self.local_vars.get("black")
+        arg_start = 1
+        player = args[0]
+        if not isinstance(player, XGP):
+            player = self.local_vars.get("black")
+            arg_start = 0
         if not isinstance(player, XGP):
             raise XentInternalError("No player identified for reward")
 
-        var_names = extract_reveal_parameters(line)
-        rest_of_args = args[0:]
+        var_names = extract_reveal_parameters(line)[arg_start:]
+        rest_of_args = args[arg_start:]
         reveal_event = RevealEvent(
             type="reveal",
             line=line,
@@ -355,7 +356,7 @@ class XentRuntime:
             )
 
         player.add_score(score.total_xent())
-        self.score += score.total_xent()
+        self.scores[player.name] += score.total_xent()
         reward_event = RewardEvent(
             type="reward",
             line=line,
@@ -367,6 +368,32 @@ class XentRuntime:
         logging.info(
             f"Rewarded player {player.name} with {score.total_xent()}. Reward event: {reward_event}"
         )
+
+        # Handle zero-sum player pairs
+        for pair in ZERO_SUM_PLAYER_PAIRS:
+            if player.name in pair:
+                other_name = pair[1] if player.name == pair[0] else pair[0]
+
+                other_player = self.local_vars.get(other_name)
+
+                if isinstance(other_player, XGP) and other_player.name in self.scores:
+                    neg_score = -1 * score
+
+                    other_player.add_score(neg_score.total_xent())
+
+                    self.scores[other_player.name] += neg_score.total_xent()
+
+                    reward_event = RewardEvent(
+                        type="reward",
+                        line=line,
+                        line_num=line_num,
+                        player=other_player.name,
+                        value=neg_score,
+                    )
+                    await self.send_event(other_player, reward_event)
+                    logging.info(
+                        f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
+                    )
         return None
 
     def _validate_ensure_args(self, args: list[Any]) -> None:

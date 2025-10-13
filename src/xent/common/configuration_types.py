@@ -58,6 +58,7 @@ class CondensedXentBenchmarkConfig(TypedDict):
     metadata: XentMetadata
     expansion_config: ExpansionConfig
     players: list[PlayerConfig]
+    npcs: list[PlayerConfig]
     games: list[GameConfig]
 
 
@@ -76,6 +77,7 @@ class ExpandedXentBenchmarkConfig(TypedDict):
     config_type: Literal["expanded_xent_config"]
     metadata: XentMetadata
     players: list[PlayerConfig]
+    npcs: list[PlayerConfig]
     games: list[GameConfig]
     maps: list[GameMapConfig]
 
@@ -88,15 +90,15 @@ class ExpandedXentBenchmarkConfig(TypedDict):
 class ExecutableGameMap(TypedDict):
     game_map: GameMapConfig
     metadata: XentMetadata
-    players: list[PlayerConfig]
+    player: PlayerConfig
 
 
 # Result definitions
 
 
 class GameMapRoundResult(TypedDict):
-    scores: dict[PlayerName, float]
-    token_usage: dict[PlayerName, TokenUsage]
+    score: float
+    token_usage: TokenUsage
     history: list[XentEvent]
 
 
@@ -104,8 +106,8 @@ class GameMapResults(TypedDict):
     game_map: GameMapConfig
     metadata: XentMetadata
     player: PlayerConfig
-    scores: dict[PlayerName, float]
-    token_usage: dict[PlayerName, TokenUsage]
+    score: PlayerName
+    token_usage: TokenUsage
     round_results: list[GameMapRoundResult]
 
 

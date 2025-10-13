@@ -14,7 +14,7 @@ from xent.common.version import get_xent_version, validate_version
 from xent.common.xent_event import TokenUsage
 from xent.runtime.execution import play_game
 from xent.runtime.judge import Judge
-from xent.runtime.players import make_player
+from xent.runtime.players import make_npcs, make_player
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 from xent.storage.storage_interface import BenchmarkStorage
@@ -37,11 +37,13 @@ async def run_game(
         judge.set_seed(executable_game_map["metadata"]["seed"], "")
 
     player = make_player(executable_game_map)
-    locals = build_locals(player, executable_game_map)
+    npcs = make_npcs(executable_game_map)
+    locals = build_locals(player, npcs, executable_game_map)
     globals = build_globals(judge)
 
     xrt = XentRuntime(
         player,
+        npcs,
         locals,
         globals,
         store_full_interactions=executable_game_map["metadata"].get(

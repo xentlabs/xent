@@ -51,6 +51,7 @@ class XentMetadata(TypedDict):
     num_rounds_per_game: int
     seed: str
     store_full_player_interactions: NotRequired[bool]
+    npcs: list[PlayerConfig]
 
 
 class CondensedXentBenchmarkConfig(TypedDict):
@@ -58,7 +59,6 @@ class CondensedXentBenchmarkConfig(TypedDict):
     metadata: XentMetadata
     expansion_config: ExpansionConfig
     players: list[PlayerConfig]
-    npcs: list[PlayerConfig]
     games: list[GameConfig]
 
 
@@ -77,7 +77,6 @@ class ExpandedXentBenchmarkConfig(TypedDict):
     config_type: Literal["expanded_xent_config"]
     metadata: XentMetadata
     players: list[PlayerConfig]
-    npcs: list[PlayerConfig]
     games: list[GameConfig]
     maps: list[GameMapConfig]
 
@@ -106,7 +105,7 @@ class GameMapResults(TypedDict):
     game_map: GameMapConfig
     metadata: XentMetadata
     player: PlayerConfig
-    score: PlayerName
+    score: float
     token_usage: TokenUsage
     round_results: list[GameMapRoundResult]
 

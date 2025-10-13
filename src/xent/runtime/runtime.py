@@ -88,6 +88,7 @@ class XentRuntime:
         self.replay_counters = {}
         self.beacons = {}
         self._reset_register_states()
+        self.reset_npcs()
         return game_result
 
     async def execute(

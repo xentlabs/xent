@@ -65,6 +65,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
             judge_model=DEFAULT_XENT_METADATA["judge_model"],
             seed=DEFAULT_XENT_METADATA["seed"],
             store_full_player_interactions=False,
+            npcs=[],
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],
@@ -284,6 +285,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
                 "judge_model": "test",
                 "seed": "seed",
                 "store_full_player_interactions": store_flag,
+                "npcs": [],
             },
             "player": {
                 "name": "black",
@@ -294,7 +296,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
         }
 
         player = MockXGP("black", "mock", {}, executable_game_map)
-        locals_dict = build_locals(player, executable_game_map)
+        locals_dict = build_locals(player, [], executable_game_map)
         globals_dict = {
             "__builtins__": {"len": len},
             "first_n_tokens": lambda text, n: str(text)[:n],
@@ -302,6 +304,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
 
         xrt = XentRuntime(
             player,
+            [],
             locals_dict,
             globals_dict,
             store_full_interactions=store_flag,
@@ -317,7 +320,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
     baseline_event = await run_case(False)
 
     assert isinstance(enriched_event.get("prompts"), list)
-    assert enriched_event["full_response"] == "full mocked_move"
+    assert enriched_event.get("full_response", "") == "full mocked_move"
     assert "prompts" not in baseline_event
     assert "full_response" not in baseline_event
 
@@ -404,6 +407,7 @@ async def test_minimal_benchmark_smoke(test_data_dir):
             num_rounds_per_game=2,  # Very low for speed
             judge_model=DEFAULT_XENT_METADATA["judge_model"],
             seed=DEFAULT_XENT_METADATA["seed"],
+            npcs=[],
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=DEFAULT_EXPANSION_CONFIG["num_maps_per_game"],

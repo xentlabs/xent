@@ -35,3 +35,23 @@ def make_player(executable_game_map: ExecutableGameMap) -> XGP:
         player_config.get("options", {}),
         executable_game_map,
     )
+
+
+def make_npcs(executable_game_map: ExecutableGameMap) -> list[XGP]:
+    npcs: list[XGP] = []
+    for npc_config in executable_game_map["metadata"]["npcs"]:
+        npc_type = npc_config["player_type"]
+        if npc_type not in player_constructors:
+            raise XentConfigurationError(
+                f"Player type {npc_type} is not registered. Available types: {list(player_constructors.keys())}"
+            )
+        constructor = player_constructors[npc_type]
+        npc = constructor(
+            npc_config["name"],
+            npc_config["id"],
+            npc_config.get("options", {}),
+            executable_game_map,
+        )
+        npcs.append(npc)
+
+    return npcs

@@ -31,6 +31,7 @@ DEFAULT_XENT_METADATA = XentMetadata(
     num_rounds_per_game=30,
     seed="notrandom",
     store_full_player_interactions=False,
+    npcs=[],
 )
 
 DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
@@ -165,6 +166,7 @@ def build_benchmark_config(
             num_rounds_per_game=num_rounds_per_game,
             seed=seed,
             store_full_player_interactions=store_full_interaction,
+            npcs=[],
         ),
         expansion_config=ExpansionConfig(
             num_maps_per_game=num_maps_per_game,

@@ -194,6 +194,8 @@ def test_benchmark_structure(shared_benchmark_results):
         "elicit_response",
         "reward",
         "reward",
+        "reward",
+        "reward",
         "round_finished",
     ]
     assert event_types == expected_types
@@ -210,7 +212,9 @@ def test_benchmark_structure(shared_benchmark_results):
         "elicit_request",
         "elicit_response",
         "reward",
+        "reward",
         "reveal",
+        "reward",
         "reward",
         "round_finished",
     ]
@@ -230,6 +234,7 @@ def test_benchmark_structure(shared_benchmark_results):
         "reveal",
         "reveal",
         "reward",
+        "reward",
         "round_finished",
     ]
     assert event_types == expected_types
@@ -248,6 +253,7 @@ def test_benchmark_structure(shared_benchmark_results):
     ]
 
     shuffled_list = reveal_events[1]["values"]["l2"]
+
     assert isinstance(shuffled_list, list)
     assert shuffled_list != original_list
     assert sorted(shuffled_list) == sorted(original_list)

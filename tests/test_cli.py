@@ -36,6 +36,7 @@ def simple_expanded_config() -> ExpandedXentBenchmarkConfig:
             "num_rounds_per_game": 30,
             "seed": "test-seed",
             "store_full_player_interactions": False,
+            "npcs": [],
         },
         "games": [
             {
@@ -100,10 +101,10 @@ class TestConfigureCommands:
         with output_path.open() as f:
             config = json.load(f)
 
-        assert config["metadata"]["store_full_player_interactions"] is True
+        assert config["metadata"].get("store_full_player_interactions") is True
 
         expanded = expand_benchmark_config(config)
-        assert expanded["metadata"]["store_full_player_interactions"] is True
+        assert expanded["metadata"].get("store_full_player_interactions") is True
 
     def test_remove_player_success(self, tmp_path, simple_expanded_config):
         """Test removing a player both directly and via CLI command."""

@@ -42,7 +42,7 @@ def expand_benchmark_config(
             store_full_player_interactions=condensed_config["metadata"].get(
                 "store_full_player_interactions", False
             ),
-            npcs=condensed_config["metadata"]["npcs"],
+            npcs=condensed_config["metadata"].get("npcs", []),
         ),
         players=condensed_config["players"],
         games=condensed_config["games"],

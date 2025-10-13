@@ -39,7 +39,7 @@ def make_player(executable_game_map: ExecutableGameMap) -> XGP:
 
 def make_npcs(executable_game_map: ExecutableGameMap) -> list[XGP]:
     npcs: list[XGP] = []
-    for npc_config in executable_game_map["metadata"]["npcs"]:
+    for npc_config in executable_game_map["metadata"].get("npcs", []):
         npc_type = npc_config["player_type"]
         if npc_type not in player_constructors:
             raise XentConfigurationError(

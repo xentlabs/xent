@@ -64,6 +64,7 @@ SAMPLE_METADATA: XentMetadata = XentMetadata(
     num_rounds_per_game=2,
     seed="seed",
     store_full_player_interactions=False,
+    npcs=[],
 )
 
 

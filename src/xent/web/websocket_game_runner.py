@@ -25,6 +25,7 @@ async def run_websocket_game(websocket: Any, game_code: str) -> None:
             "num_rounds_per_game": 999,
             "seed": "websocket_game",
             "store_full_player_interactions": False,
+            "npcs": [],
         }
 
         player_config: PlayerConfig = {

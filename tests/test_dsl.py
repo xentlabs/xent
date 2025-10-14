@@ -598,7 +598,7 @@ class TestBeaconReplayInstructions:
             if event["type"] == "reward":
                 reward_count += 1
 
-        assert reward_count == 4
+        assert reward_count == 8
 
     @pytest.mark.asyncio
     async def test_replay_without_beacon(self, xrt):

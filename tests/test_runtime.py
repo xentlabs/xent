@@ -809,6 +809,7 @@ class TestTokenUsage:
             "judge_model": "gpt2",
             "seed": "test_seed",
             "num_rounds_per_game": 30,
+            "npcs": [],
         },
     }
 
@@ -823,10 +824,10 @@ class TestTokenUsage:
             game_config,
             token_usage_per_move={"input_tokens": 15, "output_tokens": 10},
         )
-        locals = build_locals(player, game_config)
+        locals = build_locals(player, [], game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XentRuntime(player, locals, globals)
+        xrt = XentRuntime(player, [], locals, globals)
 
         # First iteration: make some moves
         await eval_line("elicit(s1, 20)", 1, xrt)
@@ -876,10 +877,10 @@ class TestTokenUsage:
             game_config,
             token_usage_per_move={"input_tokens": 0, "output_tokens": 0},
         )
-        locals = build_locals(player, game_config)
+        locals = build_locals(player, [], game_config)
         judge = Judge("gpt2")
         globals = build_globals(judge)
-        xrt = XentRuntime(player, locals, globals)
+        xrt = XentRuntime(player, [], locals, globals)
 
         # Make elicit call with zero token usage
         await eval_line("elicit(s1, 20)", 1, xrt)
@@ -1552,6 +1553,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
             "judge_model": "test",
             "num_rounds_per_game": 1,
             "seed": "test",
+            "npcs": [],
         },
     }
 
@@ -1740,6 +1742,7 @@ elicit(z, 10)""",
                 "judge_model": "test",
                 "num_rounds_per_game": 1,
                 "seed": "test",
+                "npcs": [],
             },
         }
 
@@ -1825,6 +1828,7 @@ elicit(x, 5)""",
                 "num_rounds_per_game": 1,
                 "seed": "test",
                 "store_full_player_interactions": False,
+                "npcs": [],
             },
             "game_map": expanded_game,
             "player": {

@@ -1,7 +1,3 @@
-# NB: This code has gone back-and-forth from supporting multi-player and not. Currently,
-# it does not support multi-player games. Extending it should be relatively simple.
-# There is some amount of cruft due to this back-and-forth that should eventually be
-# removed, or fully updated to work properly in multi-player conditions.
 import logging
 import re
 from typing import Any
@@ -10,6 +6,7 @@ from xent.common.configuration_types import (
     GameMapRoundResult,
     is_omniscient_player_name,
 )
+from xent.common.constants import ZERO_SUM_PLAYER_PAIRS
 from xent.common.errors import XentGameError, XentInternalError, XentSyntaxError
 from xent.common.token_xent_list import TokenXentList, ValidatedBool
 from xent.common.x_flag import XFlag
@@ -36,12 +33,16 @@ class XentRuntime:
     def __init__(
         self,
         player: XGP,
+        npcs: list[XGP],
         locals: dict[str, Any],
         globals: dict[str, Any],
         store_full_interactions: bool = False,
     ):
         self.local_vars = locals
         self.player = player
+        self.player.reset_score()
+        self.npcs = npcs
+        self.reset_npcs()
         self.score = 0.0
         self.token_usage: TokenUsage = {"input_tokens": 0, "output_tokens": 0}
         self.globals = globals
@@ -51,6 +52,10 @@ class XentRuntime:
         self.replay_counters: dict[int, int] = {}
         self.store_full_interactions = store_full_interactions
         self.last_elicit_player: XGP | None = None
+
+    def reset_npcs(self):
+        for npc in self.npcs:
+            npc.reset_score()
 
     def add_token_usage(self, token_usage: TokenUsage) -> None:
         self.token_usage["input_tokens"] += token_usage["input_tokens"]
@@ -72,9 +77,7 @@ class XentRuntime:
 
     def get_results_and_reset(self) -> GameMapRoundResult:
         score = self.score
-        self.score = 0
-        self.player.reset_score()
-
+        self.score = 0.0
         token_usage = self.token_usage
         self.token_usage = {"input_tokens": 0, "output_tokens": 0}
 
@@ -85,6 +88,7 @@ class XentRuntime:
         self.replay_counters = {}
         self.beacons = {}
         self._reset_register_states()
+        self.reset_npcs()
         return game_result
 
     async def execute(
@@ -198,7 +202,7 @@ class XentRuntime:
         player = args[0]
         if not isinstance(player, XGP):
             var_arg_start = 0
-            player = self.local_vars.get("black")
+            player = self.player
         if not isinstance(player, XGP):
             raise XentInternalError("No player identified for elicit")
 
@@ -286,7 +290,8 @@ class XentRuntime:
                 response_event["full_response"] = full_response
 
             await self.send_event(player, response_event)
-            self.add_token_usage(token_usage)
+            if player.name == self.player.name:
+                self.add_token_usage(token_usage)
 
             logging.info(f'Setting {var.name} to "{trimmed_move}"')
             var.primary_string = trimmed_move
@@ -305,12 +310,16 @@ class XentRuntime:
                 "Reveal requires at least one positional argument, got none"
             )
 
-        player = self.local_vars.get("black")
+        arg_start = 1
+        player = args[0]
+        if not isinstance(player, XGP):
+            player = self.player
+            arg_start = 0
         if not isinstance(player, XGP):
             raise XentInternalError("No player identified for reward")
 
-        var_names = extract_reveal_parameters(line)
-        rest_of_args = args[0:]
+        var_names = extract_reveal_parameters(line)[arg_start:]
+        rest_of_args = args[arg_start:]
         reveal_event = RevealEvent(
             type="reveal",
             line=line,
@@ -341,7 +350,7 @@ class XentRuntime:
             score = args[1]
         else:
             score = args[0]
-            player = self.local_vars.get("black")
+            player = self.player
             if not isinstance(player, XGP):
                 raise XentInternalError("No player identified for reward")
 
@@ -351,7 +360,8 @@ class XentRuntime:
             )
 
         player.add_score(score.total_xent())
-        self.score += score.total_xent()
+        if player.name == self.player.name:
+            self.score += score.total_xent()
         reward_event = RewardEvent(
             type="reward",
             line=line,
@@ -363,6 +373,31 @@ class XentRuntime:
         logging.info(
             f"Rewarded player {player.name} with {score.total_xent()}. Reward event: {reward_event}"
         )
+
+        # Handle zero-sum player pairs
+        for pair in ZERO_SUM_PLAYER_PAIRS:
+            if player.name in pair:
+                other_name = pair[1] if player.name == pair[0] else pair[0]
+
+                other_player = self.local_vars.get(other_name)
+
+                if isinstance(other_player, XGP):
+                    neg_score = -1 * score
+                    other_player.add_score(neg_score.total_xent())
+                    if other_player.name == self.player.name:
+                        self.score += neg_score.total_xent()
+
+                    reward_event = RewardEvent(
+                        type="reward",
+                        line=line,
+                        line_num=line_num,
+                        player=other_player.name,
+                        value=neg_score,
+                    )
+                    await self.send_event(other_player, reward_event)
+                    logging.info(
+                        f"Rewarded player {other_player.name} with {neg_score.total_xent()}. Reward event: {reward_event}"
+                    )
         return None
 
     def _validate_ensure_args(self, args: list[Any]) -> None:

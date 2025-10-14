@@ -25,6 +25,7 @@ FAKE_GAME_MAP: ExecutableGameMap = {
         "judge_model": "gpt2",
         "seed": "test_seed",
         "store_full_player_interactions": False,
+        "npcs": [],
     },
     "player": {
         "name": "black",
@@ -108,7 +109,7 @@ def xrt():
     """Create a test XentRuntime instance."""
     executable_game_map = FAKE_GAME_MAP.copy()
     player = MockXGP("black", "mock_black_id", {}, executable_game_map)
-    locals = build_locals(player, executable_game_map)
+    locals = build_locals(player, [], executable_game_map)
     judge = Judge("gpt2")
     globals = build_globals(judge)
-    return XentRuntime(player, locals, globals)
+    return XentRuntime(player, [], locals, globals)

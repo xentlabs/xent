@@ -29,6 +29,7 @@ DEFAULT_XENT_METADATA = XentMetadata(
     num_rounds_per_game=30,
     seed="notrandom",
     store_full_player_interactions=False,
+    npcs=[],
 )
 
 DEFAULT_EXPANSION_CONFIG = ExpansionConfig(

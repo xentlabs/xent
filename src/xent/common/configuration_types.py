@@ -51,6 +51,7 @@ class XentMetadata(TypedDict):
     num_rounds_per_game: int
     seed: str
     store_full_player_interactions: NotRequired[bool]
+    npcs: NotRequired[list[PlayerConfig]]
 
 
 class CondensedXentBenchmarkConfig(TypedDict):

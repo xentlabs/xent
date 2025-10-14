@@ -21,7 +21,7 @@ from xent.runtime.default_players import MockXGP
 from xent.runtime.judge import Judge
 
 
-def build_locals(player: XGP, game_config: ExecutableGameMap):
+def build_locals(player: XGP, npcs: list[XGP], game_config: ExecutableGameMap):
     local_vars: dict[str, Any] = dict()
 
     for i in range(NUM_VARIABLES_PER_REGISTER):
@@ -43,6 +43,8 @@ def build_locals(player: XGP, game_config: ExecutableGameMap):
                 )
 
     local_vars[player.name] = player
+    for npc in npcs:
+        local_vars[npc.name] = npc
 
     for player_name in ALL_PLAYERS:
         if player_name not in local_vars:

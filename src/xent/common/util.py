@@ -101,3 +101,8 @@ def generate_executable_game_maps(
                 )
             )
     return game_maps
+
+
+def get_game_code_lines(game_code: str) -> list[str]:
+    lines = [line.strip() for line in game_code.split("\n")]
+    return lines

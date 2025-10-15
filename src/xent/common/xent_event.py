@@ -19,7 +19,19 @@ class TokenUsage(TypedDict):
     output_tokens: int
 
 
+XentEventType = Literal[
+    "elicit_request",
+    "elicit_response",
+    "reveal",
+    "reward",
+    "failed_ensure",
+    "round_started",
+    "round_finished",
+]
+
+
 class BaseXentEvent(TypedDict):
+    type: XentEventType
     line: str
     line_num: int
     player: str

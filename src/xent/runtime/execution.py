@@ -10,6 +10,7 @@ from xent.common.errors import (
     XentInternalError,
     XentSyntaxError,
 )
+from xent.common.util import get_game_code_lines
 from xent.common.x_flag import XFlag
 from xent.common.xent_event import RoundFinishedEvent, RoundStartedEvent
 from xent.runtime.runtime import XentRuntime
@@ -57,7 +58,7 @@ async def play_game(
     num_rounds: int = 30,
     always_return_results: bool = False,  # Used for interactive play that may break at any moment
 ) -> list[GameMapRoundResult]:
-    lines = [line.strip() for line in code.split("\n")]
+    lines = get_game_code_lines(code)
     if len(lines) > 64:
         raise XentConfigurationError("Code too long. Max 64 lines.")
 

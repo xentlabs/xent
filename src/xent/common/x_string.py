@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from xent.common.errors import XentTypeError
 
@@ -37,6 +37,22 @@ class XString:
 
     def __repr__(self):
         return f"XString('{self.primary_string}', prefix='{self.prefix}', static={self.static}, public={self.public}, name='{self.name}')"
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "type": "XString",
+            "primary_string": self.primary_string,
+            "prefix": self.prefix,
+            "static": self.static,
+            "public": self.public,
+            "name": self.name,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]):
+        xstr = cls(data["primary_string"], data["static"], data["public"], data["name"])
+        xstr.prefix = data["prefix"]
+        return xstr
 
     def _verify_other_operand(self, other):
         if not isinstance(other, str) and not isinstance(other, XString):

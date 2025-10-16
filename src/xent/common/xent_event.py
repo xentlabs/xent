@@ -1,6 +1,6 @@
 # Event types
 from collections.abc import Mapping
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 from xent.common.token_xent_list import TokenXentList
 from xent.common.x_list import XList
@@ -76,3 +76,44 @@ XentEvent = (
     | RoundStartedEvent
     | RoundFinishedEvent
 )
+
+
+def serialize_event(event: XentEvent) -> dict[str, Any]:
+    match event["type"]:
+        case "elicit_request":
+            return {
+                **event,
+                "registers": {
+                    k: v.serialize() if hasattr(v, "serialize") else v
+                    for k, v in event["registers"].items()
+                },
+            }
+
+        case "elicit_response":
+            return {
+                **event,
+                "token_usage": dict(event["token_usage"]),
+                # optional fields are left as-is, since they’re already plain
+            }
+
+        case "reveal":
+            return {
+                **event,
+                "values": {
+                    k: v.serialize() if hasattr(v, "serialize") else v
+                    for k, v in event["values"].items()
+                },
+            }
+
+        case "reward":
+            return {
+                **event,
+                "value": (
+                    event["value"].serialize()
+                    if hasattr(event["value"], "serialize")
+                    else event["value"]
+                ),
+            }
+
+        case _:
+            return dict(event)

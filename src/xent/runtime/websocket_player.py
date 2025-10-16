@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Mapping
-from typing import Any, TypedDict
+from typing import Any, Self, TypedDict
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
@@ -45,6 +45,13 @@ class WebsocketXGP(XGP):
         self.presentation_function = get_presentation_function(executable_game_map)
         validated_options = check_websocket_xgp_options(options)
         self.websocket = validated_options["websocket"]
+
+    def serialize(self) -> dict[str, Any]:
+        raise XentInternalError("Serde not currently implemented for Weboscket XGP")
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        raise XentInternalError("Serde not currently implemented for Weboscket XGP")
 
     def add_score(self, score: float | int) -> None:
         self.score += score

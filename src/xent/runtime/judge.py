@@ -63,6 +63,7 @@ class Judge:
         if max_generation_length <= 0:
             self.max_generation_length = None
 
+    # TODO, we should encode the state of rng in here
     def serialize(self) -> dict[str, Any]:
         return {
             "model_name": self.model_name,

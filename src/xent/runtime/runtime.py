@@ -53,6 +53,88 @@ class XentRuntime:
         self.store_full_interactions = store_full_interactions
         self.last_elicit_player: XGP | None = None
 
+    def serialize(self) -> dict[str, Any]:
+        locals: dict[str, Any] = {}
+        for name, local in self.local_vars.items():
+            if isinstance(local, XString | XList):
+                locals[name] = local.serialize()
+
+        beacons: dict[str, Any] = {}
+        for name, beacon in self.beacons.items():
+            beacons[name] = beacon.serialize()
+
+        last_elicit_player_id = (
+            self.last_elicit_player.id if self.last_elicit_player is not None else None
+        )
+        serialized = {
+            "player": self.player.serialize(),
+            "npcs": [npc.serialize() for npc in self.npcs],
+            "locals": locals,
+            "beacons": beacons,
+            "score": self.score,
+            "token_usage": self.token_usage,
+            "history": [serialize_event(event) for event in self.history],
+            "replay_counters": self.replay_counters,
+            "store_full_interactions": self.store_full_interactions,
+            "last_elicit_player_id": last_elicit_player_id,
+        }
+        return serialized
+
+    @classmethod
+    def deserialize(
+        cls,
+        data: dict[str, Any],
+        globals: dict[str, Any],
+    ) -> "XentRuntime":
+        def _deserialize_local(val: dict[str, Any]):
+            t = val.get("type")
+            if t == "XString":
+                return XString.deserialize(val)
+            if t == "XList":
+                return XList.deserialize(val)
+            return val
+
+        self = cls.__new__(cls)
+
+        self.player = XGP.deserialize(data["player"])
+        self.npcs = [XGP.deserialize(x) for x in data["npcs"]]
+
+        self.local_vars = {
+            name: _deserialize_local(val) for name, val in data["locals"].items()
+        }
+
+        self.score = float(data["score"])
+        self.token_usage = {
+            "input_tokens": int(data["token_usage"]["input_tokens"]),
+            "output_tokens": int(data["token_usage"]["output_tokens"]),
+        }
+        self.history = [deserialize_event(ev) for ev in data["history"]]
+
+        # Note: JSON keys might be strings; ensure int keys for replay counters
+        self.replay_counters = {
+            int(k): int(v) for k, v in data["replay_counters"].items()
+        }
+
+        self.store_full_interactions = bool(data["store_full_interactionss"])
+
+        self.beacons = {
+            name: XFlag.deserialize(b) for name, b in data["beacons"].items()
+        }
+
+        self.last_elicit_player = None
+        last_id = data.get("last_elicit_player_id")
+        if last_id is not None:
+            # search player + npcs by .id
+            if self.player.id == last_id:
+                self.last_elicit_player = self.player
+            else:
+                for npc in self.npcs:
+                    if npc.id == last_id:
+                        self.last_elicit_player = npc
+                        break
+
+        return self
+
     def reset_npcs(self):
         for npc in self.npcs:
             npc.reset_score()

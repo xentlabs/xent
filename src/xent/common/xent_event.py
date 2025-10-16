@@ -83,37 +83,68 @@ def serialize_event(event: XentEvent) -> dict[str, Any]:
         case "elicit_request":
             return {
                 **event,
-                "registers": {
-                    k: v.serialize() if hasattr(v, "serialize") else v
-                    for k, v in event["registers"].items()
-                },
+                "registers": {k: v.serialize() for k, v in event["registers"].items()},
             }
 
         case "elicit_response":
             return {
                 **event,
                 "token_usage": dict(event["token_usage"]),
-                # optional fields are left as-is, since they’re already plain
             }
 
         case "reveal":
             return {
                 **event,
-                "values": {
-                    k: v.serialize() if hasattr(v, "serialize") else v
-                    for k, v in event["values"].items()
-                },
+                "values": {k: v.serialize() for k, v in event["values"].items()},
             }
 
         case "reward":
             return {
                 **event,
-                "value": (
-                    event["value"].serialize()
-                    if hasattr(event["value"], "serialize")
-                    else event["value"]
-                ),
+                "value": event["value"].serialize(),
             }
 
         case _:
             return dict(event)
+
+
+def deserialize_event(payload: Mapping[str, Any]) -> XentEvent:
+    def _val(d: dict[str, Any]):
+        tag = d["type"]
+        if tag == "XString":
+            return XString.deserialize(d)
+        elif tag == "XList":
+            return XList.deserialize(d)  # adjust if your API differs
+
+    match payload["type"]:
+        case "elicit_request":
+            return {
+                **payload,
+                "registers": {k: _val(v) for k, v in payload["registers"].items()},
+            }  # type: ignore[return-value]
+
+        case "elicit_response":
+            tu = payload["token_usage"]
+            return {
+                **payload,
+                "token_usage": {
+                    "input_tokens": int(tu["input_tokens"]),
+                    "output_tokens": int(tu["output_tokens"]),
+                },
+            }  # type: ignore[return-value]
+
+        case "reveal":
+            return {
+                **payload,
+                "values": {k: _val(v) for k, v in payload["values"].items()},
+            }  # type: ignore[return-value]
+
+        case "reward":
+            return {
+                **payload,
+                "value": TokenXentList.deserialize(payload["value"]),
+            }  # type: ignore[return-value]
+
+        case _:
+            # "failed_ensure", "round_started", "round_finished", etc. pass through.
+            return dict(payload)  # type: ignore[return-value]

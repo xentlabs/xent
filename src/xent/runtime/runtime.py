@@ -20,6 +20,8 @@ from xent.common.xent_event import (
     RewardEvent,
     TokenUsage,
     XentEvent,
+    deserialize_event,
+    serialize_event,
 )
 from xent.runtime.base_player import XGP
 

@@ -1,3 +1,6 @@
+from typing import Any
+
+
 class TokenXentList:
     def __init__(self, token_xent_pairs: list[tuple[str, float]], scale=1.0):
         self.pairs = token_xent_pairs
@@ -20,6 +23,14 @@ class TokenXentList:
             if token1 != token2:
                 return False
         return True
+
+    def serialize(self) -> dict[str, Any]:
+        return {"pairs": [[p[0], p[1]] for p in self.pairs], "scale": self.scale}
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]):
+        pairs = [(p[0], p[1]) for p in data["pairs"]]
+        return cls(pairs, float(data["scale"]))
 
     def total_xent(self):
         return self.scale * sum(xent for _, xent in self.pairs)

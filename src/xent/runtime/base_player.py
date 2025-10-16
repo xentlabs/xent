@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from collections.abc import Mapping
-from typing import Final
+from typing import Any, Final, Self
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
@@ -73,6 +73,15 @@ class XGP(ABC):
     @property
     def metadata(self) -> XentMetadata:
         return self._metadata
+
+    @abstractmethod
+    def serialize(self) -> dict[str, Any]:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        pass
 
     @abstractmethod
     def add_score(self, score: float) -> None:

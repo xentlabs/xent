@@ -1,6 +1,7 @@
 import logging
 import re
 from collections.abc import Mapping
+from typing import Any, Self
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
@@ -10,7 +11,13 @@ from xent.common.configuration_types import (
 from xent.common.util import dumps
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
+from xent.common.xent_event import (
+    LLMMessage,
+    TokenUsage,
+    XentEvent,
+    deserialize_event,
+    serialize_event,
+)
 from xent.presentation.executor import PresentationFunction
 from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.llm_api_client import make_client
@@ -34,6 +41,32 @@ class MockXGP(XGP):
         self.presentation_function = get_presentation_function(executable_game_map)
         self.presentation_ctx: dict[str, object] = {}
         self.conversation: list[LLMMessage] = []
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "options": self.options,
+            "executable_game_map": self.executable_game_map,
+            "token_usage_per_move": self.token_usage_per_move,
+            "event_history": [serialize_event(e) for e in self.event_history],
+            "presentation_ctx": self.presentation_ctx,
+            "conversation": self.conversation,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        mock_xgp = cls(
+            data["name"],
+            data["id"],
+            data["options"],
+            data["executable_game_map"],
+            data["token_usage_per_move"],
+        )
+        mock_xgp.event_history = [deserialize_event(e) for e in data["event_history"]]
+        mock_xgp.presentation_ctx = data["presentation_ctx"]
+        mock_xgp.conversation = data["conversation"]
+        return mock_xgp
 
     def add_score(self, score: float | int) -> None:
         self.score += score
@@ -98,6 +131,34 @@ class DefaultXGP(XGP):
         self.reminder_message: LLMMessage | None = None
         self.presentation_function = get_presentation_function(executable_game_map)
         self.presentation_ctx: dict[str, object] = {}
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "options": self.options,
+            "executable_game_map": self.executable_game_map,
+            "event_history": [serialize_event(e) for e in self.event_history],
+            "conversation": self.conversation,
+            "reminder_message": self.reminder_message,
+            "presentation_ctx": self.presentation_ctx,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        default_xgp = cls(
+            data["name"],
+            data["id"],
+            data["options"],
+            data["executable_game_map"],
+        )
+        default_xgp.event_history = [
+            deserialize_event(e) for e in data["event_history"]
+        ]
+        default_xgp.presentation_ctx = data["presentation_ctx"]
+        default_xgp.conversation = data["conversation"]
+        default_xgp.reminder_message = data["reminder_message"]
+        return default_xgp
 
     def add_score(self, score: float | int) -> None:
         self.score += score

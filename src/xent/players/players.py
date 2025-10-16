@@ -1,9 +1,9 @@
 from xent.common.configuration_types import ExecutableGameMap
 from xent.common.errors import XentConfigurationError
-from xent.runtime.base_player import XGP
-from xent.runtime.default_players import DefaultXGP, MockXGP
-from xent.runtime.human_player import HumanXGP
-from xent.runtime.websocket_player import WebsocketXGP
+from xent.players.base_player import XGP
+from xent.players.default_players import DefaultXGP, MockXGP
+from xent.players.human_player import HumanXGP
+from xent.players.websocket_player import WebsocketXGP
 
 player_constructors = {
     "mock": MockXGP,

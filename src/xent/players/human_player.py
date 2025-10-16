@@ -9,8 +9,8 @@ from xent.common.configuration_types import (
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
-from xent.runtime.base_player import XGP, MoveResult
-from xent.runtime.default_players import get_presentation_function
+from xent.players.base_player import XGP, MoveResult
+from xent.players.default_players import get_presentation_function
 
 
 class HumanXGP(XGP):

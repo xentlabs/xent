@@ -7,9 +7,9 @@ from xent.common.xent_event import (
     XentEvent,
     XentEventType,
 )
+from xent.players.players import make_npcs, make_player
 from xent.runtime.execution import eval_line
 from xent.runtime.judge import Judge
-from xent.runtime.players import make_npcs, make_player
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 

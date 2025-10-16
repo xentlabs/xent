@@ -1,12 +1,13 @@
 import ast
 import logging
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 from xent.common.configuration_types import GameMapRoundResult
 from xent.common.errors import (
     XentConfigurationError,
     XentError,
     XentGameError,
+    XentHaltMessage,
     XentInternalError,
     XentSyntaxError,
 )
@@ -82,6 +83,72 @@ async def play_game(
 
     logging.info("Game completed successfully")
     return round_results
+
+
+class Results(TypedDict):
+    kind: Literal["results"]
+    results: list["GameMapRoundResult"]
+
+
+class State(TypedDict):
+    kind: Literal["state"]
+    state: dict[str, Any]
+
+
+async def start_haltable_game(
+    lines: list[str],
+    xrt: XentRuntime,
+    num_rounds: int,
+    rounds_played: int,
+    round_results: list[GameMapRoundResult],
+) -> Results | State:
+    while rounds_played < num_rounds:
+        try:
+            result = await play_single_game(lines, xrt, rounds_played)
+            if result is None:
+                return {"kind": "results", "results": []}  # TODO what to do here?
+            rounds_played += 1
+            round_results.append(result)
+        except XentHaltMessage:
+            serialized_game_state: dict[str, Any] = {
+                "lines": lines,
+                "num_rounds": num_rounds,
+                "runtime": xrt.serialize(),
+                "rounds_played": rounds_played,
+                "round_results": round_results,
+            }
+            return {"kind": "state", "state": serialized_game_state}
+
+    logging.info("Game completed successfully")
+    return {"kind": "results", "results": round_results}
+
+
+async def resume_haltable_game(state: dict[str, Any]) -> Results | State:
+    code: str = state["code"]
+    rounds_played = state["rounds_played"]
+    round_results = state["round_results"]
+    code = state["code"]
+    num_rounds = state["num_rounds"]
+    xrt = XentRuntime.deserialize(state["runtime"])
+    while rounds_played < num_rounds:
+        try:
+            result = await play_single_game(lines, xrt, rounds_played)
+            if result is None:
+                return {"kind": "results", "results": []}  # TODO what to do here?
+            rounds_played += 1
+            round_results.append(result)
+        except XentHaltMessage:
+            serialized_game_state: dict[str, Any] = {
+                "code": code,
+                "num_rounds": num_rounds,
+                "runtime": xrt.serialize(),
+                "rounds_played": rounds_played,
+                "round_results": round_results,
+            }
+            return {"kind": "state", "state": serialized_game_state}
+
+    logging.info("Game completed successfully")
+    return {"kind": "results", "results": round_results}
 
 
 # TODO need to clean up error handling / none return here

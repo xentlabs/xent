@@ -20,7 +20,6 @@ from xent.common.xent_event import (
 )
 from xent.presentation.executor import PresentationFunction
 from xent.runtime.base_player import XGP, MoveResult
-from xent.runtime.llm_api_client import make_client
 
 
 class HaltingXGP(XGP):
@@ -33,7 +32,6 @@ class HaltingXGP(XGP):
         next_move: str | None = None,
     ):
         super().__init__(name, id, options, executable_game_map)
-        self.client = make_client(options)
         self.game_code = executable_game_map["game_map"]["code"]
         self.event_history: list[XentEvent] = []
         self.conversation: list[LLMMessage] = []
@@ -46,6 +44,7 @@ class HaltingXGP(XGP):
         return {
             "id": self.id,
             "name": self.name,
+            "player_type": "halting",
             "options": self.options,
             "executable_game_map": self.executable_game_map,
             "event_history": [serialize_event(e) for e in self.event_history],

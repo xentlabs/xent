@@ -46,6 +46,7 @@ class MockXGP(XGP):
         return {
             "id": self.id,
             "name": self.name,
+            "player_type": "mock",
             "options": self.options,
             "executable_game_map": self.executable_game_map,
             "token_usage_per_move": self.token_usage_per_move,
@@ -136,6 +137,7 @@ class DefaultXGP(XGP):
         return {
             "id": self.id,
             "name": self.name,
+            "player_type": "default",
             "options": self.options,
             "executable_game_map": self.executable_game_map,
             "event_history": [serialize_event(e) for e in self.event_history],

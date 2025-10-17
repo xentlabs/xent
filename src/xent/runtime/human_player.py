@@ -38,6 +38,7 @@ class HumanXGP(XGP):
         return {
             "id": self.id,
             "name": self.name,
+            "player_type": "human",
             "options": self.options,
             "executable_game_map": self.executable_game_map,
             "event_history": [serialize_event(e) for e in self.event_history],

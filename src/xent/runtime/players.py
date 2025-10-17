@@ -1,3 +1,5 @@
+from typing import Any
+
 from xent.common.configuration_types import ExecutableGameMap
 from xent.common.errors import XentConfigurationError
 from xent.runtime.base_player import XGP
@@ -57,3 +59,9 @@ def make_npcs(executable_game_map: ExecutableGameMap) -> list[XGP]:
         npcs.append(npc)
 
     return npcs
+
+
+def deserialize_player(data: dict[str, Any]) -> XGP:
+    player_type = data["player_type"]
+    constructor = player_constructors[player_type]
+    return constructor.deserialize(data)

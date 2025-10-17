@@ -97,6 +97,7 @@ class State(TypedDict):
 
 async def run_haltable_game(
     lines: list[str],
+    line_index: int,
     xrt: XentRuntime,
     num_rounds: int,
     rounds_played: int,
@@ -104,14 +105,54 @@ async def run_haltable_game(
 ) -> Results | State:
     while rounds_played < num_rounds:
         try:
-            result = await play_single_game(lines, xrt, rounds_played)
+            if line_index == 0:
+                start_event = RoundStartedEvent(
+                    type="round_started",
+                    round_index=rounds_played,
+                    line=lines[0],
+                    line_num=1,
+                    player=xrt.player.name,
+                )
+                await xrt.send_event(xrt.player, start_event)
+
+            while line_index < len(lines):
+                line = lines[line_index]
+                logging.info(f"Executing line {line_index}: {line}.")
+                execution_result = await eval_line(line, line_index, xrt)
+
+                if execution_result is None:
+                    line_index += 1
+                else:
+                    logging.info(
+                        f"Line execution triggered jump. New line number: {execution_result.line_num}"
+                    )
+                    line_index = execution_result.line_num
+
+                    if line_index < 0 or line_index >= len(lines):
+                        raise XentInternalError(
+                            f"Invalid line number {line_index} returned by instruction"
+                        )
+
+            finish_event = RoundFinishedEvent(
+                type="round_finished",
+                round_index=rounds_played,
+                line=lines[-1],
+                line_num=len(lines),
+                player=xrt.player.name,
+            )
+            await xrt.send_event(xrt.player, finish_event)
+
+            logging.info("Game round completed successfully")
+            result = xrt.get_results_and_reset()
             if result is None:
                 return {"kind": "results", "results": []}  # TODO what to do here?
             rounds_played += 1
             round_results.append(result)
+            line_index = 0
         except XentHaltMessage:
             serialized_game_state: dict[str, Any] = {
                 "lines": lines,
+                "line_index": line_index,
                 "num_rounds": num_rounds,
                 "runtime": xrt.serialize(),
                 "rounds_played": rounds_played,
@@ -210,6 +251,8 @@ async def eval_line(line: str, line_num: int, xrt: XentRuntime) -> XFlag | None:
         )
     except XentError as e:
         logging.exception(f"Error executing instruction: {e}")
+        raise e
+    except XentHaltMessage as e:
         raise e
     except Exception as e:
         logging.exception(f"Unexpected error executing instruction: {e}")

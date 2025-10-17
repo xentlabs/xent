@@ -41,7 +41,7 @@ async def start_haltable_game(
 
     logging.info(f"Running game: {game_str}")
     game_results = await run_haltable_game(
-        lines, xrt, executable_game_map["metadata"]["num_rounds_per_game"], 0, []
+        lines, 0, xrt, executable_game_map["metadata"]["num_rounds_per_game"], 0, []
     )
     if game_results["kind"] == "results":
         logging.info("Haltable game completed")
@@ -54,18 +54,22 @@ async def start_haltable_game(
         return {"kind": "state", "state": serialized_game_state}
 
 
+# Bug: this currently duplicates the elicit request event. I could just cut it from
+# this history, but that seems a bit severe to me. I'll leave the bug in for now and
+# address if its needed.
 async def resume_haltable_game(state: dict[str, Any]) -> Results | State:
     judge = Judge.deserialize(state["judge"])
     globals = build_globals(judge)
     xrt = XentRuntime.deserialize(state["game_state"]["runtime"], globals)
-    lines: list[str] = state["game_state"]["code"]
+    lines: list[str] = state["game_state"]["lines"]
+    line_index: int = state["game_state"]["line_index"]
     rounds_played = state["game_state"]["rounds_played"]
     round_results = state["game_state"]["round_results"]
-    num_rounds = state["num_rounds"]
+    num_rounds = state["game_state"]["num_rounds"]
 
     logging.info("Resuming game")
     game_results = await run_haltable_game(
-        lines, xrt, num_rounds, rounds_played, round_results
+        lines, line_index, xrt, num_rounds, rounds_played, round_results
     )
     if game_results["kind"] == "results":
         logging.info("Haltable game completed")

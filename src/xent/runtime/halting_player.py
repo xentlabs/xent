@@ -68,6 +68,7 @@ class HaltingXGP(XGP):
         halting_xgp.presentation_ctx = data["presentation_ctx"]
         halting_xgp.conversation = data["conversation"]
         halting_xgp.reminder_message = data["reminder_message"]
+        halting_xgp.next_move = data.get("next_move")
         return halting_xgp
 
     def add_score(self, score: float | int) -> None:

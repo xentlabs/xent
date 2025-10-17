@@ -2,6 +2,7 @@ from xent.common.configuration_types import ExecutableGameMap
 from xent.common.errors import XentConfigurationError
 from xent.runtime.base_player import XGP
 from xent.runtime.default_players import DefaultXGP, MockXGP
+from xent.runtime.halting_player import HaltingXGP
 from xent.runtime.human_player import HumanXGP
 from xent.runtime.websocket_player import WebsocketXGP
 
@@ -10,6 +11,7 @@ player_constructors = {
     "default": DefaultXGP,
     "human": HumanXGP,
     "websocket": WebsocketXGP,
+    "halting": HaltingXGP,
 }
 
 

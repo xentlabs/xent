@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Mapping
+from typing import Any, Self
 
 from xent.common.configuration_types import (
     ExecutableGameMap,
@@ -8,7 +9,13 @@ from xent.common.configuration_types import (
 )
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.common.xent_event import LLMMessage, TokenUsage, XentEvent
+from xent.common.xent_event import (
+    LLMMessage,
+    TokenUsage,
+    XentEvent,
+    deserialize_event,
+    serialize_event,
+)
 from xent.runtime.base_player import XGP, MoveResult
 from xent.runtime.default_players import get_presentation_function
 
@@ -26,6 +33,31 @@ class HumanXGP(XGP):
         self.presentation_function = get_presentation_function(executable_game_map)
         self.presentation_ctx: dict[str, object] = {}
         self.conversation: list[LLMMessage] = []
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "player_type": "human",
+            "options": self.options,
+            "executable_game_map": self.executable_game_map,
+            "event_history": [serialize_event(e) for e in self.event_history],
+            "conversation": self.conversation,
+            "presentation_ctx": self.presentation_ctx,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        human_xgp = cls(
+            data["name"],
+            data["id"],
+            data["options"],
+            data["executable_game_map"],
+        )
+        human_xgp.event_history = [deserialize_event(e) for e in data["event_history"]]
+        human_xgp.presentation_ctx = data["presentation_ctx"]
+        human_xgp.conversation = data["conversation"]
+        return human_xgp
 
     def add_score(self, score: float | int) -> None:
         self.score += score

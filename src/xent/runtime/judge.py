@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import random
+from typing import Any, Self
 
 import numpy as np
 import torch
@@ -28,8 +29,10 @@ class Judge:
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
     ) -> None:
-        self.tokenizers_by_name: dict[str, PreTrainedTokenizer] = {}
-        self.models_by_name: dict[str, PreTrainedModel] = {}
+        self.model_name = model_name
+        self.hf_dir_path = hf_dir_path
+        self.text_generator = text_generator
+        self.max_generation_length = max_generation_length
         self.device: torch.device = (
             torch.device("cuda")
             if torch.cuda.is_available()
@@ -59,6 +62,24 @@ class Judge:
         self.max_generation_length: int | None = max_generation_length
         if max_generation_length <= 0:
             self.max_generation_length = None
+
+    # TODO, we should encode the state of rng in here
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "model_name": self.model_name,
+            "hf_dir_path": self.hf_dir_path,
+            "text_generator": self.text_generator,
+            "max_generation_length": self.max_generation_length,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]) -> Self:
+        return cls(
+            data["model_name"],
+            data["hf_dir_path"],
+            data["text_generator"],
+            data["max_generation_length"],
+        )
 
     def tokenize(self, string: str | XString) -> torch.Tensor:
         if isinstance(string, XString):
@@ -133,7 +154,7 @@ class Judge:
         return result * -1
 
     def generate_text(self) -> str:
-        return self.text_generator.generate_text(self.max_generation_length)
+        return self.text_generator.generate_text(self.max_generation_length)  # type: ignore
 
     def is_true(self, condition: str) -> bool:
         evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".

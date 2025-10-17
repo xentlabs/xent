@@ -26,6 +26,13 @@ class XentGameError(XentError):
         super().__init__(f"Xent Game Error: {message}")
 
 
+class XentHaltMessage(Exception):
+    """Raised to alert the game engine to a halting condition encountered"""
+
+    def __init__(self, message: str):
+        super().__init__(f"Xent Halt Message: {message}")
+
+
 class XentApiError(XentGameError):
     """
     Raised for failures in communication with an external LLM API.

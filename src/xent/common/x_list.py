@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import Any
 
 from xent.common.errors import XentTypeError
 from xent.common.x_string import XString
@@ -26,6 +27,21 @@ class XList:
 
     def __repr__(self):
         return f"XList(items={self.items}, static={self.static}, public={self.public}, name='{self.name}')"
+
+    def serialize(self) -> dict[str, Any]:
+        return {
+            "type": "XList",
+            "items": [i.serialize() for i in self.items],
+            "static": self.static,
+            "public": self.public,
+            "name": self.name,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]):
+        items = [XString.deserialize(item) for item in data["items"]]
+        xlist = cls(items, data["static"], data["public"], data["name"])
+        return xlist
 
     def _verify_other_operand(self, other):
         if not isinstance(other, XList):

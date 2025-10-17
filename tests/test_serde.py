@@ -49,30 +49,20 @@ def make_executable_game_map() -> ExecutableGameMap:
 async def test_runtime_serialization_roundtrip():
     egm = make_executable_game_map()
 
-    # Registers with metadata
     s = XString("hello", static=False, public=True, name="s")
     s.prefix = "pre: "
     lst = XList([XString("a"), XString("b")], static=False, public=True, name="l")
-
-    # Players
     player = MockXGP("black", "mock_black_id", {}, egm)
     npc = MockXGP("white", "mock_white_id", {}, egm)
-
-    # Minimal locals containing our registers and players
     locals_dict = {"s": s, "l": lst, "black": player, "white": npc}
-
-    # Construct runtime with store_full_interactions enabled
     xrt = XentRuntime(
         player, [npc], locals_dict, globals={}, store_full_interactions=True
     )
-
-    # Non-empty beacons and replay counters
     xrt.beacons["flag_1"] = XFlag("flag_1", 1)
     xrt.replay_counters = {3: 1, 10: 2}
     xrt.score = 42.0
     xrt.add_token_usage({"input_tokens": 5, "output_tokens": 7})
 
-    # Build a diverse history covering all event types
     started: RoundStartedEvent = {
         "type": "round_started",
         "round_index": 0,
@@ -140,14 +130,11 @@ async def test_runtime_serialization_roundtrip():
         "player": "black",
     }
 
-    # Use runtime send_event so player histories get populated as well
     for ev in [started, req, resp, rev, rew, fail, finished]:
         await xrt.send_event(player, ev)
 
-    # Serialize the full runtime
     payload = xrt.serialize()
 
-    # Sanity: payload contains expected top-level keys
     assert set(payload.keys()) >= {
         "player",
         "npcs",
@@ -160,14 +147,11 @@ async def test_runtime_serialization_roundtrip():
         "store_full_interactions",
     }
 
-    # Deserialize back into a runtime
     xrt2 = XentRuntime.deserialize(payload, globals={})
 
-    # Basic scalar fields
     assert xrt2.score == 42.0
     assert xrt2.token_usage == {"input_tokens": 5, "output_tokens": 7}
 
-    # Locals: XString and XList restored
     s2 = xrt2.local_vars["s"]
     assert isinstance(s2, XString)
     assert s2.primary_string == "hello"
@@ -177,13 +161,11 @@ async def test_runtime_serialization_roundtrip():
     assert isinstance(l2, XList)
     assert [str(it) for it in l2.items] == ["a", "b"]
 
-    # Beacons and replay counters
     assert "flag_1" in xrt2.beacons
     assert isinstance(xrt2.beacons["flag_1"], XFlag)
     assert xrt2.beacons["flag_1"].line_num == 1
     assert xrt2.replay_counters == {3: 1, 10: 2}
 
-    # History restored with properly typed nested fields
     assert len(xrt2.history) == 7
 
     req2 = xrt2.history[1]

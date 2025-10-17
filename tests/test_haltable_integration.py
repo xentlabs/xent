@@ -6,7 +6,6 @@ from xent.presentation.executor import get_default_presentation
 
 
 def _make_halting_egm() -> ExecutableGameMap:
-    # Use the same game as the first integration test (single player case)
     code = (
         'assign(s1="At the book club, I ran into this girl, Neila, who claims to only read books backwards: starting from the bottom-right corner of the last page and reading all the words in reverse order until the beginning, finishing with the title. Doesn\'t it spoil the fun of the story? Apparently not, she told me. The suspense is just distributed somewhat differently (some books\' beginnings are apparently all too predictable), and some books get better or worse if you read them in one direction or another. She started reading backwards at age seven. Her name was sort of a predisposition.", s2="Hello, it is today a lovely day to use my skills in differential geometry and in the calculus of variation to estimate how much grass I will be able to eat. I aim to produce a lot of milk and to write a lot of theorems for my children, because that\'s what the beauty of life is about, dear physicists and cheese-makers. Have a great day!")\n'
         "reveal(s1, s2)\n"
@@ -43,26 +42,19 @@ def _make_halting_egm() -> ExecutableGameMap:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_haltable_game_resume_flow():
-    # 1) Configure a game with halting xgp
     egm = _make_halting_egm()
 
-    # 2) Start the game
     start_result = await start_haltable_game(egm, judge=None)
 
-    # 3) Verify we received a state to resume from
     assert start_result["kind"] == "state"
     state = start_result["state"]
 
-    # 4) Mutate the state to include next_move for halting XGP
-    # Path: state["game_state"]["runtime"]["player"] is the serialized player object
     runtime_player = state["game_state"]["runtime"]["player"]
     assert runtime_player.get("player_type") == "halting"
     runtime_player["next_move"] = "<move>hello</move>"
 
-    # 5) Resume the game
     end_result = await resume_haltable_game(state)
 
-    # 6) Verify results returned and basic correctness
     assert end_result["kind"] == "results"
     results = end_result["results"]
     assert isinstance(results, list)
@@ -71,12 +63,10 @@ async def test_haltable_game_resume_flow():
     history = results[0]["history"]
     types = [e["type"] for e in history]
 
-    # Must contain an elicit request/response pair and a round_finished
     assert "elicit_request" in types
     assert "elicit_response" in types
     assert types[-1] == "round_finished"
 
-    # Optionally, confirm the response content is non-empty
     elicit_resp = next(e for e in history if e["type"] == "elicit_response")
     assert isinstance(elicit_resp.get("response"), str)
     assert len(elicit_resp["response"]) > 0

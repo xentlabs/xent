@@ -119,7 +119,6 @@ class XentRuntime:
             int(k): int(v) for k, v in data["replay_counters"].items()
         }
 
-        # Typo fix: ensure we read the correct key with a safe default
         self.store_full_interactions = bool(data.get("store_full_interactions", False))
 
         self.beacons = {
@@ -129,7 +128,6 @@ class XentRuntime:
         self.last_elicit_player = None
         last_id = data.get("last_elicit_player_id")
         if last_id is not None:
-            # search player + npcs by .id
             if self.player.id == last_id:
                 self.last_elicit_player = self.player
             else:

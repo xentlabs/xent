@@ -47,11 +47,11 @@ class WebsocketXGP(XGP):
         self.websocket = validated_options["websocket"]
 
     def serialize(self) -> dict[str, Any]:
-        raise XentInternalError("Serde not currently implemented for Weboscket XGP")
+        raise XentInternalError("Serde not currently implemented for Websocket XGP")
 
     @classmethod
     def deserialize(cls, data: dict[str, Any]) -> Self:
-        raise XentInternalError("Serde not currently implemented for Weboscket XGP")
+        raise XentInternalError("Serde not currently implemented for Websocket XGP")
 
     def add_score(self, score: float | int) -> None:
         self.score += score

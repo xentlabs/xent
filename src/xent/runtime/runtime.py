@@ -117,7 +117,8 @@ class XentRuntime:
             int(k): int(v) for k, v in data["replay_counters"].items()
         }
 
-        self.store_full_interactions = bool(data["store_full_interactionss"])
+        # Typo fix: ensure we read the correct key with a safe default
+        self.store_full_interactions = bool(data.get("store_full_interactions", False))
 
         self.beacons = {
             name: XFlag.deserialize(b) for name, b in data["beacons"].items()
@@ -270,7 +271,7 @@ class XentRuntime:
                 target_type = "String" if isinstance(cur, XString) else "List"
                 value_type = "String" if target_type == "List" else "String"
                 raise XentSyntaxError(
-                    f"Attemted to assign incompatible value to register. Register type: {target_type}, value type: {value_type}"
+                    f"Attempted to assign incompatible value to register. Register type: {target_type}, value type: {value_type}"
                 )
         return None
 

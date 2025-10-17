@@ -1,9 +1,10 @@
 import pytest
 
+from xent.common.configuration_types import ExecutableGameMap
+from xent.common.token_xent_list import TokenXentList
 from xent.common.x_flag import XFlag
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.common.token_xent_list import TokenXentList
 from xent.common.xent_event import (
     ElicitRequestEvent,
     ElicitResponseEvent,
@@ -18,11 +19,11 @@ from xent.runtime.default_players import MockXGP
 from xent.runtime.runtime import XentRuntime
 
 
-def make_executable_game_map():
+def make_executable_game_map() -> ExecutableGameMap:
     return {
         "game_map": {
             "name": "Serde Test Game",
-            "code": "elicit(s, 5)\nensure(s != \"\")",
+            "code": 'elicit(s, 5)\nensure(s != "")',
             "map_seed": "serde_seed",
             "presentation_function": get_default_presentation(),
         },
@@ -51,17 +52,19 @@ async def test_runtime_serialization_roundtrip():
     # Registers with metadata
     s = XString("hello", static=False, public=True, name="s")
     s.prefix = "pre: "
-    l = XList([XString("a"), XString("b")], static=False, public=True, name="l")
+    lst = XList([XString("a"), XString("b")], static=False, public=True, name="l")
 
     # Players
     player = MockXGP("black", "mock_black_id", {}, egm)
     npc = MockXGP("white", "mock_white_id", {}, egm)
 
     # Minimal locals containing our registers and players
-    locals_dict = {"s": s, "l": l, "black": player, "white": npc}
+    locals_dict = {"s": s, "l": lst, "black": player, "white": npc}
 
     # Construct runtime with store_full_interactions enabled
-    xrt = XentRuntime(player, [npc], locals_dict, globals={}, store_full_interactions=True)
+    xrt = XentRuntime(
+        player, [npc], locals_dict, globals={}, store_full_interactions=True
+    )
 
     # Non-empty beacons and replay counters
     xrt.beacons["flag_1"] = XFlag("flag_1", 1)
@@ -85,7 +88,7 @@ async def test_runtime_serialization_roundtrip():
         "player": "black",
         "var_name": "s",
         "max_len": 5,
-        "registers": {"s": s, "l": l},
+        "registers": {"s": s, "l": lst},
     }
 
     resp: ElicitResponseEvent = {
@@ -109,7 +112,7 @@ async def test_runtime_serialization_roundtrip():
         "line": "reveal(s, l)",
         "line_num": 2,
         "player": "black",
-        "values": {"s": s, "l": l},
+        "values": {"s": s, "l": lst},
     }
 
     rew: RewardEvent = {
@@ -122,7 +125,7 @@ async def test_runtime_serialization_roundtrip():
 
     fail: FailedEnsureEvent = {
         "type": "failed_ensure",
-        "line": "ensure(s != \"\")",
+        "line": 'ensure(s != "")',
         "line_num": 4,
         "player": "black",
         "ensure_results": [False, True],
@@ -132,7 +135,7 @@ async def test_runtime_serialization_roundtrip():
     finished: RoundFinishedEvent = {
         "type": "round_finished",
         "round_index": 0,
-        "line": "ensure(s != \"\")",
+        "line": 'ensure(s != "")',
         "line_num": 4,
         "player": "black",
     }
@@ -202,4 +205,3 @@ async def test_runtime_serialization_roundtrip():
     rew2 = xrt2.history[4]
     assert rew2["type"] == "reward"
     assert isinstance(rew2["value"], TokenXentList)
-

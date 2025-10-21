@@ -41,7 +41,7 @@ class XentRuntime:
         globals: dict[str, Any],
         store_full_interactions: bool = False,
     ):
-        self.local_vars = locals
+        self.local_vars: dict[str, Any] = locals
         self.player = player
         self.player.reset_score()
         self.npcs = npcs
@@ -105,6 +105,10 @@ class XentRuntime:
         self.local_vars = {
             name: _deserialize_local(val) for name, val in data["locals"].items()
         }
+        self.local_vars[self.player.name] = self.player
+        for npc in self.npcs:
+            self.local_vars[npc.name] = npc
+
         self.globals = globals
 
         self.score = float(data["score"])

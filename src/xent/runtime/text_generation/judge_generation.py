@@ -119,6 +119,7 @@ class JudgeGenerator(TextGenerator):
         chosen_narrative = random.choice(list(NARRATIVE_SEEDS.keys()))
         priming_text = NARRATIVE_SEEDS[chosen_narrative]
 
+        # TODO something is broken with contrastive_search. Need to test and debug (or just remove contrastive_search altogether)
         strategy = random.choices(
             ["sampling", "contrastive_search"], weights=[0.85, 0.15], k=1
         )[0]

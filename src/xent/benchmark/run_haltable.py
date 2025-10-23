@@ -57,8 +57,11 @@ async def start_haltable_game(
 # Bug: this currently duplicates the elicit request event. I could just cut it from
 # this history, but that seems a bit severe to me. I'll leave the bug in for now and
 # address if its needed.
-async def resume_haltable_game(state: dict[str, Any]) -> Results | State:
-    judge = Judge.deserialize(state["judge"])
+async def resume_haltable_game(
+    state: dict[str, Any], judge: Judge | None = None
+) -> Results | State:
+    if judge is None:
+        judge = Judge.deserialize(state["judge"])
     globals = build_globals(judge)
     xrt = XentRuntime.deserialize(state["game_state"]["runtime"], globals)
     lines: list[str] = state["game_state"]["lines"]

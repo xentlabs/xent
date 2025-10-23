@@ -28,6 +28,7 @@ class Judge:
         hf_dir_path: str | None = None,
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
+        model_params: dict[str, Any] | None = None,
     ) -> None:
         self.model_name = model_name
         self.hf_dir_path = hf_dir_path
@@ -40,18 +41,24 @@ class Judge:
                 torch.device("mps") if torch.mps.is_available() else torch.device("cpu")
             )
         )
+        model_kwargs: dict[str, Any] = dict(model_params or {})
+
         if (hf_dir_path is not None) and os.path.exists(hf_dir_path):
             model_path: str = os.path.join(hf_dir_path, model_name)
             self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
                 model_path
             )
             self.model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
-                model_path
-            ).to(self.device)
+                model_path, **model_kwargs
+            )
+            if "device_map" not in model_kwargs:
+                self.model = self.model.to(self.device)  # type: ignore
         else:
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            if "device_map" not in model_kwargs:
+                model_kwargs["device_map"] = "auto"
             self.model = AutoModelForCausalLM.from_pretrained(
-                model_name, device_map="auto"
+                model_name, **model_kwargs
             )
         self.rng = random.Random()
 

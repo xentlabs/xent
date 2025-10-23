@@ -1,7 +1,7 @@
 interface GamePanelProps {
   code: string[];
   currentLine: number;
-  registers: Record<string, string>;
+  registers: Record<string, string | string[]>;
   currentRound?: number;
   totalRounds?: number;
 }
@@ -12,8 +12,8 @@ export default function GamePanel({ code, currentLine, registers, currentRound =
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
         <h3 style={{ margin: 0 }}>Game State</h3>
         {currentRound > 0 && (
-          <div style={{ 
-            fontSize: '14px', 
+          <div style={{
+            fontSize: '14px',
             color: '#666',
             backgroundColor: '#e3f2fd',
             padding: '4px 8px',
@@ -24,14 +24,14 @@ export default function GamePanel({ code, currentLine, registers, currentRound =
           </div>
         )}
       </div>
-      
+
       {/* Code Execution Display */}
       <div style={{ marginBottom: '15px' }}>
         <h4 style={{ fontSize: '14px', marginBottom: '10px' }}>Code Execution</h4>
-        <div style={{ 
-          backgroundColor: 'white', 
-          border: '1px solid #ddd', 
-          borderRadius: '3px', 
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #ddd',
+          borderRadius: '3px',
           padding: '10px',
           maxHeight: '150px',
           overflowY: 'auto',
@@ -65,39 +65,39 @@ export default function GamePanel({ code, currentLine, registers, currentRound =
       {/* Registers Display */}
       <div>
         <h4 style={{ fontSize: '14px', marginBottom: '10px' }}>Registers</h4>
-        <div style={{ 
-          backgroundColor: 'white', 
-          border: '1px solid #ddd', 
-          borderRadius: '3px', 
+        <div style={{
+          backgroundColor: 'white',
+          border: '1px solid #ddd',
+          borderRadius: '3px',
           padding: '10px',
           minHeight: '40px'
         }}>
           {(() => {
-            const nonEmptyRegisters = Object.entries(registers).filter(([_, value]) => 
-              value && value.trim() !== ''
+            const nonEmptyRegisters = Object.entries(registers).filter(([_, value]) =>
+              value && ((typeof value === 'string' && value.trim() !== '') || (Array.isArray(value) && value.length > 0))
             );
-            
+
             if (nonEmptyRegisters.length === 0) {
               return (
                 <div style={{ color: '#666', fontStyle: 'italic' }}>No registers set</div>
               );
             }
-            
+
             return (
               <table style={{ width: '100%', fontSize: '12px' }}>
                 <tbody>
                   {nonEmptyRegisters.map(([key, value]) => (
                     <tr key={key}>
-                      <td style={{ 
-                        fontWeight: 'bold', 
-                        paddingRight: '15px', 
+                      <td style={{
+                        fontWeight: 'bold',
+                        paddingRight: '15px',
                         color: '#2196F3',
                         verticalAlign: 'top',
                         width: '60px'
                       }}>
                         {key}:
                       </td>
-                      <td style={{ 
+                      <td style={{
                         fontFamily: 'monospace',
                         wordBreak: 'break-word',
                         whiteSpace: 'pre-wrap'

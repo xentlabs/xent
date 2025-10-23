@@ -104,7 +104,6 @@ PARAM_RANGES = {
     "repetition_penalty": (1.0, 1.3),
     "encoder_repetition_penalty": (1.0, 1.2),
     "no_repeat_ngram_size": [0, 2, 3],
-    "penalty_alpha": (0.5, 0.7),  # For Contrastive Search
     "min_new_tokens": (30, 80),
     "max_new_tokens": (100, 250),
 }
@@ -119,37 +118,23 @@ class JudgeGenerator(TextGenerator):
         chosen_narrative = random.choice(list(NARRATIVE_SEEDS.keys()))
         priming_text = NARRATIVE_SEEDS[chosen_narrative]
 
-        # TODO something is broken with contrastive_search. Need to test and debug (or just remove contrastive_search altogether)
-        strategy = random.choices(
-            ["sampling", "contrastive_search"], weights=[0.85, 0.15], k=1
-        )[0]
-
         params = {}
-
-        if strategy == "contrastive_search":
-            params = {
-                "penalty_alpha": random.uniform(*PARAM_RANGES["penalty_alpha"]),
-                "top_k": random.randint(
-                    4, 10
-                ),  # Contrastive search needs a small top_k
-                "do_sample": False,
-            }
+        # Use nucleus/typical sampling only.
+        use_typical_p = random.choice([True, False])
+        if use_typical_p:
+            params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])
         else:
-            use_typical_p = random.choice([True, False])
-            if use_typical_p:
-                params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])
-            else:
-                params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])
+            params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])
 
-            params.update(
-                {
-                    "temperature": random.uniform(*PARAM_RANGES["temperature"]),
-                    "top_k": random.randint(
-                        int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
-                    ),
-                    "do_sample": True,
-                }
-            )
+        params.update(
+            {
+                "temperature": random.uniform(*PARAM_RANGES["temperature"]),
+                "top_k": random.randint(
+                    int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
+                ),
+                "do_sample": True,
+            }
+        )
 
         params.update(
             {

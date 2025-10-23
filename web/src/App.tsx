@@ -214,7 +214,7 @@ function App() {
   const [judge, setJudge] = useState<string>('gpt2');
   const [benchmarkId, setBenchmarkId] = useState<string>(generateBenchmarkId());
   const [seed, setSeed] = useState<string>('notrandom');
-  const [numRoundsPerGame, setNumRoundsPerGame] = useState<number>(30);
+  const [numRoundsPerGame, setNumRoundsPerGame] = useState<number>(5);
   const [numMapsPerGame, setNumMapsPerGame] = useState<number>(1);
   const [useCustomGames, setUseCustomGames] = useState<boolean>(false);
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);

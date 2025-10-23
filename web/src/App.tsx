@@ -17,8 +17,15 @@ interface XentMetadata {
   seed: string;
 }
 
+interface TextGenerationConfig {
+  generator_type: "JUDGE" | "COMMUNITY_ARCHIVE"
+  generator_config: any;
+  max_length: number;
+}
+
 interface ExpansionConfig {
   num_maps_per_game: number;
+  text_generation_config: TextGenerationConfig;
 }
 
 interface CondensedXentBenchmarkConfig {
@@ -35,58 +42,152 @@ elicit(x, 10)
 assign(x1=remove_common_words(x, s)) # Remove any words in story from input text
 reward(xed(s | x1))`;
 
-const DEFAULT_PRESENTATION = `def present(state, history, metadata):
-    """Default presentation matching current system output"""
-    output = []
-    for event in history:
-        if event['type'] == 'elicit_request':
-            output.append(format_elicit_request(event))
-        elif event['type'] == 'elicit_response':
-            output.append(format_elicit_response(event))
-        elif event['type'] == 'reveal':
-            output.append(format_reveal(event))
-        elif event['type'] == 'reward':
-            output.append(format_reward(event))
-        elif event['type'] == 'failed_ensure':
-            output.append(format_failed_ensure(event))
-        else:
-            # Fallback for unknown event types
-            output.append(f"Unknown event: {event}")
-    return '\\n'.join(output)`;
+const DEFAULT_PRESENTATION = `from typing import Any
+from xent.presentation.sdk import (
+    ChatBuilder,
+    format_elicit_request,
+    format_elicit_response,
+    format_reveal,
+    format_reward,
+    format_failed_ensure,
+)
 
-const SINGLE_PRESENTATION = `def present(state, history, metadata):
-    story = state["s"]
-    game_overview = f"""I am going to give you a short text. Your job is to provide a string that will prefix that text. Your goal is to minimize the cross-entropy of the text given the prefix you provide. You should respond with what will make the text as likely as possible.
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
 
-The text is: "{story}"
+    b = ChatBuilder()
 
-Your response will be used as the prefix to that text and you will be scored on how well it helps predict that text. You may not use any words from the text in your response, regardless of case or punctuation. You can only use a maximum of 10 tokens for your prefix."""
-    previous_attempts = []
-
-    for event in history:
-        if event["type"] == "elicit_response":
-            previous_attempts.append("<attempt>")
-            previous_attempts.append("You provided: " + event["response"])
-        elif event["type"] == "reward":
-            score = round(event["value"].total_xent(), 2)
-            previous_attempts.append(f"Total score for that response: {score}")
-            previous_attempts.append(
-                f"Per token score for that response: {str(event['value'])}"
-            )
-            previous_attempts.append("</attempt>")
-
-    if len(previous_attempts) == 0:
-        instructions = "Provide your prefix inside of \`<move></move>\` tags. Any other text in your response will be ignored. You will be given feedback on your prefix and a chance to improve your prefix."
-        output = [game_overview, "", instructions]
-    else:
-        instructions = "Use your previous attempts above to further optimize your prefix. Provide your prefix inside of \`<move></move>\` tags. Any other text in your response will be ignored."
-        output = (
-            [game_overview, "", "<previousAttempts>"]
-            + previous_attempts
-            + ["</previousAttempts>", "", instructions]
+    # Send a one-time introduction/instructions
+    if not ctx.get('intro_sent', False):
+        b.user(
+            "You are playing a text game. Provide your move inside <move></move> tags. Any other text will be ignored."
         )
+        ctx['intro_sent'] = True
 
-    return "\\n".join(output)`;
+    # Summarize what happened since the last elicit
+    for event in since_events:
+        t = event.get('type')
+        if t == 'elicit_request':
+            b.user(format_elicit_request(event))
+        elif t == 'elicit_response':
+            b.user(format_elicit_response(event))
+        elif t == 'reveal':
+            b.user(format_reveal(event))
+        elif t == 'reward':
+            formatted, _ = format_reward(event)
+            b.user("Score update:\\n" + str(formatted))
+        elif t == 'failed_ensure':
+            b.user(format_failed_ensure(event))
+        else:
+            b.user("Event: " + str(event))
+
+    # Close with a concise instruction cue
+    b.user("Now provide your next move inside <move></move> tags.")
+
+    return b.render(), ctx`;
+
+const SINGLE_PRESENTATION = `from xent.presentation.sdk import (
+    ChatBuilder,
+    PresentationBuilder,
+    extract_reveals,
+    extract_rewards,
+    format_reward,
+    get_max_score,
+    split_rounds,
+)
+
+
+def present_turn(state, since_events, metadata, full_history=None, ctx=None):
+    if ctx is None:
+        ctx = {}
+
+    history = full_history if full_history is not None else since_events
+    rounds = split_rounds(history)
+    all_rewards = extract_rewards(history)
+    best_score, _ = get_max_score(all_rewards) if all_rewards else (None, None)
+
+    b = ChatBuilder()
+
+    # One-time header and story
+    if not ctx.get("intro_sent", False):
+        builder = PresentationBuilder()
+        header = f"""You are playing a text game that uses the cross-entropy function of an LLM ({metadata["judge_model"]}) to compute score.
+
+<gameCode>
+assign(s=story())
+elicit(x, 10)
+assign(x1=remove_common_words(x, s))
+reveal(x1)
+reward(xed(s | x1))
+</gameCode>
+
+You will be given a short story, and your task is to provide a prefix that makes that story as predictable as possible. Think of it as providing context that helps predict what comes next.
+
+The scoring measures how much information your prefix provides about the story. Specifically, your score is the difference between the story's baseline cross-entropy and its cross-entropy given your prefix: \`Score = crossEntropy(story) - crossEntropy(story | prefix)\`. Your goal is to maximize this score. So you want to find a prefix that will most help an LLM predict the story.
+
+After each attempt, you'll see your score and a per-token breakdown of the cross entropy difference. The game automatically restarts after each successful attempt, allowing you to continuously optimize your approach. Use the feedback from previous rounds to improve your score.  Your final score is the maximum score you obtain over {metadata["num_rounds_per_game"]} rounds, so you should not worry about decreasing temporarily your score.
+
+You cannot use any words that appear in the story itself (regardless of case or punctuation). Your prefix is limited to 10 tokens maximum.
+
+Provide your prefix in <move></move> tags. Any other text in your response will be ignored."""
+
+        builder.add_header(header)
+        builder.add_line("")
+        builder.add_line("The story:")
+        builder.start_section("story")
+        builder.add_line(str(state.get("s", "")))
+        builder.end_section()
+        if len(rounds) == 1:
+            builder.add_line("First round starting.")
+            builder.add_line("")
+        builder.add_line("Provide your prefix in <move></move> tags.")
+        b.user(builder.render())
+        ctx["intro_sent"] = True
+        return b.render(), ctx
+
+    # Subsequent turns: summarize last completed round and prompt
+    builder = PresentationBuilder()
+
+    # Find the most recent completed round (with a reward)
+    last_completed_index = None
+    for i in range(len(rounds) - 1, -1, -1):
+        if extract_rewards(rounds[i]):
+            last_completed_index = i
+            break
+
+    if last_completed_index is not None:
+        round_events = rounds[last_completed_index]
+        rewards = extract_rewards(round_events)
+
+        builder.add_line(f"Round {last_completed_index}:")
+
+        # Show only the normalized prefix revealed
+        reveals = extract_reveals(round_events)
+        if reveals:
+            prefix = reveals[0]["values"].get("x1")
+            if prefix is not None:
+                builder.add_line(f"<prefix>{prefix}</prefix>")
+
+        # Score
+        if rewards:
+            builder.start_section("score")
+            builder.add_lines(format_reward(rewards[0])[0])
+            builder.end_section()
+
+        builder.add_line("")
+
+    if best_score is not None:
+        builder.add_line(f"Best score achieved: {best_score:.3f}")
+
+    builder.add_line("")
+    builder.add_line("Remember: You want to maximize your score. Higher is better!")
+    builder.add_line("")
+    builder.add_line("Provide your prefix in <move></move> tags.")
+
+    b.user(builder.render())
+    return b.render(), ctx
+  `;
 
 function generateBenchmarkId(): string {
   const now = new Date();
@@ -163,13 +264,18 @@ function App() {
       config_type: "condensed_xent_config",
       metadata: {
         benchmark_id: benchmarkId,
-        xent_version: "0.1.0",
+        xent_version: "0.3.0",
         judge_model: judge,
         num_rounds_per_game: numRoundsPerGame,
         seed: seed,
       },
       expansion_config: {
         num_maps_per_game: numMapsPerGame,
+        text_generation_config: {
+          generator_type: "JUDGE",
+          generator_config: {},
+          max_length: 50,
+        }
       },
       players: players,
       games: games,
@@ -386,7 +492,7 @@ function App() {
 
       <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #dee2e6' }} />
 
-      <h2>Create New Benchmark</h2>
+      <h1>Create New Benchmark</h1>
 
       <form onSubmit={handleSubmit} style={{ marginTop: '20px' }}>
         <fieldset style={{ marginBottom: '20px', padding: '15px', border: '1px solid #ccc' }}>

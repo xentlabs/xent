@@ -6,7 +6,7 @@ def get_xent_version() -> str:
         return version("xent")
     except PackageNotFoundError:
         # Package is not installed (likely in development/editable mode)
-        return "0.1.0-dev"
+        return "0.3.0-dev"
 
 
 def validate_version(

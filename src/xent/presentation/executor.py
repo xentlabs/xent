@@ -4,6 +4,7 @@ from typing import Any
 
 from xent.common.configuration_types import XentEvent, XentMetadata
 from xent.common.errors import XentConfigurationError, XentInternalError
+from xent.common.version import get_xent_version
 from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import LLMMessage
@@ -59,7 +60,7 @@ def present_turn(state, since_events, metadata, full_history=None, ctx=None):
 
 SAMPLE_METADATA: XentMetadata = XentMetadata(
     benchmark_id="bid",
-    xent_version="0.1.0",
+    xent_version=get_xent_version(),
     judge_model="judge",
     num_rounds_per_game=2,
     seed="seed",

@@ -1,6 +1,8 @@
 # TODO: this file needs to be cleaned up to better fit with the new stateful design of text generation
 import random
 
+import torch
+
 from xent.runtime.text_generation.text_generation import TextGenerator
 
 NARRATIVE_SEEDS = {
@@ -168,9 +170,11 @@ class JudgeGenerator(TextGenerator):
         params["max_new_tokens"] = max_tokens
 
         inputs = self.tokenizer(priming_text, return_tensors="pt").to(self.model.device)
-        outputs = self.model.generate(
-            **inputs, **params, pad_token_id=self.tokenizer.eos_token_id
-        )
+
+        with torch.inference_mode():
+            outputs = self.model.generate(
+                **inputs, **params, pad_token_id=self.tokenizer.eos_token_id
+            )
 
         generated_completion = self.tokenizer.decode(
             outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True

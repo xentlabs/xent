@@ -70,6 +70,8 @@ class Judge:
         if max_generation_length <= 0:
             self.max_generation_length = None
 
+        self.model.eval()
+
     # TODO, we should encode the state of rng in here
     def serialize(self) -> dict[str, Any]:
         return {
@@ -108,8 +110,9 @@ class Judge:
         return self.tokenizer.decode(tokens.cpu().view(-1))
 
     def comp_logits(self, tokens: torch.Tensor) -> torch.Tensor:
-        result = self.model(tokens, return_dict=True)  # type: ignore[operator]
-        return result.logits
+        with torch.inference_mode():
+            result = self.model(tokens, return_dict=True)  # type: ignore[operator]
+            return result.logits
 
     def xent(
         self,

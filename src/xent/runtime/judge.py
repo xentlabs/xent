@@ -75,7 +75,6 @@ class Judge:
         return {
             "model_name": self.model_name,
             "hf_dir_path": self.hf_dir_path,
-            "text_generator": self.text_generator,
             "max_generation_length": self.max_generation_length,
         }
 
@@ -84,7 +83,7 @@ class Judge:
         return cls(
             data["model_name"],
             data["hf_dir_path"],
-            data["text_generator"],
+            None,  # We don't serialize or deserialize text_generator
             data["max_generation_length"],
         )
 

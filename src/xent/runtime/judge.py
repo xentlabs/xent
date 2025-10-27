@@ -32,7 +32,6 @@ class Judge:
     ) -> None:
         self.model_name = model_name
         self.hf_dir_path = hf_dir_path
-        self.text_generator = text_generator
         self.max_generation_length = max_generation_length
         self.device: torch.device = (
             torch.device("cuda")
@@ -63,13 +62,13 @@ class Judge:
         self.rng = random.Random()
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
-        if text_generator is None:
-            text_generator = JudgeGenerator(self.model, self.tokenizer)
-        self.text_generator = text_generator
         self.max_generation_length: int | None = max_generation_length
         if max_generation_length <= 0:
             self.max_generation_length = None
 
+        if text_generator is None:
+            text_generator = JudgeGenerator(self.model, self.tokenizer)
+        self.text_generator = text_generator
         self.model.eval()
 
     # TODO, we should encode the state of rng in here

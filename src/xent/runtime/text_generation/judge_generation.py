@@ -180,3 +180,168 @@ class JudgeGenerator(TextGenerator):
             outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
         )
         return generated_completion
+
+    def generate_list(self, prompt: str, length: int) -> list[str]:
+        # Build a robust, generic list-format priming prompt with sentinels.
+        example_colors = (
+            "Make a diverse list that matches the query.\n"
+            "Query: colors\n"
+            "Output rules:\n"
+            "- One item per line\n"
+            "- No numbering, no extra text\n"
+            "- Avoid duplicates and close paraphrases\n"
+            "BEGIN LIST\n"
+            "red\n"
+            "blue\n"
+            "chartreuse\n"
+            "ultramarine\n"
+            "puce\n"
+            "END LIST\n\n"
+        )
+        example_sentences = (
+            "Make a diverse list that matches the query.\n"
+            "Query: sentences with at least three clauses\n"
+            "Output rules:\n"
+            "- One item per line\n"
+            "- No numbering, no extra text\n"
+            "- Aim for sentences with multiple clauses\n"
+            "- Avoid duplicates and close paraphrases\n"
+            "BEGIN LIST\n"
+            "When the bell rang, I grabbed my bag, and I ran to the gate.\n"
+            "Although the sky darkened, we kept walking, and we found shelter near the bridge.\n"
+            "Because the engine sputtered, the car slowed, but we still made it home.\n"
+            "END LIST\n\n"
+        )
+
+        base_header = (
+            "Make a diverse list that matches the query.\n"
+            f"Query: {prompt}\n"
+            "Output rules:\n"
+            "- One item per line\n"
+            "- No numbering, no extra text\n"
+            "- Avoid duplicates and close paraphrases\n"
+        )
+
+        priming_prefix = example_colors + example_sentences + base_header
+
+        def _build_prompt(accumulated: list[str]) -> str:
+            prompt_text = priming_prefix
+            if accumulated:
+                # Include a compact avoid list to encourage diversity.
+                # Limit to a reasonable number to keep prompt short.
+                avoid_list = ", ".join(accumulated[:32])
+                prompt_text += f"Avoid duplicates: {avoid_list}\n"
+            prompt_text += "BEGIN LIST\n"
+            return prompt_text
+
+        def _choose_params(max_new: int, min_new: int) -> dict:
+            params: dict[str, object] = {}
+            # Use nucleus or typical sampling (as in generate_text).
+            use_typical_p = random.choice([True, False])
+            if use_typical_p:
+                params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])  # type: ignore[index]
+            else:
+                params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])  # type: ignore[index]
+
+            params.update(
+                {
+                    "temperature": random.uniform(*PARAM_RANGES["temperature"]),  # type: ignore[index]
+                    "top_k": random.randint(
+                        int(PARAM_RANGES["top_k"][0]),
+                        int(PARAM_RANGES["top_k"][1]),  # type: ignore[index]
+                    ),
+                    "do_sample": True,
+                }
+            )
+
+            params.update(
+                {
+                    "repetition_penalty": random.uniform(
+                        *PARAM_RANGES["repetition_penalty"]  # type: ignore[index]
+                    ),
+                    "encoder_repetition_penalty": random.uniform(
+                        *PARAM_RANGES["encoder_repetition_penalty"]  # type: ignore[index]
+                    ),
+                    "no_repeat_ngram_size": random.choice(
+                        PARAM_RANGES["no_repeat_ngram_size"]  # type: ignore[index]
+                    ),
+                    "min_new_tokens": max(1, min_new),
+                    "max_new_tokens": max(2, max_new),
+                }
+            )
+            return params
+
+        def _parse_lines(generated: str) -> list[str]:
+            lines = []
+            for raw in generated.splitlines():
+                text = raw.strip()
+                if not text:
+                    continue
+                if text.upper().startswith("END LIST"):
+                    break
+                # Robust against model echoing headers or bullets/numbers.
+                if (
+                    text.startswith("Make a diverse list")
+                    or text.startswith("Output rules:")
+                    or text.startswith("Query:")
+                ):
+                    continue
+                # Trim common list markers and quotes.
+                while text and text[0] in "-*•\u2022":
+                    text = text[1:].lstrip()
+                if text and text[0] in "\"'" and text[-1:] in "\"'" and len(text) > 1:
+                    text = text[1:-1].strip()
+                # Remove leading numbering like "1." or "2)".
+                i = 0
+                while i < len(text) and text[i].isdigit():
+                    i += 1
+                if i < len(text) and i > 0 and text[i : i + 1] in ".)":
+                    text = text[i + 1 :].lstrip()
+                if text and text.upper() != "BEGIN LIST":
+                    lines.append(text)
+            return lines
+
+        collected: list[str] = []
+        seen_norm: set[str] = set()
+
+        def _maybe_add(items: list[str]) -> None:
+            for item in items:
+                norm = " ".join(item.strip().split()).casefold()
+                if not norm:
+                    continue
+                if norm in seen_norm:
+                    continue
+                seen_norm.add(norm)
+                collected.append(item)
+                if len(collected) >= length:
+                    return
+
+        max_passes = 4
+        for _ in range(max_passes):
+            if len(collected) >= length:
+                break
+
+            priming_text = _build_prompt(collected)
+
+            # Token budget targeting: aim for several items per pass.
+            target = max(60, min(12 * max(1, length - len(collected)), 256))
+            min_new = min(target - 1, max(20, target // 2))
+            params = _choose_params(max_new=target, min_new=min_new)
+
+            print("Priming text:")
+            print(priming_text)
+            inputs = self.tokenizer(priming_text, return_tensors="pt").to(
+                self.model.device
+            )
+            with torch.inference_mode():
+                outputs = self.model.generate(
+                    **inputs, **params, pad_token_id=self.tokenizer.eos_token_id
+                )
+            continuation = self.tokenizer.decode(
+                outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
+            )
+
+            items = _parse_lines(continuation)
+            _maybe_add(items)
+
+        return collected[:length]

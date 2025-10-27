@@ -104,7 +104,7 @@ def create_test_benchmark_config() -> CondensedXentBenchmarkConfig:
             GameConfig(
                 name="test_lists",
                 code="""
-                    assign(l=["a bunch of", "different words", "for testing purposes"])
+                    assign(l=["a bunch of", "different words", "for testing purposes", "that are", "unlikey to shuffle", "in the same", "order"])
                     reveal(l)
                     elicit(s, 10)
                     assign(t=sample(l))
@@ -250,6 +250,10 @@ def test_benchmark_structure(shared_benchmark_results):
         "a bunch of",
         "different words",
         "for testing purposes",
+        "that are",
+        "unlikey to shuffle",
+        "in the same",
+        "order",
     ]
 
     shuffled_list = reveal_events[1]["values"]["l2"]

@@ -2,7 +2,7 @@ import json
 import random
 from typing import Literal, TypedDict
 
-from xent.common.errors import XentInternalError
+from xent.common.errors import XentConfigurationError, XentInternalError
 from xent.runtime.text_generation.text_generation import TextGenerator
 
 CommunityArchiveMode = Literal["SEQUENTIAL", "SHUFFLE"]
@@ -49,3 +49,8 @@ class CommunityArchiveTextGenerator(TextGenerator):
             raise XentInternalError(
                 "Unknown mode specificed for Community Archive Corpus"
             )
+
+    def generate_list(self, prompt: str, length: int) -> list[str]:
+        raise XentConfigurationError(
+            "CommunityArchiveTextGenerator doesn't support the generate_list interface"
+        )

@@ -7,8 +7,8 @@ from xent.benchmark.expand_benchmark import (
     preprocess_dsl_code,
 )
 from xent.common.configuration_types import GameConfig
-from xent.runtime.judge import Judge
 from xent.common.errors import XentSyntaxError
+from xent.runtime.judge import Judge
 
 
 def test_generate_list_smoke():
@@ -321,7 +321,7 @@ assign(s2=story())  # Second story
 
         mock_judge.generate_list.side_effect = gl_side_effect
 
-        code = "assign(l=generate_list(\"colors\", 3))"
+        code = 'assign(l=generate_list("colors", 3))'
         rewritten = preprocess_dsl_code(code, mock_judge)
         assert "generate_list(" not in rewritten
         assert "assign(l=[" in rewritten
@@ -347,7 +347,7 @@ assign(s2=story())  # Second story
 
     def test_generate_list_rejects_wrong_types(self):
         mock_judge = Mock()
-        code = 'assign(l=generate_list(123, 3))'
+        code = "assign(l=generate_list(123, 3))"
         with pytest.raises(XentSyntaxError):
             preprocess_dsl_code(code, mock_judge)
 

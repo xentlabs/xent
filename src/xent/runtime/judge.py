@@ -162,7 +162,10 @@ class Judge:
         return result * -1
 
     def generate_text(self) -> str:
-        return self.text_generator.generate_text(self.max_generation_length)  # type: ignore
+        return self.text_generator.generate_text(self.max_generation_length)
+
+    def generate_list(self, prompt: str, length: int) -> list[str]:
+        return self.text_generator.generate_list(prompt, length)
 
     def is_true(self, condition: str) -> bool:
         evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".

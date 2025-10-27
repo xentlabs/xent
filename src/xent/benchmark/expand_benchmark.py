@@ -9,6 +9,7 @@ from xent.common.configuration_types import (
     GameMapConfig,
     XentMetadata,
 )
+from xent.common.errors import XentSyntaxError
 from xent.runtime.judge import Judge
 from xent.runtime.text_generation.corpus_generation import CommunityArchiveTextGenerator
 from xent.runtime.text_generation.text_generation import TextGenerator
@@ -96,6 +97,42 @@ class StoryRewriter(ast.NodeTransformer):
         self.generic_visit(node)
         if isinstance(node.func, ast.Name) and node.func.id == "story":
             new_node = ast.Constant(value=self.judge.generate_text())
+            ast.copy_location(new_node, node)
+            return new_node
+        if isinstance(node.func, ast.Name) and node.func.id == "generate_list":
+            # Enforce: exactly two positional args (prompt: str, length: int), no keywords
+            if node.keywords:
+                raise XentSyntaxError(
+                    "generate_list requires positional args only: generate_list('<prompt>', <length>)"
+                )
+            if len(node.args) != 2:
+                raise XentSyntaxError(
+                    "generate_list requires exactly two positional arguments: prompt (str), length (int)"
+                )
+
+            prompt_arg, length_arg = node.args[0], node.args[1]
+            if not (
+                isinstance(prompt_arg, ast.Constant)
+                and isinstance(prompt_arg.value, str)
+            ):
+                raise XentSyntaxError(
+                    "generate_list first argument must be a string literal prompt"
+                )
+            if not isinstance(length_arg, ast.Constant) or not isinstance(
+                length_arg.value, int | float
+            ):
+                raise XentSyntaxError(
+                    "generate_list second argument must be a numeric literal length"
+                )
+
+            prompt_val: str = prompt_arg.value  # type: ignore[assignment]
+            length_val: int = int(length_arg.value)  # type: ignore[arg-type]
+
+            generated_items = self.judge.generate_list(prompt_val, length_val)
+            new_node = ast.List(
+                elts=[ast.Constant(value=item) for item in generated_items],
+                ctx=ast.Load(),
+            )
             ast.copy_location(new_node, node)
             return new_node
         return node

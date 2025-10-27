@@ -8,6 +8,7 @@ from xent.benchmark.expand_benchmark import (
 )
 from xent.common.configuration_types import GameConfig
 from xent.runtime.judge import Judge
+from xent.common.errors import XentSyntaxError
 
 
 def test_generate_list_smoke():
@@ -308,3 +309,76 @@ assign(s2=story())  # Second story
             in processed_mixed
         )
         assert "# Footer comment" in processed_mixed
+
+    def test_generate_list_rewrite_positional(self):
+        """generate_list(prompt, length) is rewritten into a literal list."""
+        mock_judge = Mock()
+
+        def gl_side_effect(prompt: str, length: int) -> list[str]:
+            assert prompt == "colors"
+            assert length == 3
+            return ["red", "blue", "green"]
+
+        mock_judge.generate_list.side_effect = gl_side_effect
+
+        code = "assign(l=generate_list(\"colors\", 3))"
+        rewritten = preprocess_dsl_code(code, mock_judge)
+        assert "generate_list(" not in rewritten
+        assert "assign(l=[" in rewritten
+        # Basic presence checks for returned items
+        assert "red" in rewritten and "blue" in rewritten and "green" in rewritten
+
+    def test_generate_list_rejects_keywords(self):
+        """generate_list with keyword args should raise a syntax error."""
+        mock_judge = Mock()
+        code = 'assign(l=generate_list(length=2, prompt="animals"))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code, mock_judge)
+
+    def test_generate_list_rejects_wrong_arity(self):
+        mock_judge = Mock()
+        code = 'assign(l=generate_list("colors"))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code, mock_judge)
+
+        code2 = 'assign(l=generate_list("colors", 3, 4))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code2, mock_judge)
+
+    def test_generate_list_rejects_wrong_types(self):
+        mock_judge = Mock()
+        code = 'assign(l=generate_list(123, 3))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code, mock_judge)
+
+        code2 = 'assign(l=generate_list("colors", "five"))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code2, mock_judge)
+
+    def test_generate_list_accepts_float_length(self):
+        """Numeric literal length (float) is accepted and cast to int."""
+        mock_judge = Mock()
+
+        def gl(prompt: str, length: int) -> list[str]:
+            # Ensure length was cast to int
+            assert isinstance(length, int) and length == 3
+            assert prompt == "colors"
+            return ["red", "blue", "green"]
+
+        mock_judge.generate_list.side_effect = gl
+        code = 'assign(l=generate_list("colors", 3.0))'
+        rewritten = preprocess_dsl_code(code, mock_judge)
+        assert "assign(l=[" in rewritten
+        assert "red" in rewritten and "blue" in rewritten and "green" in rewritten
+
+    def test_generate_list_rejects_nonliteral_prompt(self):
+        mock_judge = Mock()
+        code = 'assign(p="colors")\nassign(l=generate_list(p, 5))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code, mock_judge)
+
+    def test_generate_list_rejects_swapped_types(self):
+        mock_judge = Mock()
+        code = 'assign(l=generate_list(5, "colors"))'
+        with pytest.raises(XentSyntaxError):
+            preprocess_dsl_code(code, mock_judge)

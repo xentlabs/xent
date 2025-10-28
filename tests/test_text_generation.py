@@ -11,6 +11,7 @@ from xent.common.errors import XentSyntaxError
 from xent.runtime.judge import Judge
 
 
+@pytest.mark.integration
 def test_generate_list_smoke():
     """Smoke test for JudgeGenerator.generate_list.
 

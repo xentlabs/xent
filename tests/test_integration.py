@@ -28,8 +28,8 @@ from xent.common.configuration_types import (
 )
 from xent.common.util import dumps
 from xent.presentation.executor import get_default_presentation
-from xent.runtime.default_players import MockXGP
 from xent.runtime.execution import play_game
+from xent.runtime.players.default_players import MockXGP
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_locals
 from xent.storage.directory_storage import DirectoryBenchmarkStorage

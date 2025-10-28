@@ -13,19 +13,6 @@ from xent.common.x_list import XList
 from xent.common.x_string import XString
 from xent.common.xent_event import XentEvent
 
-"""
-Xent Game Player (XGP) base class
-
-This class serves as the base for all player implementations in the Xent game.
-If you want to create a new player, then you should do 3 things:
-1. Implement a new class that inherits from this class. Use `DefaultXGP` in default_players.py as an example.
-2. Add a value to the `PlayerType` literal in xent_types.py that corresponds to your new player type.
-3. Modify the `make_player` function in players.py to handle your new player type.
-
-Once you have done these steps, you can use your new player type in the game configuration by specifying
-the PlayerType you have added.
-"""
-
 MoveResult = namedtuple(
     "MoveResult", ["response", "token_usage", "prompts", "full_response"]
 )

@@ -6,8 +6,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from xent.common.configuration_types import ExecutableGameMap
 from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation
-from xent.runtime.default_players import MockXGP
 from xent.runtime.judge import Judge
+from xent.runtime.players.default_players import MockXGP
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 

@@ -19,8 +19,8 @@ from xent.common.xent_event import (
     serialize_event,
 )
 from xent.presentation.executor import PresentationFunction
-from xent.runtime.base_player import XGP, MoveResult
-from xent.runtime.llm_api_client import make_client
+from xent.runtime.players.base_player import XGP, MoveResult
+from xent.runtime.players.llm_api_client import make_client
 
 
 class MockXGP(XGP):

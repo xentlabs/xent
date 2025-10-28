@@ -35,9 +35,9 @@ from xent.presentation.sdk import (
     get_current_registers,
     get_event_summary,
 )
-from xent.runtime.default_players import DefaultXGP, MockXGP
 from xent.runtime.execution import eval_line, play_game
 from xent.runtime.judge import Judge
+from xent.runtime.players.default_players import DefaultXGP, MockXGP
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 

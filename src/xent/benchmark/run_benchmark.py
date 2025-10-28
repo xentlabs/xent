@@ -14,7 +14,7 @@ from xent.common.version import get_xent_version, validate_version
 from xent.common.xent_event import TokenUsage
 from xent.runtime.execution import play_game
 from xent.runtime.judge import Judge
-from xent.runtime.players import make_npcs, make_player
+from xent.runtime.players.players import make_npcs, make_player
 from xent.runtime.runtime import XentRuntime
 from xent.runtime.variables import build_globals, build_locals
 from xent.storage.storage_interface import BenchmarkStorage

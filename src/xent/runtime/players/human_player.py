@@ -16,8 +16,8 @@ from xent.common.xent_event import (
     deserialize_event,
     serialize_event,
 )
-from xent.runtime.base_player import XGP, MoveResult
-from xent.runtime.default_players import get_presentation_function
+from xent.runtime.players.base_player import XGP, MoveResult
+from xent.runtime.players.default_players import get_presentation_function
 
 
 class HumanXGP(XGP):

@@ -16,9 +16,9 @@ from xent.common.constants import (
 from xent.common.x_flag import XFlag
 from xent.common.x_list import XList
 from xent.common.x_string import XString
-from xent.runtime.base_player import XGP
-from xent.runtime.default_players import MockXGP
 from xent.runtime.judge import Judge
+from xent.runtime.players.base_player import XGP
+from xent.runtime.players.default_players import MockXGP
 
 
 def build_locals(player: XGP, npcs: list[XGP], game_config: ExecutableGameMap):

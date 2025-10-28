@@ -15,7 +15,7 @@ from xent.common.xent_event import (
     RoundStartedEvent,
 )
 from xent.presentation.executor import get_default_presentation
-from xent.runtime.default_players import MockXGP
+from xent.runtime.players.default_players import MockXGP
 from xent.runtime.runtime import XentRuntime
 
 

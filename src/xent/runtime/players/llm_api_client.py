@@ -42,7 +42,7 @@ from xent.common.errors import (
     XentRateLimitError,
 )
 from xent.common.xent_event import LLMMessage, TokenUsage
-from xent.runtime.player_configuration import (
+from xent.runtime.players.player_configuration import (
     DefaultHFXGPOptions,
     check_default_hf_xgp_options,
     check_default_xgp_options,

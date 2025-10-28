@@ -22,7 +22,7 @@ from xent.common.errors import XentConfigurationError
 from xent.common.util import dumps
 from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation
-from xent.runtime.llm_api_client import guess_provider_from_model
+from xent.runtime.players.llm_api_client import guess_provider_from_model
 
 DEFAULT_XENT_METADATA = XentMetadata(
     benchmark_id="",

@@ -4,6 +4,7 @@ from typing import Any
 
 from xent.common.configuration_types import (
     GameMapRoundResult,
+    PlayerName,
     is_omniscient_player_name,
 )
 from xent.common.constants import ZERO_SUM_PLAYER_PAIRS
@@ -55,6 +56,7 @@ class XentRuntime:
         self.replay_counters: dict[int, int] = {}
         self.store_full_interactions = store_full_interactions
         self.last_elicit_player: XGP | None = None
+        self.revealed_registers: dict[PlayerName, list[str]] = {}
 
     def serialize(self) -> dict[str, Any]:
         locals: dict[str, Any] = {}
@@ -80,6 +82,7 @@ class XentRuntime:
             "replay_counters": self.replay_counters,
             "store_full_interactions": self.store_full_interactions,
             "last_elicit_player_id": last_elicit_player_id,
+            "revealed_registers": self.revealed_registers,
         }
         return serialized
 
@@ -140,6 +143,8 @@ class XentRuntime:
                         self.last_elicit_player = npc
                         break
 
+        self.revealed_registers = data["revealed_registers"]
+
         return self
 
     def reset_npcs(self):
@@ -178,6 +183,7 @@ class XentRuntime:
         self.beacons = {}
         self._reset_register_states()
         self.reset_npcs()
+        self.revealed_registers = {}
         return game_result
 
     async def execute(
@@ -317,13 +323,19 @@ class XentRuntime:
                 "Elicit target is static. Elicit requires a non-static register target"
             )
 
-    def _gather_register_states(self, player_name: str) -> dict[str, XString | XList]:
+    def _gather_register_states(
+        self, player_name: PlayerName
+    ) -> dict[str, XString | XList]:
         register_states = {}
         for var_name, var in self.local_vars.items():
             if not isinstance(var, XString | XList):
                 continue
 
-            if var.public or is_omniscient_player_name(player_name):
+            if (
+                var.public
+                or is_omniscient_player_name(player_name)
+                or var_name in self.revealed_registers.get(player_name, [])
+            ):
                 register_states[var_name] = var
 
         logging.debug(
@@ -417,6 +429,11 @@ class XentRuntime:
             values={name: rest_of_args[i] for i, name in enumerate(var_names)},
         )
         await self.send_event(player, reveal_event)
+        if player.name not in self.revealed_registers:
+            self.revealed_registers[player.name] = []
+
+        for var_name in var_names:
+            self.revealed_registers[player.name].append(var_name)
 
         logging.info(f"Revealed {reveal_event} to player {player.name}")
         return None

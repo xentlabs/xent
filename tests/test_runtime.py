@@ -485,9 +485,8 @@ class TestTokenXentList:
         with pytest.raises(TypeError):
             list0 - 2
 
-        # Test scalar multiplication
-        with pytest.raises(TypeError):
-            list0 * 2
+        # Scalar multiplication is valid
+        list0 * 2
 
         # Test scalar division
         with pytest.raises(TypeError):
@@ -500,9 +499,8 @@ class TestTokenXentList:
         with pytest.raises(TypeError):
             10 - list0
 
-        # Test right-hand scalar multiplication
-        with pytest.raises(TypeError):
-            10 * list0
+        # Right-hand scalar multiplication is valid
+        10 * list0
 
         # Test left-hand scalar division
         with pytest.raises(TypeError):
@@ -651,36 +649,6 @@ class TestTokenXentList:
         # Test with different lengths
         with pytest.raises(TypeError):
             list1 + list3
-
-    def test_special_multiplication_rules(self):
-        """Test that multiplication only works with -1 and 1."""
-        list1 = TokenXentList([("a", 2.0), ("b", 3.0)])
-
-        # Test allowed multiplications
-        result = list1 * 1
-        assert result.total_xent() == list1.total_xent()
-
-        result = list1 * -1
-        assert result.total_xent() == -list1.total_xent()
-
-        result = 1 * list1
-        assert result.total_xent() == list1.total_xent()
-
-        result = -1 * list1
-        assert result.total_xent() == -list1.total_xent()
-
-        # Test disallowed multiplications
-        with pytest.raises(TypeError):
-            list1 * 2
-
-        with pytest.raises(TypeError):
-            list1 * 0.5
-
-        with pytest.raises(TypeError):
-            2 * list1
-
-        with pytest.raises(TypeError):
-            list1 * 1.1  # Close to 1 but not exactly
 
     def test_repr_and_str(self):
         """Test __repr__ and __str__ methods."""

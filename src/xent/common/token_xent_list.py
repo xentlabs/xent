@@ -90,18 +90,10 @@ class TokenXentList:
         if not isinstance(other, int | float):
             return NotImplemented
 
-        # Check if value is either -1 or 1
-        if abs(abs(other) - 1) > 1e-9:
-            return NotImplemented
-
         return TokenXentList(self.pairs, scale=self.scale * other)
 
     def __rmul__(self, other):
         if not isinstance(other, int | float):
-            return NotImplemented
-
-        # Check if value is either -1 or 1
-        if abs(abs(other) - 1) > 1e-9:
             return NotImplemented
 
         return TokenXentList(self.pairs, scale=self.scale * other)

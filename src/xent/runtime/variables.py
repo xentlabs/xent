@@ -13,6 +13,7 @@ from xent.common.constants import (
     PUBLIC_REGISTERS,
     STATIC_REGISTERS,
 )
+from xent.common.token_xent_list import TokenXentList
 from xent.common.x_flag import XFlag
 from xent.common.x_list import XList
 from xent.common.x_string import XString
@@ -66,6 +67,8 @@ def build_globals(judge: Judge):
         only_uses_words=only_uses_words,
         sample=sample(judge.rng),
         shuffle=shuffle(judge.rng),
+        punish_negative=punish_negative,
+        reward_positive=reward_positive,
         xent=judge.xent,
         xed=judge.xed,
         nex=judge.nex,
@@ -188,3 +191,19 @@ def only_uses_words(allowed_words: str | XString | XList, text: str | XString) -
     text_words = text.split(" ")
 
     return all(word in allowed_words_list for word in text_words)
+
+
+def punish_negative(reward: TokenXentList, scale: float = 64) -> float:
+    score = reward.total_xent()
+    if score >= 0:
+        return score / scale
+
+    return score * scale
+
+
+def reward_positive(reward: TokenXentList, scale: float = 64) -> float:
+    score = reward.total_xent()
+    if score < 0:
+        return score / scale
+
+    return score * scale

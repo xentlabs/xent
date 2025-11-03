@@ -4,3 +4,4 @@ assign(x1=remove_common_words(x, s1 + s2))
 reveal(x1)
 reward(black, xed(s1 | x1))
 reward(black, dex(s2 | x1))
+

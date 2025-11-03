@@ -109,3 +109,4 @@ Provide your symbol sequence in <move></move> tags. Any other text in your respo
     builder.add_line("Provide your symbol sequence in <move></move> tags.")
     b.user(builder.render())
     return b.render(), ctx
+

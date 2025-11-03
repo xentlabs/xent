@@ -110,3 +110,4 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
     builder.add_line("Provide your prefix in <move></move> tags.")
     b.user(builder.render())
     return b.render(), ctx
+

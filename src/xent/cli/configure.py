@@ -17,12 +17,10 @@ from xent.common.configuration_types import (
     TextGeneratorType,
     XentMetadata,
 )
-from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.errors import XentConfigurationError
-from xent.common.game_discovery import discover_games_in_paths
+from xent.common.game_discovery import discover_games_in_paths, discover_packaged_games
 from xent.common.util import dumps
 from xent.common.version import get_xent_version
-from xent.presentation.executor import get_default_presentation
 from xent.runtime.players.llm_api_client import guess_provider_from_model
 
 DEFAULT_XENT_METADATA = XentMetadata(
@@ -276,13 +274,8 @@ def configure(
         benchmark_id = generate_benchmark_id()
 
     if not game_paths:
-        games = [
-            GameConfig(
-                name="simple_game",
-                code=SIMPLE_GAME_CODE,
-                presentation_function=get_default_presentation(),
-            )
-        ]
+        # Default to games packaged with xent
+        games = discover_packaged_games()
     else:
         games = discover_games_in_paths([Path(p) for p in game_paths])
 

@@ -6,3 +6,4 @@ reward(nex(s1 | s + s2 + t))
 reward(xent(s2 | s + s1))
 reward(xent(s1 | s + s2))
 # TODO consider doing min for the reward to make it the lesser of the two direction
+

@@ -4,3 +4,4 @@ elicit(x, 40)
 ensure(only_uses_words(s1, x))
 assign(x1="Lyra bent over her Alethiometer. The dial spun to these symbols: \"" + x + "\". Lyra looked up and said \"it tells me this\":")
 reward(xed(s | x1))
+

@@ -1,7 +1,7 @@
 {
   "pythonVersion": "3.13",
   "include": ["src/xent"],
-  "exclude": ["**/__pycache__", "**/.venv", "games"],
+  "exclude": ["**/__pycache__", "**/.venv", "games", "src/xent/games"],
   "venvPath": ".",
   "venv": ".venv",
 

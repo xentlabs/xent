@@ -8,3 +8,4 @@ elicit(x2, 5)
 ensure(xed(x2 | s + x1) >= xed(t2 | t1))
 
 reward(dex(x2 | s))
+

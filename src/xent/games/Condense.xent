@@ -3,3 +3,4 @@ elicit(x, 10)
 assign(x1=remove_common_words(x, s))
 reveal(x1)
 reward(xed(s | x1))
+

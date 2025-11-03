@@ -1,3 +1,4 @@
+import importlib.resources as resources
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -63,3 +64,41 @@ def discover_games_in_dir(directory: Path) -> list[GameConfig]:
     if not directory.exists() or not directory.is_dir():
         return []
     return discover_games_in_paths([directory])
+
+
+def discover_packaged_games() -> list[GameConfig]:
+    """Discover packaged games bundled under xent.games.
+
+    Enumerates *.xent files in the xent.games package and loads their code and
+    optional companion "<name>_presentation.py" files. Returns games sorted by
+    name (case-insensitive).
+    """
+    games: list[GameConfig] = []
+    try:
+        pkg = resources.files("xent.games")
+    except Exception:
+        return []
+
+    try:
+        xent_files = [p for p in pkg.iterdir() if p.name.endswith(".xent")]
+    except Exception:
+        return []
+
+    for xf in xent_files:
+        name = xf.name[:-5]  # strip .xent
+        try:
+            code = xf.read_text()
+        except Exception:
+            continue
+        pres_code = get_default_presentation()
+        pres_path = pkg.joinpath(f"{name}_presentation.py")
+        try:
+            if pres_path.is_file():
+                pres_code = pres_path.read_text()
+        except Exception:
+            # keep default if read fails
+            pass
+        games.append(GameConfig(name=name, code=code, presentation_function=pres_code))
+
+    games.sort(key=lambda g: g["name"].lower())
+    return games

@@ -5,3 +5,4 @@ reveal(x1)
 reward(xed(s1 | x1))
 reward(xed(s2 | x1))
 reward(xed(s3 | x1))
+

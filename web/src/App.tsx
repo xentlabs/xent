@@ -234,7 +234,7 @@ function App() {
     fetchBenchmarks();
   }, []);
 
-  // Preload games from ./games for default option (no auto-switch to custom)
+  // Preload packaged games for default option (no auto-switch to custom)
   useEffect(() => {
     const loadGames = async () => {
       try {
@@ -244,7 +244,7 @@ function App() {
         }
       } catch (err) {
         // Non-fatal: fall back to simple game path
-        console.warn('Unable to load games from ./games:', err);
+        console.warn('Unable to load packaged games:', err);
       }
     };
     loadGames();
@@ -270,7 +270,7 @@ function App() {
   const buildConfig = (): CondensedXentBenchmarkConfig => {
     let games: GameConfig[];
     if (!useCustomGames) {
-      // Use games discovered from ./games, or fall back to the simple game
+      // Use packaged games, or fall back to the simple game
       games = (availableGames && availableGames.length > 0)
         ? availableGames
         : [{
@@ -620,17 +620,17 @@ function App() {
                 onChange={() => setUseCustomGames(false)}
                 style={{ marginRight: '10px' }}
               />
-              Use Games from ./games
+              Use Packaged Games
             </label>
             {(!useCustomGames) && (
               <div style={{ marginLeft: '25px', fontSize: '12px', color: '#666', marginTop: '5px' }}>
                 {availableGames.length > 0 ? (
                   <div>
-                    Found {availableGames.length} game{availableGames.length !== 1 ? 's' : ''} in ./games: {availableGames.map(g => g.name).join(', ')}
+                    Found {availableGames.length} packaged game{availableGames.length !== 1 ? 's' : ''}: {availableGames.map(g => g.name).join(', ')}
                   </div>
                 ) : (
                   <div>
-                    No games found in ./games. Falling back to the default simple game.
+                    No packaged games found. Falling back to the default simple game.
                   </div>
                 )}
               </div>

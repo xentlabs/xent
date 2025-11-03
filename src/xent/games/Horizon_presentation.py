@@ -121,4 +121,3 @@ You will be able to play multiple rounds of this game. You will see your choices
     builder.add_line("Provide your move within the <move></move> tags.")
     b.user(builder.render())
     return b.render(), ctx
-

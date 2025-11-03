@@ -124,4 +124,3 @@ Provide your prefix in <move></move> tags. Any other text in your response will 
 
     b.user(builder.render())
     return b.render(), ctx
-

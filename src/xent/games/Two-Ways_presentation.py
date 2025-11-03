@@ -115,4 +115,3 @@ Your move can only be 10 tokens long in total. Anything beyond that will be trun
 
     b.user(builder.render())
     return b.render(), ctx
-

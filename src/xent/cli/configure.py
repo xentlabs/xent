@@ -19,6 +19,7 @@ from xent.common.configuration_types import (
 )
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.errors import XentConfigurationError
+from xent.common.game_discovery import discover_games_in_paths
 from xent.common.util import dumps
 from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation
@@ -42,40 +43,6 @@ DEFAULT_EXPANSION_CONFIG = ExpansionConfig(
         "max_length": 50,
     },
 )
-
-
-def game_from_file(game_file_path: Path) -> GameConfig:
-    game_name = game_file_path.stem
-    game_code = game_file_path.read_text()
-
-    presentation_function = get_default_presentation()
-    presentation_path = game_file_path.with_name(f"{game_name}_presentation.py")
-    try:
-        presentation_function = presentation_path.read_text()
-    except FileNotFoundError:
-        click.echo(f"No presentation function found for game '{game_name}'")
-
-    return GameConfig(
-        name=game_name, code=game_code, presentation_function=presentation_function
-    )
-
-
-def games_from_paths(paths: list[Path]) -> list[GameConfig]:
-    all_game_paths: set[Path] = set()
-    for p in paths:
-        if p.is_dir():
-            all_game_paths.update(p.glob("*.xent"))
-        elif p.is_file():
-            if p.suffix != ".xent":
-                raise click.BadParameter(f"Not a .xent file: {p}")
-            all_game_paths.add(p)
-        else:
-            raise click.BadParameter(f"Path does not exist: {p}")
-
-    # Two paths that point to the same file should be considered the same
-    all_game_paths = {p.resolve() for p in all_game_paths}
-
-    return [game_from_file(p) for p in all_game_paths]
 
 
 def parse_model_spec(spec: str) -> tuple[str, dict[str, Any]]:
@@ -317,7 +284,7 @@ def configure(
             )
         ]
     else:
-        games = games_from_paths([Path(p) for p in game_paths])
+        games = discover_games_in_paths([Path(p) for p in game_paths])
 
     config: Any = build_benchmark_config(
         model,

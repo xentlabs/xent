@@ -17,6 +17,14 @@ export async function fetchBenchmarkList(): Promise<string[]> {
   return response.json();
 }
 
+export async function fetchAvailableGames(): Promise<any[]> {
+  const response = await fetch('/api/games');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch games: ${response.statusText}`);
+  }
+  return response.json();
+}
+
 export async function runBenchmark(benchmarkId: string): Promise<any> {
   const response = await fetch(`/api/benchmarks/${benchmarkId}/run`, {
     method: 'POST',

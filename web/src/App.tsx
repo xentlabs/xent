@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchAvailableGames } from './utils/api';
 import BenchmarkDashboard from './views/BenchmarkDashboard';
 import PlayerConfigForm, { PlayerConfig } from './components/PlayerConfigForm';
 import PlayPage from './components/play/PlayPage';
@@ -218,6 +219,7 @@ function App() {
   const [numMapsPerGame, setNumMapsPerGame] = useState<number>(1);
   const [useCustomGames, setUseCustomGames] = useState<boolean>(false);
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
+  const [availableGames, setAvailableGames] = useState<GameConfig[]>([]);
   const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
   const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
   const [currentView, setCurrentView] = useState<'list' | 'dashboard' | 'play'>('list');
@@ -229,6 +231,22 @@ function App() {
 
   useEffect(() => {
     fetchBenchmarks();
+  }, []);
+
+  // Preload games from ./games for default option (no auto-switch to custom)
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        const games = await fetchAvailableGames();
+        if (Array.isArray(games)) {
+          setAvailableGames(games as GameConfig[]);
+        }
+      } catch (err) {
+        // Non-fatal: fall back to simple game path
+        console.warn('Unable to load games from ./games:', err);
+      }
+    };
+    loadGames();
   }, []);
 
   const fetchBenchmarks = async () => {
@@ -250,14 +268,23 @@ function App() {
 
   const buildConfig = (): CondensedXentBenchmarkConfig => {
     let games: GameConfig[];
-    if (!useCustomGames || customGames.length === 0) {
-      games = [{
-        name: "simple_game",
-        code: SIMPLE_GAME_CODE,
-        presentation_function: SINGLE_PRESENTATION,
-      }];
+    if (!useCustomGames) {
+      // Use games discovered from ./games, or fall back to the simple game
+      games = (availableGames && availableGames.length > 0)
+        ? availableGames
+        : [{
+            name: "simple_game",
+            code: SIMPLE_GAME_CODE,
+            presentation_function: SINGLE_PRESENTATION,
+          }];
     } else {
-      games = customGames;
+      games = customGames.length > 0
+        ? customGames
+        : [{
+            name: "simple_game",
+            code: SIMPLE_GAME_CODE,
+            presentation_function: SINGLE_PRESENTATION,
+          }];
     }
 
     return {
@@ -582,11 +609,21 @@ function App() {
                 onChange={() => setUseCustomGames(false)}
                 style={{ marginRight: '10px' }}
               />
-              Use Default Simple Game
+              Use Games from ./games
             </label>
-            <div style={{ marginLeft: '25px', fontSize: '12px', color: '#666', marginTop: '5px' }}>
-              A basic text completion game where players provide prefixes to minimize cross-entropy
-            </div>
+            {(!useCustomGames) && (
+              <div style={{ marginLeft: '25px', fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                {availableGames.length > 0 ? (
+                  <div>
+                    Found {availableGames.length} game{availableGames.length !== 1 ? 's' : ''} in ./games: {availableGames.map(g => g.name).join(', ')}
+                  </div>
+                ) : (
+                  <div>
+                    No games found in ./games. Falling back to the default simple game.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '15px' }}>
@@ -664,14 +701,7 @@ function App() {
             </div>
           )}
 
-          {!useCustomGames && (
-            <div style={{ padding: '10px', backgroundColor: '#e8f5e8', border: '1px solid #4CAF50', marginTop: '10px' }}>
-              <strong>Default Simple Game</strong>
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                Game: "simple_game" - Players provide text prefixes to minimize cross-entropy of a generated story.
-              </p>
-            </div>
-          )}
+          {/* Intentionally no extra panel here; summary shown under radio above */}
         </fieldset>
 
         <div style={{ display: 'flex', gap: '10px' }}>

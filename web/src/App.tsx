@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { fetchAvailableGames } from './utils/api';
 import BenchmarkDashboard from './views/BenchmarkDashboard';
 import PlayerConfigForm, { PlayerConfig } from './components/PlayerConfigForm';
 import PlayPage from './components/play/PlayPage';
@@ -218,6 +219,7 @@ function App() {
   const [numMapsPerGame, setNumMapsPerGame] = useState<number>(1);
   const [useCustomGames, setUseCustomGames] = useState<boolean>(false);
   const [customGames, setCustomGames] = useState<GameConfig[]>([]);
+  const [availableGames, setAvailableGames] = useState<GameConfig[]>([]);
   const [benchmarkIds, setBenchmarkIds] = useState<string[]>([]);
   const [loadingBenchmarks, setLoadingBenchmarks] = useState<boolean>(true);
   const [currentView, setCurrentView] = useState<'list' | 'dashboard' | 'play'>('list');
@@ -226,9 +228,26 @@ function App() {
   const [loadingResults, setLoadingResults] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [deleteConfirm, setDeleteConfirm] = useState<boolean>(false);
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
 
   useEffect(() => {
     fetchBenchmarks();
+  }, []);
+
+  // Preload games from ./games for default option (no auto-switch to custom)
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        const games = await fetchAvailableGames();
+        if (Array.isArray(games)) {
+          setAvailableGames(games as GameConfig[]);
+        }
+      } catch (err) {
+        // Non-fatal: fall back to simple game path
+        console.warn('Unable to load games from ./games:', err);
+      }
+    };
+    loadGames();
   }, []);
 
   const fetchBenchmarks = async () => {
@@ -250,14 +269,23 @@ function App() {
 
   const buildConfig = (): CondensedXentBenchmarkConfig => {
     let games: GameConfig[];
-    if (!useCustomGames || customGames.length === 0) {
-      games = [{
-        name: "simple_game",
-        code: SIMPLE_GAME_CODE,
-        presentation_function: SINGLE_PRESENTATION,
-      }];
+    if (!useCustomGames) {
+      // Use games discovered from ./games, or fall back to the simple game
+      games = (availableGames && availableGames.length > 0)
+        ? availableGames
+        : [{
+            name: "simple_game",
+            code: SIMPLE_GAME_CODE,
+            presentation_function: SINGLE_PRESENTATION,
+          }];
     } else {
-      games = customGames;
+      games = customGames.length > 0
+        ? customGames
+        : [{
+            name: "simple_game",
+            code: SIMPLE_GAME_CODE,
+            presentation_function: SINGLE_PRESENTATION,
+          }];
     }
 
     return {
@@ -286,7 +314,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (isSavingConfig) return;
+    setIsSavingConfig(true);
     try {
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -298,8 +327,10 @@ function App() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Configuration stored successfully!\nBenchmark ID: ${result.benchmark_id}`);
-        fetchBenchmarks(); // Refresh the list
+        // Navigate directly to the benchmark dashboard for the new configuration
+        viewDashboard(result.benchmark_id);
+        // Refresh the saved configurations list in the background
+        fetchBenchmarks();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to store configuration'}`);
@@ -307,6 +338,8 @@ function App() {
     } catch (error) {
       console.error('Network error:', error);
       alert('Network error: Could not connect to server');
+    } finally {
+      setIsSavingConfig(false);
     }
   };
 
@@ -446,6 +479,11 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <style>
+        {`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `}
+      </style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>XENT Benchmarks</h1>
         <button
@@ -582,11 +620,21 @@ function App() {
                 onChange={() => setUseCustomGames(false)}
                 style={{ marginRight: '10px' }}
               />
-              Use Default Simple Game
+              Use Games from ./games
             </label>
-            <div style={{ marginLeft: '25px', fontSize: '12px', color: '#666', marginTop: '5px' }}>
-              A basic text completion game where players provide prefixes to minimize cross-entropy
-            </div>
+            {(!useCustomGames) && (
+              <div style={{ marginLeft: '25px', fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                {availableGames.length > 0 ? (
+                  <div>
+                    Found {availableGames.length} game{availableGames.length !== 1 ? 's' : ''} in ./games: {availableGames.map(g => g.name).join(', ')}
+                  </div>
+                ) : (
+                  <div>
+                    No games found in ./games. Falling back to the default simple game.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ marginBottom: '15px' }}>
@@ -664,22 +712,29 @@ function App() {
             </div>
           )}
 
-          {!useCustomGames && (
-            <div style={{ padding: '10px', backgroundColor: '#e8f5e8', border: '1px solid #4CAF50', marginTop: '10px' }}>
-              <strong>Default Simple Game</strong>
-              <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                Game: "simple_game" - Players provide text prefixes to minimize cross-entropy of a generated story.
-              </p>
-            </div>
-          )}
+          {/* Intentionally no extra panel here; summary shown under radio above */}
         </fieldset>
 
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             type="submit"
-            style={{ padding: '10px 20px', backgroundColor: '#2196F3', color: 'white', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+            disabled={isSavingConfig}
+            style={{ padding: '10px 20px', backgroundColor: isSavingConfig ? '#7aaef0' : '#2196F3', color: 'white', border: 'none', cursor: isSavingConfig ? 'default' : 'pointer', fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
-            Create Benchmark Configuration
+            {isSavingConfig && (
+              <span
+                style={{
+                  width: '14px',
+                  height: '14px',
+                  border: '2px solid rgba(255,255,255,0.6)',
+                  borderTopColor: 'white',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 1s linear infinite'
+                }}
+              />
+            )}
+            {isSavingConfig ? 'Saving…' : 'Create Benchmark Configuration'}
           </button>
         </div>
       </form>

@@ -13,6 +13,7 @@ from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.benchmark.run_benchmark import run_benchmark
 from xent.common.configuration_types import CondensedXentBenchmarkConfig
 from xent.common.constants import SIMPLE_GAME_CODE
+from xent.common.game_discovery import discover_games_in_dir
 from xent.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
 from xent.web.websocket_game_runner import run_websocket_game
 
@@ -262,6 +263,23 @@ async def get_benchmark_stats(benchmark_id: str):
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get benchmark stats: {str(e)}"
+        ) from e
+
+
+@app.get("/api/games")
+async def list_available_games():
+    """Discover games in CWD ./games and return them as GameConfig objects.
+
+    Note: This uses the shared discovery logic with the CLI. If no games are
+    found, returns an empty list (the frontend will fall back to a simple game).
+    """
+    try:
+        games_dir = Path.cwd() / "games"
+        games = discover_games_in_dir(games_dir)
+        return games
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to discover games: {str(e)}"
         ) from e
 
 

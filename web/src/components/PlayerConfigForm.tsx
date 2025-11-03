@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { parseModelSpec } from '../utils/modelSpec';
 
 export interface PlayerConfig {
   name: 'black' | 'white' | 'alice' | 'bob' | 'carol' | 'env';
@@ -7,6 +8,7 @@ export interface PlayerConfig {
   options: {
     model?: string;
     provider?: string;
+    request_params?: any;
   };
 }
 
@@ -41,9 +43,9 @@ function guessProviderFromModel(model: string): string {
   }
 }
 
-export default function PlayerConfigForm({ 
-  onSubmit, 
-  onCancel, 
+export default function PlayerConfigForm({
+  onSubmit,
+  onCancel,
   existingPlayerIds = [],
   submitLabel = 'Add Players',
   embedded = false,
@@ -60,11 +62,11 @@ export default function PlayerConfigForm({
     }
     return ['gpt-4o-mini'];
   };
-  
+
   const initIsHuman = (): boolean => {
     return !!(value && value.length > 0 && value[0].player_type === 'human');
   };
-  
+
   const [models, setModels] = useState<string[]>(initModels());
   const [isHuman, setIsHuman] = useState<boolean>(initIsHuman());
   const [error, setError] = useState<string | null>(null);
@@ -79,15 +81,22 @@ export default function PlayerConfigForm({
         options: {},
       }];
     }
-    return currentModels.map(model => ({
-      name: 'black' as const,
-      id: model,
-      player_type: 'default',
-      options: {
-        model: model,
-        provider: guessProviderFromModel(model),
-      },
-    }));
+    return currentModels.map(spec => {
+      const { model, params } = parseModelSpec(spec);
+      const player: PlayerConfig = {
+        name: 'black' as const,
+        id: model,
+        player_type: 'default',
+        options: {
+          model,
+          provider: guessProviderFromModel(model),
+        },
+      };
+      if (params && Object.keys(params).length > 0) {
+        (player.options as any).request_params = params;
+      }
+      return player;
+    });
   };
 
   // Notify parent of changes in embedded mode
@@ -116,7 +125,7 @@ export default function PlayerConfigForm({
     setError(null); // Clear error when user makes changes
     notifyChange(newModels, isHuman);
   };
-  
+
   const updateIsHuman = (value: boolean) => {
     setIsHuman(value);
     setError(null);
@@ -125,10 +134,10 @@ export default function PlayerConfigForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Skip if embedded (parent form handles submission)
     if (embedded) return;
-    
+
     // Build player configs
     let players: PlayerConfig[];
     if (isHuman) {
@@ -140,7 +149,9 @@ export default function PlayerConfigForm({
       players = buildPlayerConfigs(models, true);
     } else {
       // Validate models
-      const duplicates = models.filter(model => existingPlayerIds.includes(model));
+      const duplicates = models
+        .map(spec => parseModelSpec(spec).model)
+        .filter(base => existingPlayerIds.includes(base));
       if (duplicates.length > 0) {
         setError(`These models already exist in the benchmark: ${duplicates.join(', ')}`);
         return;
@@ -163,10 +174,10 @@ export default function PlayerConfigForm({
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div style={{ 
-          marginBottom: '15px', 
-          padding: '10px', 
-          backgroundColor: '#fee', 
+        <div style={{
+          marginBottom: '15px',
+          padding: '10px',
+          backgroundColor: '#fee',
           border: '1px solid #fcc',
           borderRadius: '4px',
           color: '#c00'
@@ -190,9 +201,9 @@ export default function PlayerConfigForm({
           <div>
             <h4 style={{ marginBottom: '10px' }}>Model Players</h4>
             {models.map((model, index) => (
-              <div key={index} style={{ 
-                marginBottom: '10px', 
-                padding: '10px', 
+              <div key={index} style={{
+                marginBottom: '10px',
+                padding: '10px',
                 backgroundColor: '#f5f5f5',
                 borderRadius: '4px'
               }}>
@@ -202,8 +213,8 @@ export default function PlayerConfigForm({
                     placeholder="Model name (e.g., gpt-4o, claude-3-sonnet)"
                     value={model}
                     onChange={(e) => updateModel(index, e.target.value)}
-                    style={{ 
-                      flex: 1, 
+                    style={{
+                      flex: 1,
                       padding: '8px',
                       border: '1px solid #ddd',
                       borderRadius: '4px'
@@ -211,17 +222,17 @@ export default function PlayerConfigForm({
                     required
                   />
                   <span style={{ fontSize: '12px', color: '#666', minWidth: '80px' }}>
-                    {guessProviderFromModel(model)}
+                    {guessProviderFromModel(parseModelSpec(model).model)}
                   </span>
                   {models.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeModel(index)}
-                      style={{ 
-                        padding: '6px 12px', 
-                        backgroundColor: '#ff4444', 
-                        color: 'white', 
-                        border: 'none', 
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#ff4444',
+                        color: 'white',
+                        border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer'
                       }}
@@ -233,13 +244,17 @@ export default function PlayerConfigForm({
               </div>
             ))}
 
+            <div style={{ marginTop: '6px', fontSize: '12px', color: '#666' }}>
+              Tip: add query params like <code>?temperature=0.7&amp;reasoning_effort="high"</code>
+            </div>
+
             <button
               type="button"
               onClick={addModel}
-              style={{ 
-                padding: '8px 16px', 
-                backgroundColor: '#4CAF50', 
-                color: 'white', 
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#4CAF50',
+                color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
@@ -250,9 +265,9 @@ export default function PlayerConfigForm({
             </button>
           </div>
         ) : (
-          <div style={{ 
-            padding: '15px', 
-            backgroundColor: '#e8f4fd', 
+          <div style={{
+            padding: '15px',
+            backgroundColor: '#e8f4fd',
             border: '1px solid #b3d9ff',
             borderRadius: '4px'
           }}>
@@ -265,16 +280,16 @@ export default function PlayerConfigForm({
       </div>
 
       {existingPlayerIds.length > 0 && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '10px', 
+        <div style={{
+          marginBottom: '20px',
+          padding: '10px',
           backgroundColor: '#f8f9fa',
           borderRadius: '4px'
         }}>
           <strong>Existing Players:</strong>
           <div style={{ marginTop: '5px' }}>
             {existingPlayerIds.map(id => (
-              <span key={id} style={{ 
+              <span key={id} style={{
                 display: 'inline-block',
                 marginRight: '8px',
                 marginTop: '4px',
@@ -295,10 +310,10 @@ export default function PlayerConfigForm({
           <button
             type="button"
             onClick={onCancel}
-            style={{ 
-              padding: '10px 20px', 
-              backgroundColor: '#6c757d', 
-              color: 'white', 
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer'
@@ -308,10 +323,10 @@ export default function PlayerConfigForm({
           </button>
           <button
             type="submit"
-            style={{ 
-              padding: '10px 20px', 
-              backgroundColor: '#2196F3', 
-              color: 'white', 
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#2196F3',
+              color: 'white',
               border: 'none',
               borderRadius: '4px',
               cursor: 'pointer'

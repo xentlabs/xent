@@ -11,7 +11,6 @@ from xent.benchmark.expand_benchmark import expand_benchmark_config
 from xent.cli.configure import (
     add_player_to_config,
     configure,
-    games_from_paths,
     parse_model_spec,
     remove_player_from_config,
 )
@@ -20,6 +19,7 @@ from xent.common.configuration_types import (
     ExpandedXentBenchmarkConfig,
     PlayerConfig,
 )
+from xent.common.game_discovery import discover_games_in_paths
 from xent.common.version import get_xent_version
 from xent.presentation.executor import get_default_presentation
 
@@ -227,7 +227,7 @@ def present_turn(game_state, since_events, metadata, full_history=None, ctx=None
             another_path.write_text('assign(s="another")')
 
             # Test that duplicate games are not added
-            games = games_from_paths([simple_path, temp_dir])
+            games = discover_games_in_paths([simple_path, temp_dir])
             assert len(games) == 4
 
             # Verify each game

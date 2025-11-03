@@ -228,6 +228,7 @@ function App() {
   const [loadingResults, setLoadingResults] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [deleteConfirm, setDeleteConfirm] = useState<boolean>(false);
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
 
   useEffect(() => {
     fetchBenchmarks();
@@ -313,7 +314,8 @@ function App() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (isSavingConfig) return;
+    setIsSavingConfig(true);
     try {
       const response = await fetch('/api/config', {
         method: 'POST',
@@ -325,8 +327,10 @@ function App() {
 
       if (response.ok) {
         const result = await response.json();
-        alert(`Configuration stored successfully!\nBenchmark ID: ${result.benchmark_id}`);
-        fetchBenchmarks(); // Refresh the list
+        // Navigate directly to the benchmark dashboard for the new configuration
+        viewDashboard(result.benchmark_id);
+        // Refresh the saved configurations list in the background
+        fetchBenchmarks();
       } else {
         const error = await response.json();
         alert(`Error: ${error.detail || 'Failed to store configuration'}`);
@@ -334,6 +338,8 @@ function App() {
     } catch (error) {
       console.error('Network error:', error);
       alert('Network error: Could not connect to server');
+    } finally {
+      setIsSavingConfig(false);
     }
   };
 
@@ -473,6 +479,11 @@ function App() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'system-ui, sans-serif', maxWidth: '800px', margin: '0 auto' }}>
+      <style>
+        {`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        `}
+      </style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>XENT Benchmarks</h1>
         <button
@@ -707,9 +718,23 @@ function App() {
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             type="submit"
-            style={{ padding: '10px 20px', backgroundColor: '#2196F3', color: 'white', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+            disabled={isSavingConfig}
+            style={{ padding: '10px 20px', backgroundColor: isSavingConfig ? '#7aaef0' : '#2196F3', color: 'white', border: 'none', cursor: isSavingConfig ? 'default' : 'pointer', fontSize: '16px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
           >
-            Create Benchmark Configuration
+            {isSavingConfig && (
+              <span
+                style={{
+                  width: '14px',
+                  height: '14px',
+                  border: '2px solid rgba(255,255,255,0.6)',
+                  borderTopColor: 'white',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                  animation: 'spin 1s linear infinite'
+                }}
+              />
+            )}
+            {isSavingConfig ? 'Saving…' : 'Create Benchmark Configuration'}
           </button>
         </div>
       </form>

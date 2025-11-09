@@ -23,7 +23,11 @@ interface PlayerConfigFormProps {
 }
 
 function guessProviderFromModel(model: string): string {
-  const modelLower = model.toLowerCase();
+  const modelLower = model.toLowerCase().trim();
+  // Detect Ollama models first: either explicit namespace or tag syntax like "qwen2:7b"
+  if (modelLower.startsWith('ollama/') || modelLower.includes(':')) {
+    return 'ollama';
+  }
   if (modelLower.includes('gpt') || modelLower.includes('o3') || modelLower.includes('o4')) {
     return 'openai';
   } else if (modelLower.includes('claude')) {
@@ -34,10 +38,9 @@ function guessProviderFromModel(model: string): string {
     return 'grok';
   } else if (modelLower.includes('deepseek')) {
     return 'deepseek';
-  } else if (model.includes('/') && !model.startsWith('ollama/')) {
+  } else if (model.includes('/') && !modelLower.startsWith('ollama/')) {
+    // Likely an OpenRouter or HF-style identifier; keep previous behavior here
     return 'openrouter';
-  } else if (model.startsWith('ollama/')) {
-    return 'ollama';
   } else {
     return 'openai'; // default fallback
   }

@@ -206,10 +206,10 @@ function generateBenchmarkId(): string {
 function App() {
   const [players, setPlayers] = useState<PlayerConfig[]>([{
     name: 'black',
-    id: 'gpt-4o',
+    id: 'gpt-5-mini',
     player_type: 'default',
     options: {
-      model: 'gpt-4o',
+      model: 'gpt-5-mini',
       provider: 'openai',
     },
   }]);

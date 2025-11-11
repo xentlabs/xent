@@ -63,7 +63,7 @@ export default function PlayerConfigForm({
       }
       return value.map(p => p.id);
     }
-    return ['gpt-4o-mini'];
+    return ['gpt-5-mini'];
   };
 
   const initIsHuman = (): boolean => {
@@ -111,7 +111,7 @@ export default function PlayerConfigForm({
   };
 
   const addModel = () => {
-    const newModels = [...models, 'gpt-4o-mini'];
+    const newModels = [...models, 'gpt-5-mini'];
     setModels(newModels);
     notifyChange(newModels, isHuman);
   };
@@ -213,7 +213,7 @@ export default function PlayerConfigForm({
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <input
                     type="text"
-                    placeholder="Model name (e.g., gpt-4o, claude-3-sonnet)"
+                    placeholder="Model name (e.g., gpt-5, claude-sonnet-4-5-20250929)"
                     value={model}
                     onChange={(e) => updateModel(index, e.target.value)}
                     style={{

@@ -7,6 +7,14 @@ from xent.runtime.text_generation.text_generation import TextGenerator
 
 CosmopediaGenerationMode = Literal["SEQUENTIAL", "SHUFFLE"]
 
+"""
+To convert from .parquet files to jsonl (which should be used here):
+
+duckdb -c "COPY (SELECT * FROM read_parquet('path/to/file.parquet'))
+           TO 'path/to/file.jsonl'
+           (FORMAT JSON, ARRAY false);"
+"""
+
 
 class CosmopediaEntry(TypedDict):
     prompt: str

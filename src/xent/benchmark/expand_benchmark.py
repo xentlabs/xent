@@ -11,7 +11,9 @@ from xent.common.configuration_types import (
 )
 from xent.common.errors import XentSyntaxError
 from xent.runtime.judge import Judge
-from xent.runtime.text_generation.corpus_generation import CommunityArchiveTextGenerator
+from xent.runtime.text_generation.community_archive_generation import (
+    CommunityArchiveTextGenerator,
+)
 from xent.runtime.text_generation.text_generation import TextGenerator
 
 

@@ -23,7 +23,11 @@ interface PlayerConfigFormProps {
 }
 
 function guessProviderFromModel(model: string): string {
-  const modelLower = model.toLowerCase();
+  const modelLower = model.toLowerCase().trim();
+  // Detect Ollama models first: either explicit namespace or tag syntax like "qwen2:7b"
+  if (modelLower.startsWith('ollama/') || modelLower.includes(':')) {
+    return 'ollama';
+  }
   if (modelLower.includes('gpt') || modelLower.includes('o3') || modelLower.includes('o4')) {
     return 'openai';
   } else if (modelLower.includes('claude')) {
@@ -34,10 +38,9 @@ function guessProviderFromModel(model: string): string {
     return 'grok';
   } else if (modelLower.includes('deepseek')) {
     return 'deepseek';
-  } else if (model.includes('/') && !model.startsWith('ollama/')) {
+  } else if (model.includes('/') && !modelLower.startsWith('ollama/')) {
+    // Likely an OpenRouter or HF-style identifier; keep previous behavior here
     return 'openrouter';
-  } else if (model.startsWith('ollama/')) {
-    return 'ollama';
   } else {
     return 'openai'; // default fallback
   }
@@ -60,7 +63,7 @@ export default function PlayerConfigForm({
       }
       return value.map(p => p.id);
     }
-    return ['gpt-4o-mini'];
+    return ['gpt-5-mini'];
   };
 
   const initIsHuman = (): boolean => {
@@ -108,7 +111,7 @@ export default function PlayerConfigForm({
   };
 
   const addModel = () => {
-    const newModels = [...models, 'gpt-4o-mini'];
+    const newModels = [...models, 'gpt-5-mini'];
     setModels(newModels);
     notifyChange(newModels, isHuman);
   };
@@ -210,7 +213,7 @@ export default function PlayerConfigForm({
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                   <input
                     type="text"
-                    placeholder="Model name (e.g., gpt-4o, claude-3-sonnet)"
+                    placeholder="Model name (e.g., gpt-5, claude-sonnet-4-5-20250929)"
                     value={model}
                     onChange={(e) => updateModel(index, e.target.value)}
                     style={{

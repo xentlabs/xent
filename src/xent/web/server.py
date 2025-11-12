@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,15 @@ from xent.common.configuration_types import CondensedXentBenchmarkConfig
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.game_discovery import discover_packaged_games
 from xent.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
+from xent.web.keys_store import (
+    SUPPORTED_KEYS,
+    apply_keystore_to_env,
+    bootstrap_from_env_to_keystore_if_missing,
+    effective_summary,
+    load_keystore,
+    required_env_for_providers,
+    update_keystore,
+)
 from xent.web.websocket_game_runner import run_websocket_game
 
 app = FastAPI(title="XENT Web Interface")
@@ -22,9 +32,18 @@ app = FastAPI(title="XENT Web Interface")
 STORAGE_DIR = Path.cwd() / "results"
 storage = DirectoryStorage(STORAGE_DIR)
 
+# Initialize keystore and seed environment (environment always takes precedence)
+with contextlib.suppress(Exception):
+    bootstrap_from_env_to_keystore_if_missing()
+    apply_keystore_to_env()
+
 
 class ConfigRequest(BaseModel):
     config: CondensedXentBenchmarkConfig
+
+
+class KeysUpdateRequest(BaseModel):
+    keys: dict[str, str | None]
 
 
 # Serve static files
@@ -88,6 +107,33 @@ async def run_benchmark_async(benchmark_id: str):
             raise HTTPException(
                 status_code=404, detail=f"Benchmark {benchmark_id} not found"
             )
+
+        # Refresh environment from keystore just before starting (env wins)
+        with contextlib.suppress(Exception):
+            apply_keystore_to_env(load_keystore())
+
+        # Validate required keys based on providers declared in players
+        try:
+            providers: set[str] = set()
+            for p in config.get("players", []):
+                provider = (p.get("options") or {}).get("provider")
+                if isinstance(provider, str) and provider:
+                    providers.add(provider)
+            required = required_env_for_providers(providers)
+            missing = sorted([k for k in required if not os.getenv(k)])
+            if missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        "Missing API keys required for selected providers: "
+                        + ", ".join(missing)
+                    ),
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            # Don't block runs on unexpected validation errors
+            pass
 
         # Start benchmark execution in background (don't wait for completion)
         asyncio.create_task(run_benchmark_background(config, benchmark_storage))
@@ -332,6 +378,52 @@ async def add_players_to_benchmark(benchmark_id: str, request: AddPlayerRequest)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to add players: {str(e)}"
+        ) from e
+
+
+# Key management endpoints
+@app.get("/api/keys")
+async def get_keys_summary():
+    try:
+        return effective_summary()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load keys: {str(e)}"
+        ) from e
+
+
+@app.post("/api/keys")
+async def update_keys(request: KeysUpdateRequest):
+    try:
+        # Filter incoming keys to supported set only
+        filtered: dict[str, str | None] = {
+            k: v for k, v in (request.keys or {}).items() if k in SUPPORTED_KEYS
+        }
+        update_keystore(filtered)
+        # Apply to env where not already set (env values take precedence)
+        apply_keystore_to_env()
+        return effective_summary()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save keys: {str(e)}"
+        ) from e
+
+
+@app.delete("/api/keys/{name}")
+async def delete_key(name: str, unset_env: bool = False):
+    try:
+        if name not in SUPPORTED_KEYS:
+            raise HTTPException(status_code=400, detail=f"Unsupported key: {name}")
+        update_keystore({name: None})
+        if unset_env:
+            with contextlib.suppress(Exception):
+                os.environ.pop(name, None)
+        return effective_summary()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete key: {str(e)}"
         ) from e
 
 

@@ -3,6 +3,7 @@ import { fetchBenchmarkStats, runBenchmark, deleteBenchmarkResults, addPlayersTo
 import { BenchmarkStats } from '../types/benchmark';
 import OverallView from './OverallView';
 import Modal from '../components/Modal';
+import ApiKeysModal from '../components/ApiKeysModal';
 import PlayerConfigForm, { PlayerConfig } from '../components/PlayerConfigForm';
 
 interface BenchmarkDashboardProps {
@@ -20,6 +21,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [addingPlayers, setAddingPlayers] = useState(false);
+  const [showKeysModal, setShowKeysModal] = useState(false);
 
   // Fetch benchmark stats
   const loadStats = async () => {
@@ -45,7 +47,11 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
       // Start polling for updates
       setTimeout(loadStats, 5000);
     } catch (err) {
-      alert(`Error starting benchmark: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Error starting benchmark: ${msg}`);
+      if (typeof msg === 'string' && msg.toLowerCase().includes('missing api keys')) {
+        setShowKeysModal(true);
+      }
     } finally {
       setIsRunning(false);
     }
@@ -185,6 +191,12 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
                   Live Updates
                 </span>
               )}
+              <button
+                onClick={() => setShowKeysModal(true)}
+                className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                🔑 API Keys
+              </button>
               <button
                 onClick={loadStats}
                 disabled={loading}
@@ -384,6 +396,7 @@ export default function BenchmarkDashboard({ benchmarkId, onBack }: BenchmarkDas
           submitLabel={addingPlayers ? "Adding..." : "Add Players"}
         />
       </Modal>
+      <ApiKeysModal isOpen={showKeysModal} onClose={() => setShowKeysModal(false)} />
     </div>
   );
 }

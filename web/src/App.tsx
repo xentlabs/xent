@@ -3,6 +3,7 @@ import { fetchAvailableGames } from './utils/api';
 import BenchmarkDashboard from './views/BenchmarkDashboard';
 import PlayerConfigForm, { PlayerConfig } from './components/PlayerConfigForm';
 import PlayPage from './components/play/PlayPage';
+import ApiKeysModal from './components/ApiKeysModal';
 
 interface GameConfig {
   name: string;
@@ -205,10 +206,10 @@ function generateBenchmarkId(): string {
 function App() {
   const [players, setPlayers] = useState<PlayerConfig[]>([{
     name: 'black',
-    id: 'gpt-4o',
+    id: 'gpt-5-mini',
     player_type: 'default',
     options: {
-      model: 'gpt-4o',
+      model: 'gpt-5-mini',
       provider: 'openai',
     },
   }]);
@@ -229,6 +230,7 @@ function App() {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [deleteConfirm, setDeleteConfirm] = useState<boolean>(false);
   const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
+  const [showKeysModal, setShowKeysModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetchBenchmarks();
@@ -486,21 +488,38 @@ function App() {
       </style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>XENT Benchmarks</h1>
-        <button
-          onClick={() => setCurrentView('play')}
-          style={{
-            padding: '10px 20px',
-            backgroundColor: '#9C27B0',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}
-        >
-          🎮 Play Game
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setShowKeysModal(true)}
+            style={{
+              padding: '10px 14px',
+              backgroundColor: '#374151',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}
+          >
+            🔑 API Keys
+          </button>
+          <button
+            onClick={() => setCurrentView('play')}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#9C27B0',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}
+          >
+            🎮 Play Game
+          </button>
+        </div>
       </div>
 
       {/* Benchmark List Section */}
@@ -749,6 +768,7 @@ function App() {
           {JSON.stringify(config, null, 2)}
         </pre>
       </div>
+      <ApiKeysModal isOpen={showKeysModal} onClose={() => setShowKeysModal(false)} />
     </div>
   );
 }

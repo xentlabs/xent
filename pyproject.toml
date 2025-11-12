@@ -30,6 +30,7 @@ dependencies = [
     "hf-xet>=1.1.5",
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
+    "platformdirs (>=4,<5)",
 ]
 
 [project.scripts]

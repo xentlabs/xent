@@ -1,7 +1,7 @@
 import asyncio
-import os
 import contextlib
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -16,16 +16,16 @@ from xent.common.configuration_types import CondensedXentBenchmarkConfig
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.game_discovery import discover_packaged_games
 from xent.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
-from xent.web.websocket_game_runner import run_websocket_game
 from xent.web.keys_store import (
+    SUPPORTED_KEYS,
     apply_keystore_to_env,
     bootstrap_from_env_to_keystore_if_missing,
     effective_summary,
     load_keystore,
     required_env_for_providers,
-    SUPPORTED_KEYS,
     update_keystore,
 )
+from xent.web.websocket_game_runner import run_websocket_game
 
 app = FastAPI(title="XENT Web Interface")
 
@@ -109,11 +109,8 @@ async def run_benchmark_async(benchmark_id: str):
             )
 
         # Refresh environment from keystore just before starting (env wins)
-        try:
+        with contextlib.suppress(Exception):
             apply_keystore_to_env(load_keystore())
-        except Exception:
-            # Non-fatal; if keystore unreadable, proceed with current env
-            pass
 
         # Validate required keys based on providers declared in players
         try:
@@ -390,7 +387,9 @@ async def get_keys_summary():
     try:
         return effective_summary()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load keys: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load keys: {str(e)}"
+        ) from e
 
 
 @app.post("/api/keys")
@@ -405,7 +404,9 @@ async def update_keys(request: KeysUpdateRequest):
         apply_keystore_to_env()
         return effective_summary()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save keys: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to save keys: {str(e)}"
+        ) from e
 
 
 @app.delete("/api/keys/{name}")
@@ -421,7 +422,9 @@ async def delete_key(name: str, unset_env: bool = False):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete key: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete key: {str(e)}"
+        ) from e
 
 
 @app.post("/api/config")

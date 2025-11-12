@@ -1,8 +1,8 @@
+import contextlib
 import json
 import os
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
-
 
 # Supported provider environment variables
 SUPPORTED_KEYS: list[str] = [
@@ -43,7 +43,7 @@ def load_keystore() -> dict[str, str]:
     if not path.exists():
         return {}
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             data = json.load(f)
             if not isinstance(data, dict):
                 return {}
@@ -62,15 +62,17 @@ def save_keystore(new_store: Mapping[str, str]) -> None:
     _ensure_results_dir()
     path = get_keystore_path()
     # Filter to supported keys with non-empty strings
-    filtered = {k: v for k, v in new_store.items() if k in SUPPORTED_KEYS and isinstance(v, str) and v}
+    filtered = {
+        k: v
+        for k, v in new_store.items()
+        if k in SUPPORTED_KEYS and isinstance(v, str) and v
+    }
     with open(path, "w") as f:
         json.dump(filtered, f, indent=2)
-    try:
+
+    with contextlib.suppress(Exception):
         # Best-effort restrict perms (POSIX)
         os.chmod(path, 0o600)
-    except Exception:
-        # Ignore on platforms/filesystems that don't support chmod
-        pass
 
 
 def update_keystore(partial: Mapping[str, str | None]) -> dict[str, str]:
@@ -97,7 +99,9 @@ def mask(value: str) -> str:
     return ("*" * (len(value) - 4)) + value[-4:]
 
 
-def effective_keys(env: Mapping[str, str] | None = None, keystore: Mapping[str, str] | None = None) -> dict[str, str]:
+def effective_keys(
+    env: Mapping[str, str] | None = None, keystore: Mapping[str, str] | None = None
+) -> dict[str, str]:
     """Compute effective keys where environment takes precedence over keystore.
 
     Returns a mapping of key->value for those keys that are set by either source.
@@ -112,16 +116,32 @@ def effective_keys(env: Mapping[str, str] | None = None, keystore: Mapping[str, 
     return result
 
 
-def effective_summary(env: Mapping[str, str] | None = None, keystore: Mapping[str, str] | None = None) -> list[dict[str, str | bool]]:
+def effective_summary(
+    env: Mapping[str, str] | None = None, keystore: Mapping[str, str] | None = None
+) -> list[dict[str, str | bool]]:
     """Summarize key presence and source without leaking values."""
     env = env or os.environ
     keystore = keystore or load_keystore()
     summary: list[dict[str, str | bool]] = []
     for k in SUPPORTED_KEYS:
         if env.get(k):
-            summary.append({"name": k, "set": True, "source": "env", "last4": (env.get(k) or "")[-4:]})
+            summary.append(
+                {
+                    "name": k,
+                    "set": True,
+                    "source": "env",
+                    "last4": (env.get(k) or "")[-4:],
+                }
+            )
         elif keystore.get(k):
-            summary.append({"name": k, "set": True, "source": "keystore", "last4": (keystore.get(k) or "")[-4:]})
+            summary.append(
+                {
+                    "name": k,
+                    "set": True,
+                    "source": "keystore",
+                    "last4": (keystore.get(k) or "")[-4:],
+                }
+            )
         else:
             summary.append({"name": k, "set": False, "source": "unset"})
     return summary
@@ -173,4 +193,3 @@ def required_env_for_providers(providers: set[str]) -> set[str]:
         if key:
             required.add(key)
     return required
-

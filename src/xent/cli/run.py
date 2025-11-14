@@ -167,7 +167,8 @@ def run(
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 
-    log_git_snapshot()
+    if verbose >= 1:
+        log_git_snapshot()
 
     benchmark_result = asyncio.run(
         run_benchmark(benchmark_config, storage, parallel_games)

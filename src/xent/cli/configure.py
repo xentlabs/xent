@@ -19,9 +19,13 @@ from xent.common.configuration_types import (
 )
 from xent.common.errors import XentConfigurationError
 from xent.common.game_discovery import discover_games_in_paths, discover_packaged_games
+from xent.common.paths import data_root
 from xent.common.util import dumps
 from xent.common.version import get_xent_version
 from xent.runtime.players.llm_api_client import guess_provider_from_model
+
+# Default output config path under user data root
+DEFAULT_CONFIG_OUTPUT = str(data_root() / "xent_config.json")
 
 DEFAULT_XENT_METADATA = XentMetadata(
     benchmark_id="",
@@ -173,7 +177,7 @@ def remove_player_from_config(
 @click.group(invoke_without_command=True)
 @click.pass_context
 @click.option(
-    "--output", help="Output configuration path", default="./xent_config.json"
+    "--output", help="Output configuration path", default=DEFAULT_CONFIG_OUTPUT
 )
 @click.option(
     "--game-path",
@@ -303,6 +307,8 @@ def configure(
     if print_config:
         print(config_str)
     else:
+        # Ensure parent directory exists for output path
+        Path(output).parent.mkdir(parents=True, exist_ok=True)
         with open(output, "w") as f:
             f.write(config_str)
             current_version = get_xent_version()
@@ -319,7 +325,7 @@ def configure(
 @click.argument(
     "config_path",
     type=click.Path(exists=True, readable=True),
-    default="./xent_config.json",
+    default=DEFAULT_CONFIG_OUTPUT,
 )
 @click.option(
     "--model",
@@ -372,6 +378,8 @@ def add_player_cmd(
     config_str = dumps(config, indent=2)
     output_path = output or config_path
 
+    # Ensure parent directory exists for output path
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         f.write(config_str)
 
@@ -385,7 +393,7 @@ def add_player_cmd(
 @click.argument(
     "config_path",
     type=click.Path(exists=True, readable=True),
-    default="./xent_config.json",
+    default=DEFAULT_CONFIG_OUTPUT,
 )
 @click.option(
     "--player-id",
@@ -430,6 +438,8 @@ def remove_player_cmd(
     config_str = dumps(config, indent=2)
     output_path = output or config_path
 
+    # Ensure parent directory exists for output path
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         f.write(config_str)
 

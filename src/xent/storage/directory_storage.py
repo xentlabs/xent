@@ -111,6 +111,8 @@ class DirectoryStorage(Storage):
 
     async def list_configs(self) -> list[ExpandedXentBenchmarkConfig]:
         configs: list[ExpandedXentBenchmarkConfig] = []
+        if not self.storage_dir.exists():
+            return configs
         for item in self.storage_dir.iterdir():
             if item.is_dir():
                 config_file = item / "benchmark_config.json"

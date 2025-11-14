@@ -15,6 +15,7 @@ from xent.benchmark.run_benchmark import run_benchmark
 from xent.common.configuration_types import CondensedXentBenchmarkConfig
 from xent.common.constants import SIMPLE_GAME_CODE
 from xent.common.game_discovery import discover_packaged_games
+from xent.common.paths import results_root
 from xent.storage.directory_storage import DirectoryBenchmarkStorage, DirectoryStorage
 from xent.web.keys_store import (
     SUPPORTED_KEYS,
@@ -29,7 +30,7 @@ from xent.web.websocket_game_runner import run_websocket_game
 
 app = FastAPI(title="XENT Web Interface")
 
-STORAGE_DIR = Path.cwd() / "results"
+STORAGE_DIR = results_root()
 storage = DirectoryStorage(STORAGE_DIR)
 
 # Initialize keystore and seed environment (environment always takes precedence)

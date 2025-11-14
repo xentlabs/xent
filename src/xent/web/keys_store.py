@@ -4,6 +4,8 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
+from xent.common.paths import results_root
+
 # Supported provider environment variables
 SUPPORTED_KEYS: list[str] = [
     "OPENAI_API_KEY",
@@ -20,10 +22,10 @@ SUPPORTED_KEYS: list[str] = [
 def _results_dir() -> Path:
     """Return the results directory used by the web server.
 
-    The server uses Path.cwd()/"results" as the storage root; we mirror that here
-    to keep the keystore colocated with results/configs by default.
+    Matches the global results root configured for the application and honors
+    environment-based overrides.
     """
-    return Path.cwd() / "results"
+    return results_root()
 
 
 def get_keystore_path() -> Path:

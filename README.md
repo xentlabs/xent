@@ -106,7 +106,7 @@ uv run xent configure --game-dir ./games
 uv run xent configure --help
 ```
 
-The configuration will be stored in a json file (`./xent_config.json` by default) which can be passed to `xent run` for execution. To better understand the configuration file, take a look at `CondensedXentBenchmarkConfig` and `ExpandedXentBenchmarkConfig` in `src/xent/common/configuration_types.py`
+The configuration is written to a JSON file (defaults to `<user data dir>/xent_config.json`; see "Data Storage & Overrides" below) which can be passed to `xent run` for execution. To better understand the configuration file, take a look at `CondensedXentBenchmarkConfig` and `ExpandedXentBenchmarkConfig` in `src/xent/common/configuration_types.py`
 
 So, now that we have a configuration, how do we run it?
 
@@ -114,9 +114,9 @@ So, now that we have a configuration, how do we run it?
 
 To run a benchmark from the command line, use `xent run`. But before you do that, here are some notes:
 
-By default, `xent run` will use `./xent_config.json` as the path to the benchmark configuration. You can change this by doing `uv run xent run --config path/to/config.json`. To see more information on available flags, call `xent run --help`.
+By default, `xent run` uses `<user data dir>/xent_config.json` as the configuration path. Override with `uv run xent run --config path/to/config.json`. To see all flags, call `xent run --help`.
 
-During execution, `xent run` will place results and execution artifacts into a directory. By default this is `./results/<benchmark id>`. You can modify that path via `uv run xent run --results-dir path/to/results`. Xent will create a new directory in the specified path with the benchmark_id.
+During execution, `xent run` writes results and artifacts under `<user data dir>/benchmarks/<benchmark_id>`. Override the base directory via `uv run xent run --results-dir path/to/results`. Xent creates a subdirectory named with the benchmark_id.
 
 In order to be somewhat robust to failure or interruption, Xent will look into the results directory for completed work. So if you re-run an already completed benchmark, it will effectively be a no-op. Instead you can pass either `--regenerate-id` (which will make a new, timestamped, benchmark id for the run) or `--clean` which will destroy any existing data in the results dir. Be careful using `--clean`! You can totally delete your valuable results! I recommend using `--regenerate-id`
 
@@ -143,6 +143,29 @@ In addition to report.md, there is also the `benchmark_<benchmark_id>.json` file
 You'll also see files named "game_<game_name>_<model_name>.json". These files contain results for that game-player pair (as well as the original configuration of the game). The data structure is the `GameMapResults` type defined in `src/xent/common/configuration_types.py`. All of the data in these files will be present in the benchmark json, but you may find it handy to inspect them individually as the output can be quite long.
 
 Finally, there is log.txt which is simply the log output of the benchmark execution. Any errors or issues will be visible here.
+
+#### Data Storage & Overrides
+
+Xent stores all run data (configs, results, logs) under the platform’s standard user data directory by default:
+
+- macOS: `~/Library/Application Support/xent`
+- Linux: `~/.local/share/xent`
+
+Defaults:
+
+- Config file: `<user data dir>/xent_config.json`
+- Results root: `<user data dir>/benchmarks`
+- Per‑benchmark data: `<results root>/<benchmark_id>`
+- Logs: `<results root>/<benchmark_id>/logs/log.txt`
+
+Overrides:
+
+- CLI flags take precedence: `--config` and `--results-dir`
+- `XENT_DATA_DIR` changes the base user data directory (affects both config and results defaults)
+- `XENT_RESULTS_DIR` overrides only the results root
+- The web UI uses the same results root; its keystore is stored at `<results root>/.api_keys.json`
+
+Directories are created on first use. If you prefer a custom location (e.g., a project folder), pass it via `--results-dir`.
 
 ## Advanced Configuration
 

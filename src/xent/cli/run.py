@@ -17,10 +17,18 @@ from xent.common.configuration_types import (
     ExpansionConfig,
     XentMetadata,
 )
+from xent.common.paths import (
+    data_root,
+    results_root,
+)
 from xent.common.util import dumps, log_git_snapshot
 from xent.common.version import get_xent_version, validate_version
 from xent.storage.directory_storage import DirectoryBenchmarkStorage
 from xent.storage.storage_interface import BenchmarkStorage
+
+DEFAULT_CONFIG_PATH = str(data_root() / "xent_config.json")
+DEFAULT_RESULTS_ROOT = str(results_root())
+
 
 DEFAULT_XENT_METADATA = XentMetadata(
     benchmark_id="",
@@ -54,13 +62,13 @@ def load_benchmark_config(
 @click.command()
 @click.option(
     "--config",
-    default="./xent_config.json",
+    default=DEFAULT_CONFIG_PATH,
     help="Path to json configuration for Xent benchmark",
 )
 @click.option(
     "--results-dir",
     help="Path to directory where results dir will be created",
-    default="./results",
+    default=DEFAULT_RESULTS_ROOT,
 )
 @click.option(
     "--dont-analyze",
@@ -134,17 +142,21 @@ def run(
         results_dir, benchmark_config["metadata"]["benchmark_id"]
     )
 
+    storage_root = Path(results_dir)
     storage: BenchmarkStorage = DirectoryBenchmarkStorage(
-        Path(results_dir), benchmark_config["metadata"]["benchmark_id"]
+        storage_root, benchmark_config["metadata"]["benchmark_id"]
     )
 
     asyncio.run(storage.initialize())
     if clean:
         asyncio.run(storage.clear())
 
-    # TODO how to handle this with non-directory storage?
-    log_file_path = os.path.join(scoped_results_dir, "log.txt")
-    file_handler = logging.FileHandler(log_file_path)
+    # Ensure benchmark/logs directories exist and set up file logging under logs/
+    Path(scoped_results_dir).mkdir(parents=True, exist_ok=True)
+    log_dir = Path(scoped_results_dir) / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file_path = log_dir / "log.txt"
+    file_handler = logging.FileHandler(str(log_file_path))
 
     # File handler should always log INFO, or DEBUG if verbosity is high
     if verbose >= 2:

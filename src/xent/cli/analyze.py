@@ -6,6 +6,7 @@ from pathlib import Path
 import click
 
 from xent.analysis.analyze import analyze as analyze_results
+from xent.common.paths import results_root
 from xent.storage.directory_storage import DirectoryBenchmarkStorage
 
 
@@ -17,7 +18,7 @@ from xent.storage.directory_storage import DirectoryBenchmarkStorage
 )
 @click.option(
     "--storage-dir",
-    required=True,
+    default=lambda: str(results_root()),
     help="Storage directory. This should contain a sub-directory with the benchmark data. Used for loading benchmark results as well as output directory for analysis results",
 )
 @click.option(

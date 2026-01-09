@@ -1,8 +1,16 @@
+"""
+We use a special approach for omni MATH. So be wary using this text generator if you
+are expecting it to operate similarly to the other text generators.
+"""
+
 import json
 import random
-from typing import Literal, TypedDict
+from typing import Any, Literal, TypedDict
+
+import torch
 
 from xent.common.errors import XentConfigurationError, XentInternalError
+from xent.common.x_string import XString
 from xent.runtime.text_generation.text_generation import TextGenerator
 
 OmniMATHGenerationMode = Literal["SEQUENTIAL", "SHUFFLE"]
@@ -30,28 +38,52 @@ class OmniMATHTextGenerator(TextGenerator):
         self,
         path_to_archive: str,
         mode: OmniMATHGenerationMode,
-        formats: list[str],
         seed: int | None,
+        tokenizer: Any,
     ):
         self.path_to_archive = path_to_archive
         self.mode = mode
-        self.formats = formats
         self.entry_index = 0
         self.rng = random.Random(seed)
+        self.tokenizer = tokenizer
+        self.next_token: str | None = None
         with open(self.path_to_archive) as f:
             self.entries: list[OmniMATHEntry] = []
             all_entries = json.load(f)
             for entry in all_entries:
-                if len(self.formats) == 0 or entry["format"] in self.formats:
-                    self.entries.append(entry)
+                self.entries.append(entry)
+
+    def _tokenize(self, string: str | XString) -> torch.Tensor:
+        if isinstance(string, XString):
+            string = str(string)
+        return self.tokenizer(string, return_tensors="pt").input_ids
+
+    def _detokenize(self, tokens: torch.Tensor) -> str:
+        return self.tokenizer.decode(tokens.cpu().view(-1))
+
+    def _num_tokens(self, string: str | XString) -> int:
+        return self._tokenize(string).shape[-1]
+
+    def _first_n_tokens_and_next(self, string: str, n: int) -> tuple[str, str]:
+        tokens: torch.Tensor = self._tokenize(string)
+        return (self._detokenize(tokens[:, :n]), self._detokenize(tokens[:, n : n + 1]))
 
     def generate_text(self, max_length: int | None = None) -> str:
-        entry = self._get_next_entry()
-        if max_length is not None:
-            return entry[:max_length]
-        return entry
+        if self.next_token:
+            next_token = self.next_token
+            self.next_token = None
+            return next_token
 
-    def _get_next_entry(self) -> str:
+        entry, question_length = self._get_next_entry()
+        question_token_count = self._num_tokens(entry[:question_length])
+        entry_token_count = self._num_tokens(entry)
+        prefix_tokens = self.rng.randint(question_token_count, entry_token_count)
+        prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)
+        self.next_token = next_token
+        return prefix
+
+    # Returns concatenated string + length of the question
+    def _get_next_entry(self) -> tuple[str, int]:
         if self.mode == "SEQUENTIAL":
             entry = self.entries[self.entry_index % len(self.entries)]
             self.entry_index += 1
@@ -62,8 +94,12 @@ class OmniMATHTextGenerator(TextGenerator):
         else:
             raise XentInternalError("Unknown mode specificed for OmniMATH Corpus")
 
-    def _row_to_string(self, row: OmniMATHEntry) -> str:
-        return f"{row['problem']}\n{row['solution']}\n{row['answer']}"
+    # Returns concatenated string + length of the question
+    def _row_to_string(self, row: OmniMATHEntry) -> tuple[str, int]:
+        return (
+            f"{row['problem']}\n{row['solution']}\n{row['answer']}",
+            len(row["problem"]),
+        )
 
     def generate_list(self, prompt: str, length: int) -> list[str]:
         raise XentConfigurationError(

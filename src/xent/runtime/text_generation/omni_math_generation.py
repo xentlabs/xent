@@ -36,7 +36,7 @@ class OmniMATHEntry(TypedDict):
 class OmniMATHTextGenerator(TextGenerator):
     def __init__(
         self,
-        path_to_archive: str,
+        path_to_archive: str,  # Should be a jsonl file
         mode: OmniMATHGenerationMode,
         seed: int | None,
         tokenizer: Any,
@@ -47,10 +47,14 @@ class OmniMATHTextGenerator(TextGenerator):
         self.rng = random.Random(seed)
         self.tokenizer = tokenizer
         self.next_token: str | None = None
+
+        self.entries: list[OmniMATHEntry] = []
         with open(self.path_to_archive) as f:
-            self.entries: list[OmniMATHEntry] = []
-            all_entries = json.load(f)
-            for entry in all_entries:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue  # skip empty lines
+                entry = json.loads(line)
                 self.entries.append(entry)
 
     def _tokenize(self, string: str | XString) -> torch.Tensor:

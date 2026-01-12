@@ -721,6 +721,19 @@ class TestJudge:
         judge = Judge("Qwen/Qwen3-0.6B-Base")
         return judge
 
+    def _find_single_token_string(self, judge: Judge) -> str:
+        probe = "Tokenizer probe: hello world."
+        token_ids = judge.tokenize(probe).view(-1).tolist()
+        for token_id in token_ids:
+            token_str = judge.tokenizer.decode([int(token_id)])
+            if len(token_str) == 0:
+                continue
+            if judge.num_tokens(token_str) == 1:
+                return token_str
+        pytest.skip(
+            "Could not find a non-empty string that tokenizes to exactly 1 token for this tokenizer"
+        )
+
     def test_first_n_tokens(self, judge):
         string = XString("This is a test string for the Xent framework.")
 
@@ -747,6 +760,27 @@ class TestJudge:
     def test_truthfulness(self, judge, statement, expected_truthfulness):
         """Tests the is_true method with various statements."""
         assert judge.is_true(statement) == expected_truthfulness
+
+    def test_xent_include_first_token_single_token_string(self, judge):
+        single_token_str = self._find_single_token_string(judge)
+        x = XString(single_token_str)
+
+        txl_default = judge.xent(x)
+        txl_all = judge.xent(x, include_first_token=True)
+
+        assert len(txl_default.pairs) == 0
+        assert len(txl_all.pairs) == 1
+
+    def test_include_first_token_passthrough_xed_nex_dex(self, judge):
+        x = XString("Hello world")
+        num_tokens = judge.num_tokens(x)
+        assert num_tokens > 0
+
+        assert len(judge.nex(x, include_first_token=True).pairs) == num_tokens
+
+        prefixed = x | "Prefix: "
+        assert len(judge.xed(prefixed, include_first_token=True).pairs) == num_tokens
+        assert len(judge.dex(prefixed, include_first_token=True).pairs) == num_tokens
 
 
 class TestTokenUsage:

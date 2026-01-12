@@ -62,6 +62,14 @@ class Judge:
         self.rng = random.Random()
 
         self.tokenizer.pad_token = self.tokenizer.eos_token
+        bos_token_id = self.tokenizer.bos_token_id
+        if bos_token_id is None:
+            bos_token_id = self.tokenizer.eos_token_id
+        if bos_token_id is None:
+            raise ValueError(
+                f"Tokenizer for model {model_name!r} has no BOS or EOS token id; cannot construct Judge."
+            )
+        self.bos_token_id: int = int(bos_token_id)  # type: ignore
         self.max_generation_length: int | None = max_generation_length
         if max_generation_length <= 0:
             self.max_generation_length = None
@@ -117,6 +125,7 @@ class Judge:
         self,
         string: XString,
         preprompt: str = "",
+        include_first_token: bool = False,
     ) -> TokenXentList:
         raw_string: str = str(string)
         prefix: str = str(preprompt + string.prefix)
@@ -126,15 +135,34 @@ class Judge:
         tokenized_prefix: torch.Tensor = self.tokenize(prefix).to(torch.int64)
         tokenized_string: torch.Tensor = self.tokenize(raw_string).to(torch.int64)
         prefix_length: int = tokenized_prefix.shape[-1]
-        tokens: torch.Tensor = torch.cat([tokenized_prefix, tokenized_string], dim=-1)
-        logits: torch.Tensor = self.comp_logits(tokens).view(tokens.shape[-1], -1)
-        tokens = tokens.view(-1)
+        if include_first_token:
+            bos: torch.Tensor = torch.tensor(
+                [[self.bos_token_id]],
+                dtype=torch.int64,
+                device=tokenized_prefix.device,
+            )
+            tokens: torch.Tensor = torch.cat(
+                [bos, tokenized_prefix, tokenized_string], dim=-1
+            )
+            logits: torch.Tensor = self.comp_logits(tokens).view(tokens.shape[-1], -1)
+            tokens = tokens.view(-1)
 
-        target_tokens: torch.Tensor = tokens[prefix_length + 1 :]
+            pre_len: int = 1 + prefix_length  # BOS + prefix
+            target_tokens: torch.Tensor = tokens[pre_len:]
+            xent_values: torch.Tensor = F.cross_entropy(
+                logits[pre_len - 1 : -1, :], target_tokens, reduction="none"
+            )
+        else:
+            tokens: torch.Tensor = torch.cat(
+                [tokenized_prefix, tokenized_string], dim=-1
+            )
+            logits: torch.Tensor = self.comp_logits(tokens).view(tokens.shape[-1], -1)
+            tokens = tokens.view(-1)
 
-        xent_values: torch.Tensor = F.cross_entropy(
-            logits[prefix_length:-1, :], target_tokens, reduction="none"
-        )
+            target_tokens: torch.Tensor = tokens[prefix_length + 1 :]
+            xent_values: torch.Tensor = F.cross_entropy(
+                logits[prefix_length:-1, :], target_tokens, reduction="none"
+            )
         # Convert to bits
         xent_bits = xent_values / math.log(2)
 
@@ -151,16 +179,24 @@ class Judge:
         logging.info(f"Xent for {string} with prefix {prefix}: {txl.total_xent()}")
         return txl
 
-    def xed(self, string: XString, pre_prompt: str = "") -> TokenXentList:
+    def xed(
+        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+    ) -> TokenXentList:
         no_prefix: XString = XString(str(string))
-        return self.xent(no_prefix, pre_prompt) - self.xent(string, pre_prompt)
+        return self.xent(no_prefix, pre_prompt, include_first_token) - self.xent(
+            string, pre_prompt, include_first_token
+        )
 
-    def nex(self, string: XString, pre_prompt: str = "") -> TokenXentList:
-        result: TokenXentList = self.xent(string, pre_prompt)
+    def nex(
+        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+    ) -> TokenXentList:
+        result: TokenXentList = self.xent(string, pre_prompt, include_first_token)
         return result * -1
 
-    def dex(self, string: XString, pre_prompt: str = "") -> TokenXentList:
-        result: TokenXentList = self.xed(string, pre_prompt)
+    def dex(
+        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+    ) -> TokenXentList:
+        result: TokenXentList = self.xed(string, pre_prompt, include_first_token)
         return result * -1
 
     def generate_text(self) -> str:

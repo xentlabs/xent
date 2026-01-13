@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, overload
 
 from xent.common.errors import XentTypeError
 from xent.common.x_string import XString
@@ -77,3 +77,26 @@ class XList:
 
     def __iter__(self) -> Iterator[XString]:
         return iter(self.items)
+
+    # We really shouldn't allow list subscripting, but its useful temporarily.
+    # This should NOT be relied on as it will be removed eventually.
+    @overload
+    def __getitem__(self, index: int) -> XString: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> XList: ...
+
+    def __getitem__(self, index: int | slice) -> XString | XList:
+        if isinstance(index, slice):
+            return XList(
+                self.items[index],
+                static=self.static,
+                public=self.public,
+                name=self.name,
+            )
+        if not isinstance(index, int):
+            raise XentTypeError(
+                f"XList indices must be integers or slices. Got: {type(index).__name__}"
+            )
+        item = self.items[index]
+        return item

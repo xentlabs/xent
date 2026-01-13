@@ -439,6 +439,22 @@ class TestXList:
         assert "foo" in l_value
         assert "bar" not in l_value
 
+    def test_subscript_access(self):
+        xlist = XList([XString("a"), XString("b"), XString("c")])
+
+        assert isinstance(xlist[0], XString)
+        assert xlist[0].primary_string == "a"
+        assert xlist[-1].primary_string == "c"
+
+        sliced = xlist[1:]
+        assert isinstance(sliced, XList)
+        assert [item.primary_string for item in sliced] == ["b", "c"]
+
+        with pytest.raises(IndexError):
+            _ = xlist[3]
+        with pytest.raises(XentTypeError):
+            _ = xlist["0"]  # type: ignore[index]
+
 
 class TestTokenXentList:
     """Tests for TokenXentList class functionality."""

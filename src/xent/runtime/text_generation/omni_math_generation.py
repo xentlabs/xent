@@ -9,7 +9,7 @@ from typing import Any, Literal, TypedDict
 
 import torch
 
-from xent.common.errors import XentConfigurationError, XentInternalError
+from xent.common.errors import XentInternalError
 from xent.common.x_string import XString
 from xent.runtime.text_generation.text_generation import TextGenerator
 
@@ -105,7 +105,12 @@ class OmniMATHTextGenerator(TextGenerator):
             len(row["problem"]),
         )
 
+    # This is a special case implementation of generate_list that does RPT-style text
+    # and next token pairs
     def generate_list(self, prompt: str, length: int) -> list[str]:
-        raise XentConfigurationError(
-            "OmniMATHTextGenerator doesn't support the generate_list interface"
-        )
+        entry, question_length = self._get_next_entry()
+        question_token_count = self._num_tokens(entry[:question_length])
+        entry_token_count = self._num_tokens(entry)
+        prefix_tokens = self.rng.randint(question_token_count, entry_token_count)
+        prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)
+        return [prefix, next_token]

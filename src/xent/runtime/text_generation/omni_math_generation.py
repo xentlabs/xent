@@ -40,6 +40,7 @@ class OmniMATHTextGenerator(TextGenerator):
         mode: OmniMATHGenerationMode,
         seed: int | None,
         tokenizer: Any,
+        max_prefix_length: int = 1024,
     ):
         self.path_to_archive = path_to_archive
         self.mode = mode
@@ -47,6 +48,7 @@ class OmniMATHTextGenerator(TextGenerator):
         self.rng = random.Random(seed)
         self.tokenizer = tokenizer
         self.next_token: str | None = None
+        self.max_prefix_length = max_prefix_length
 
         self.entries: list[OmniMATHEntry] = []
         with open(self.path_to_archive) as f:
@@ -111,6 +113,9 @@ class OmniMATHTextGenerator(TextGenerator):
         entry, question_length = self._get_next_entry()
         question_token_count = self._num_tokens(entry[:question_length])
         entry_token_count = self._num_tokens(entry)
-        prefix_tokens = self.rng.randint(question_token_count, entry_token_count)
+        prefix_tokens = min(
+            self.rng.randint(question_token_count, entry_token_count),
+            self.max_prefix_length,
+        )
         prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)
         return [prefix, next_token]

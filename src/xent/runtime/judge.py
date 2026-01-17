@@ -182,30 +182,30 @@ class Judge:
     def xed(
         self,
         string: XString,
-        pre_prompt: str | XString = "",
+        preprompt: str | XString = "",
         include_first_token: bool = False,
     ) -> TokenXentList:
         no_prefix: XString = XString(str(string))
-        return self.xent(no_prefix, pre_prompt, include_first_token) - self.xent(
-            string, pre_prompt, include_first_token
+        return self.xent(no_prefix, preprompt, include_first_token) - self.xent(
+            string, preprompt, include_first_token
         )
 
     def nex(
         self,
         string: XString,
-        pre_prompt: str | XString = "",
+        preprompt: str | XString = "",
         include_first_token: bool = False,
     ) -> TokenXentList:
-        result: TokenXentList = self.xent(string, pre_prompt, include_first_token)
+        result: TokenXentList = self.xent(string, preprompt, include_first_token)
         return result * -1
 
     def dex(
         self,
         string: XString,
-        pre_prompt: str | XString = "",
+        preprompt: str | XString = "",
         include_first_token: bool = False,
     ) -> TokenXentList:
-        result: TokenXentList = self.xed(string, pre_prompt, include_first_token)
+        result: TokenXentList = self.xed(string, preprompt, include_first_token)
         return result * -1
 
     def generate_text(self) -> str:

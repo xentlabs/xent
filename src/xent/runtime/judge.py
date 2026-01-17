@@ -124,11 +124,11 @@ class Judge:
     def xent(
         self,
         string: XString,
-        preprompt: str = "",
+        preprompt: str | XString = "",
         include_first_token: bool = False,
     ) -> TokenXentList:
         raw_string: str = str(string)
-        prefix: str = str(preprompt + string.prefix)
+        prefix: str = str(str(preprompt) + string.prefix)
         if len(raw_string) == 0:
             return TokenXentList([])
 
@@ -180,7 +180,10 @@ class Judge:
         return txl
 
     def xed(
-        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+        self,
+        string: XString,
+        pre_prompt: str | XString = "",
+        include_first_token: bool = False,
     ) -> TokenXentList:
         no_prefix: XString = XString(str(string))
         return self.xent(no_prefix, pre_prompt, include_first_token) - self.xent(
@@ -188,13 +191,19 @@ class Judge:
         )
 
     def nex(
-        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+        self,
+        string: XString,
+        pre_prompt: str | XString = "",
+        include_first_token: bool = False,
     ) -> TokenXentList:
         result: TokenXentList = self.xent(string, pre_prompt, include_first_token)
         return result * -1
 
     def dex(
-        self, string: XString, pre_prompt: str = "", include_first_token: bool = False
+        self,
+        string: XString,
+        pre_prompt: str | XString = "",
+        include_first_token: bool = False,
     ) -> TokenXentList:
         result: TokenXentList = self.xed(string, pre_prompt, include_first_token)
         return result * -1

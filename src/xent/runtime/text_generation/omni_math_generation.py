@@ -83,7 +83,7 @@ class OmniMATHTextGenerator(TextGenerator):
         entry, question_length = self._get_next_entry()
         question_token_count = self._num_tokens(entry[:question_length])
         entry_token_count = self._num_tokens(entry)
-        prefix_tokens = self.rng.randint(question_token_count, entry_token_count)
+        prefix_tokens = self.rng.randint(question_token_count, entry_token_count - 1)
         prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)
         self.next_token = next_token
         return prefix
@@ -114,7 +114,7 @@ class OmniMATHTextGenerator(TextGenerator):
         question_token_count = self._num_tokens(entry[:question_length])
         entry_token_count = self._num_tokens(entry)
         prefix_tokens = min(
-            self.rng.randint(question_token_count, entry_token_count),
+            self.rng.randint(question_token_count, entry_token_count - 1),
             self.max_prefix_length,
         )
         prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)

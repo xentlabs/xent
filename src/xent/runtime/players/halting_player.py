@@ -116,7 +116,11 @@ class HaltingXGP(XGP):
         token_usage = {"input_tokens": 0, "output_tokens": 0}
         logging.info(f"Received response from LLM: {dumps(full_reply)}")
         reply = full_reply or ""
-        strip_think_tokens = self.options.get("strip_think_tokens", True) if self.options is not None else True
+        strip_think_tokens = (
+            self.options.get("strip_think_tokens", True)
+            if self.options is not None
+            else True
+        )
         if strip_think_tokens:
             reply = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL)
 

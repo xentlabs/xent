@@ -29,10 +29,13 @@ class Judge:
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
         model_params: dict[str, Any] | None = None,
+        clip_logprobs: bool = False,
     ) -> None:
         self.model_name = model_name
         self.hf_dir_path = hf_dir_path
         self.max_generation_length = max_generation_length
+        self.clip_logprobs = clip_logprobs
+        self.max_token_xent_nats: float | None = None
         self.device: torch.device = (
             torch.device("cuda")
             if torch.cuda.is_available()
@@ -73,6 +76,10 @@ class Judge:
         self.max_generation_length: int | None = max_generation_length
         if max_generation_length <= 0:
             self.max_generation_length = None
+        if self.clip_logprobs:
+            vocab_size = len(self.tokenizer)
+            # clip each token log-prob at ln(1 / vocab_size), i.e. xent <= ln(vocab_size)
+            self.max_token_xent_nats = math.log(vocab_size)
 
         if text_generator is None:
             text_generator = JudgeGenerator(self.model, self.tokenizer)
@@ -85,15 +92,18 @@ class Judge:
             "model_name": self.model_name,
             "hf_dir_path": self.hf_dir_path,
             "max_generation_length": self.max_generation_length,
+            "clip_logprobs": self.clip_logprobs,
         }
 
     @classmethod
     def deserialize(cls, data: dict[str, Any]) -> Self:
+        clip_logprobs = data.get("clip_logprobs")
         return cls(
-            data["model_name"],
-            data["hf_dir_path"],
-            None,  # We don't serialize or deserialize text_generator
-            data["max_generation_length"],
+            model_name=data["model_name"],
+            hf_dir_path=data["hf_dir_path"],
+            text_generator=None,  # We don't serialize or deserialize text_generator
+            max_generation_length=data["max_generation_length"],
+            clip_logprobs=bool(clip_logprobs),
         )
 
     def tokenize(self, string: str | XString) -> torch.Tensor:
@@ -163,6 +173,8 @@ class Judge:
             xent_values: torch.Tensor = F.cross_entropy(
                 logits[prefix_length:-1, :], target_tokens, reduction="none"
             )
+        if self.max_token_xent_nats is not None:
+            xent_values = torch.clamp(xent_values, max=self.max_token_xent_nats)
         # Convert to bits
         xent_bits = xent_values / math.log(2)
 

@@ -74,6 +74,13 @@ class OmniMATHTextGenerator(TextGenerator):
         tokens: torch.Tensor = self._tokenize(string)
         return (self._detokenize(tokens[:, :n]), self._detokenize(tokens[:, n : n + 1]))
 
+    def _is_single_token_round_trip(self, token_id_tensor: torch.Tensor) -> bool:
+        token_text = self._detokenize(token_id_tensor)
+        round_trip = self._tokenize(token_text)
+        if round_trip.shape[-1] != 1:
+            return False
+        return int(round_trip.item()) == int(token_id_tensor.item())
+
     def generate_text(self, max_length: int | None = None) -> str:
         if self.next_token:
             next_token = self.next_token
@@ -110,12 +117,23 @@ class OmniMATHTextGenerator(TextGenerator):
     # This is a special case implementation of generate_list that does RPT-style text
     # and next token pairs
     def generate_list(self, prompt: str, length: int) -> list[str]:
-        entry, question_length = self._get_next_entry()
-        question_token_count = self._num_tokens(entry[:question_length])
-        entry_token_count = self._num_tokens(entry)
-        prefix_tokens = min(
-            self.rng.randint(question_token_count, entry_token_count - 1),
-            self.max_prefix_length,
-        )
-        prefix, next_token = self._first_n_tokens_and_next(entry, prefix_tokens)
-        return [prefix, next_token]
+        while True:
+            entry, question_length = self._get_next_entry()
+            tokens: torch.Tensor = self._tokenize(entry)
+            question_token_count = self._num_tokens(entry[:question_length])
+            entry_token_count = tokens.shape[-1]
+            if entry_token_count <= question_token_count:
+                continue
+
+            prefix_tokens = min(
+                self.rng.randint(question_token_count, entry_token_count - 1),
+                self.max_prefix_length,
+            )
+            prefix_token_ids = tokens[:, :prefix_tokens]
+            next_token_id = tokens[:, prefix_tokens : prefix_tokens + 1]
+            if not self._is_single_token_round_trip(next_token_id):
+                continue
+
+            prefix = self._detokenize(prefix_token_ids)
+            next_token = self._detokenize(next_token_id)
+            return [prefix, next_token]

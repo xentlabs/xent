@@ -31,7 +31,7 @@ class Judge:
         hf_dir_path: str | None = None,
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
-        min_generation_length: int = 0,
+        min_generation_length: int = 1,
         randomize_length: bool = False,
         model_params: dict[str, Any] | None = None,
         clip_logprobs: bool = False,

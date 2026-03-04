@@ -31,7 +31,8 @@ class Judge:
         hf_dir_path: str | None = None,
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
-        min_generation_length: int | None = None,
+        min_generation_length: int = 0,
+        randomize_length: bool = False,
         model_params: dict[str, Any] | None = None,
         clip_logprobs: bool = False,
     ) -> None:
@@ -39,6 +40,7 @@ class Judge:
         self.hf_dir_path = hf_dir_path
         self.max_generation_length = max_generation_length
         self.min_generation_length = min_generation_length
+        self.randomize_length = randomize_length
         self.clip_logprobs = clip_logprobs
         self.max_token_xent_nats: float | None = None
         self.device: torch.device = (
@@ -104,19 +106,20 @@ class Judge:
             "hf_dir_path": self.hf_dir_path,
             "max_generation_length": self.max_generation_length,
             "min_generation_length": self.min_generation_length,
+            "randomize_length": self.randomize_length,
             "clip_logprobs": self.clip_logprobs,
         }
 
     @classmethod
     def deserialize(cls, data: dict[str, Any]) -> Self:
-        clip_logprobs = data.get("clip_logprobs")
         return cls(
             model_name=data["model_name"],
             hf_dir_path=data["hf_dir_path"],
             text_generator=None,  # We don't serialize or deserialize text_generator
             max_generation_length=data["max_generation_length"],
-            min_generation_length=data.get("min_generation_length"),
-            clip_logprobs=bool(clip_logprobs),
+            min_generation_length=data["min_generation_length"],
+            randomize_length=data["randomize_length"],
+            clip_logprobs=data["clip_logprobs"],
         )
 
     def tokenize(self, string: str | XString) -> torch.Tensor:
@@ -237,17 +240,17 @@ class Judge:
         return self.length_constrained_text_sampler.generate_text(
             max_length=self.max_generation_length,
             min_length=self.min_generation_length,
+            randomize_length=self.randomize_length,
         )
 
     def generate_list(self, prompt: str, length: int) -> list[str]:
         return self.text_generator.generate_list(prompt, length)
 
-    def generate_list_next_token(self, max_length: int | None = None) -> list[str]:
-        if max_length is None:
-            max_length = self.max_generation_length
+    def generate_list_next_token(self) -> list[str]:
         return self.length_constrained_text_sampler.generate_list_next_token(
             min_length=self.min_generation_length,
-            max_length=max_length,
+            max_length=self.max_generation_length,
+            randomize_length=self.randomize_length,
         )
 
     def is_true(self, condition: str) -> bool:
@@ -286,7 +289,7 @@ Evaluation: """)
         torch.manual_seed(int_seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(int_seed)
-        self.rng = random.Random(seed)
+        self.rng.seed(seed)
 
     def full_seed(self, seed: str, map_seed: str) -> str:
         return f"{seed}_{map_seed}"

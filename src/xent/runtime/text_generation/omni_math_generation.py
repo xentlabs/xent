@@ -40,14 +40,12 @@ class OmniMATHTextGenerator(TextGenerator):
         mode: OmniMATHGenerationMode,
         seed: int | None,
         tokenizer: Any,
-        max_prefix_length: int = 1024,
     ):
         self.path_to_archive = path_to_archive
         self.mode = mode
         self.entry_index = 0
         self.rng = random.Random(seed)
         self.tokenizer = tokenizer
-        self.max_prefix_length = max_prefix_length
 
         self.entries: list[OmniMATHEntry] = []
         with open(self.path_to_archive) as f:

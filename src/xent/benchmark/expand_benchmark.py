@@ -14,7 +14,6 @@ from xent.runtime.judge import Judge
 from xent.runtime.text_generation.community_archive_generation import (
     CommunityArchiveTextGenerator,
 )
-from xent.runtime.text_generation.text_generation import TextGenerator
 
 
 def expand_benchmark_config(
@@ -23,17 +22,19 @@ def expand_benchmark_config(
     text_generator_config = condensed_config["expansion_config"][
         "text_generation_config"
     ]
-    text_generator: TextGenerator | None = None
-    if text_generator_config["generator_type"] == "COMMUNITY_ARCHIVE":
-        text_generator = CommunityArchiveTextGenerator(
-            **text_generator_config["generator_config"]
-        )
 
     judge = Judge(
         condensed_config["metadata"]["judge_model"],
-        text_generator=text_generator,
+        text_generator=None,
         max_generation_length=text_generator_config["max_length"],
     )
+    if text_generator_config["generator_type"] == "COMMUNITY_ARCHIVE":
+        judge.set_text_generator(
+            CommunityArchiveTextGenerator(
+                **text_generator_config["generator_config"],
+                tokenizer=judge.tokenizer,
+            )
+        )
     expanded_benchmark_config = ExpandedXentBenchmarkConfig(
         config_type="expanded_xent_config",
         metadata=XentMetadata(
@@ -95,6 +96,59 @@ class StoryRewriter(ast.NodeTransformer):
         super().__init__()
         self.judge = judge
 
+    def _materialize_generate_list_call(self, node: ast.Call) -> ast.AST:
+        fn_name = "generate_list"
+        # Enforce: exactly two positional args (prompt: str, length: int), no keywords
+        if node.keywords:
+            raise XentSyntaxError(
+                f"{fn_name} requires positional args only: {fn_name}('<prompt>', <length>)"
+            )
+        if len(node.args) != 2:
+            raise XentSyntaxError(
+                f"{fn_name} requires exactly two positional arguments: prompt (str), length (int)"
+            )
+
+        prompt_arg, length_arg = node.args[0], node.args[1]
+        if not (
+            isinstance(prompt_arg, ast.Constant) and isinstance(prompt_arg.value, str)
+        ):
+            raise XentSyntaxError(
+                f"{fn_name} first argument must be a string literal prompt"
+            )
+        if not isinstance(length_arg, ast.Constant) or not isinstance(
+            length_arg.value, int | float
+        ):
+            raise XentSyntaxError(
+                f"{fn_name} second argument must be a numeric literal length"
+            )
+
+        prompt_val: str = prompt_arg.value  # type: ignore[assignment]
+        length_val: int = int(length_arg.value)  # type: ignore[arg-type]
+
+        generated_items = self.judge.generate_list(prompt_val, length_val)
+        new_node = ast.List(
+            elts=[ast.Constant(value=item) for item in generated_items],
+            ctx=ast.Load(),
+        )
+        ast.copy_location(new_node, node)
+        return new_node
+
+    def _materialize_generate_list_next_token_call(self, node: ast.Call) -> ast.AST:
+        fn_name = "generate_list_next_token"
+        # Enforce: no args, no keywords
+        if node.keywords:
+            raise XentSyntaxError(f"{fn_name} takes no keyword arguments")
+        if len(node.args) != 0:
+            raise XentSyntaxError(f"{fn_name} takes no arguments")
+
+        generated_items = self.judge.generate_list_next_token()
+        new_node = ast.List(
+            elts=[ast.Constant(value=item) for item in generated_items],
+            ctx=ast.Load(),
+        )
+        ast.copy_location(new_node, node)
+        return new_node
+
     def visit_Call(self, node):
         self.generic_visit(node)
         if isinstance(node.func, ast.Name) and node.func.id == "story":
@@ -102,41 +156,12 @@ class StoryRewriter(ast.NodeTransformer):
             ast.copy_location(new_node, node)
             return new_node
         if isinstance(node.func, ast.Name) and node.func.id == "generate_list":
-            # Enforce: exactly two positional args (prompt: str, length: int), no keywords
-            if node.keywords:
-                raise XentSyntaxError(
-                    "generate_list requires positional args only: generate_list('<prompt>', <length>)"
-                )
-            if len(node.args) != 2:
-                raise XentSyntaxError(
-                    "generate_list requires exactly two positional arguments: prompt (str), length (int)"
-                )
-
-            prompt_arg, length_arg = node.args[0], node.args[1]
-            if not (
-                isinstance(prompt_arg, ast.Constant)
-                and isinstance(prompt_arg.value, str)
-            ):
-                raise XentSyntaxError(
-                    "generate_list first argument must be a string literal prompt"
-                )
-            if not isinstance(length_arg, ast.Constant) or not isinstance(
-                length_arg.value, int | float
-            ):
-                raise XentSyntaxError(
-                    "generate_list second argument must be a numeric literal length"
-                )
-
-            prompt_val: str = prompt_arg.value  # type: ignore[assignment]
-            length_val: int = int(length_arg.value)  # type: ignore[arg-type]
-
-            generated_items = self.judge.generate_list(prompt_val, length_val)
-            new_node = ast.List(
-                elts=[ast.Constant(value=item) for item in generated_items],
-                ctx=ast.Load(),
-            )
-            ast.copy_location(new_node, node)
-            return new_node
+            return self._materialize_generate_list_call(node)
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id == "generate_list_next_token"
+        ):
+            return self._materialize_generate_list_next_token_call(node)
         return node
 
 

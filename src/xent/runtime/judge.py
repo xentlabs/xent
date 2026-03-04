@@ -18,6 +18,9 @@ from transformers import (
 from xent.common.token_xent_list import TokenXentList
 from xent.common.x_string import XString
 from xent.runtime.text_generation.judge_generation import JudgeGenerator
+from xent.runtime.text_generation.length_constrained_text_sampler import (
+    LengthConstrainedTextSampler,
+)
 from xent.runtime.text_generation.text_generation import TextGenerator
 
 
@@ -28,12 +31,14 @@ class Judge:
         hf_dir_path: str | None = None,
         text_generator: TextGenerator | None = None,
         max_generation_length: int = 50,
+        min_generation_length: int | None = None,
         model_params: dict[str, Any] | None = None,
         clip_logprobs: bool = False,
     ) -> None:
         self.model_name = model_name
         self.hf_dir_path = hf_dir_path
         self.max_generation_length = max_generation_length
+        self.min_generation_length = min_generation_length
         self.clip_logprobs = clip_logprobs
         self.max_token_xent_nats: float | None = None
         self.device: torch.device = (
@@ -83,8 +88,14 @@ class Judge:
 
         if text_generator is None:
             text_generator = JudgeGenerator(self.model, self.tokenizer)
-        self.text_generator = text_generator
+        self.set_text_generator(text_generator)
         self.model.eval()
+
+    def set_text_generator(self, text_generator: TextGenerator) -> None:
+        self.text_generator = text_generator
+        self.length_constrained_text_sampler = LengthConstrainedTextSampler(
+            self.text_generator, self.rng
+        )
 
     # TODO, we should encode the state of rng in here
     def serialize(self) -> dict[str, Any]:
@@ -92,6 +103,7 @@ class Judge:
             "model_name": self.model_name,
             "hf_dir_path": self.hf_dir_path,
             "max_generation_length": self.max_generation_length,
+            "min_generation_length": self.min_generation_length,
             "clip_logprobs": self.clip_logprobs,
         }
 
@@ -103,6 +115,7 @@ class Judge:
             hf_dir_path=data["hf_dir_path"],
             text_generator=None,  # We don't serialize or deserialize text_generator
             max_generation_length=data["max_generation_length"],
+            min_generation_length=data.get("min_generation_length"),
             clip_logprobs=bool(clip_logprobs),
         )
 
@@ -221,10 +234,21 @@ class Judge:
         return result * -1
 
     def generate_text(self) -> str:
-        return self.text_generator.generate_text(self.max_generation_length)
+        return self.length_constrained_text_sampler.generate_text(
+            max_length=self.max_generation_length,
+            min_length=self.min_generation_length,
+        )
 
     def generate_list(self, prompt: str, length: int) -> list[str]:
         return self.text_generator.generate_list(prompt, length)
+
+    def generate_list_next_token(self, max_length: int | None = None) -> list[str]:
+        if max_length is None:
+            max_length = self.max_generation_length
+        return self.length_constrained_text_sampler.generate_list_next_token(
+            min_length=self.min_generation_length,
+            max_length=max_length,
+        )
 
     def is_true(self, condition: str) -> bool:
         evaluation_str = XString(f"""You are a core knowledge engine. Your function is to evaluate the factual accuracy of a given statement. When a statement is ambiguous, use the most reasonable human interpretation. Respond only with "true" or "false".

@@ -115,23 +115,24 @@ class JudgeGenerator(TextGenerator):
     def __init__(self, model, tokenizer):
         self.model = model
         self.tokenizer = tokenizer
+        self.rng = random.Random()
 
-    def generate_text(self, max_length: int | None = None) -> str:
-        chosen_narrative = random.choice(list(NARRATIVE_SEEDS.keys()))
+    def get_next_entry(self) -> tuple[str, int]:
+        chosen_narrative = self.rng.choice(list(NARRATIVE_SEEDS.keys()))
         priming_text = NARRATIVE_SEEDS[chosen_narrative]
 
         params = {}
         # Use nucleus/typical sampling only.
-        use_typical_p = random.choice([True, False])
+        use_typical_p = self.rng.choice([True, False])
         if use_typical_p:
-            params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])
+            params["typical_p"] = self.rng.uniform(*PARAM_RANGES["typical_p"])
         else:
-            params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])
+            params["top_p"] = self.rng.uniform(*PARAM_RANGES["top_p"])
 
         params.update(
             {
-                "temperature": random.uniform(*PARAM_RANGES["temperature"]),
-                "top_k": random.randint(
+                "temperature": self.rng.uniform(*PARAM_RANGES["temperature"]),
+                "top_k": self.rng.randint(
                     int(PARAM_RANGES["top_k"][0]), int(PARAM_RANGES["top_k"][1])
                 ),
                 "do_sample": True,
@@ -140,29 +141,25 @@ class JudgeGenerator(TextGenerator):
 
         params.update(
             {
-                "repetition_penalty": random.uniform(
+                "repetition_penalty": self.rng.uniform(
                     *PARAM_RANGES["repetition_penalty"]
                 ),
-                "encoder_repetition_penalty": random.uniform(
+                "encoder_repetition_penalty": self.rng.uniform(
                     *PARAM_RANGES["encoder_repetition_penalty"]
                 ),
-                "no_repeat_ngram_size": random.choice(
+                "no_repeat_ngram_size": self.rng.choice(
                     PARAM_RANGES["no_repeat_ngram_size"]
                 ),
             }
         )
 
-        min_tokens = random.randint(
+        min_tokens = self.rng.randint(
             int(PARAM_RANGES["min_new_tokens"][0]),
             int(PARAM_RANGES["min_new_tokens"][1]),
         )
-        max_tokens = (
-            max_length
-            if max_length is not None
-            else random.randint(
-                int(PARAM_RANGES["max_new_tokens"][0]),
-                int(PARAM_RANGES["max_new_tokens"][1]),
-            )
+        max_tokens = self.rng.randint(
+            int(PARAM_RANGES["max_new_tokens"][0]),
+            int(PARAM_RANGES["max_new_tokens"][1]),
         )
         if min_tokens >= max_tokens:
             min_tokens = max_tokens - 1
@@ -179,7 +176,14 @@ class JudgeGenerator(TextGenerator):
         generated_completion = self.tokenizer.decode(
             outputs[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True
         )
-        return generated_completion
+        return generated_completion, 0
+
+    def generate_text(self, max_length: int | None = None) -> str:
+        entry, _ = self.get_next_entry()
+        if max_length is None:
+            return entry
+        tokens = self.tokenize(entry)
+        return self.detokenize(tokens[:, :max_length])
 
     def generate_list(self, prompt: str, length: int) -> list[str]:
         # Build a robust, generic list-format priming prompt with sentinels.
@@ -237,16 +241,16 @@ class JudgeGenerator(TextGenerator):
         def _choose_params(max_new: int, min_new: int) -> dict:
             params: dict[str, object] = {}
             # Use nucleus or typical sampling (as in generate_text).
-            use_typical_p = random.choice([True, False])
+            use_typical_p = self.rng.choice([True, False])
             if use_typical_p:
-                params["typical_p"] = random.uniform(*PARAM_RANGES["typical_p"])  # type: ignore[index]
+                params["typical_p"] = self.rng.uniform(*PARAM_RANGES["typical_p"])  # type: ignore[index]
             else:
-                params["top_p"] = random.uniform(*PARAM_RANGES["top_p"])  # type: ignore[index]
+                params["top_p"] = self.rng.uniform(*PARAM_RANGES["top_p"])  # type: ignore[index]
 
             params.update(
                 {
-                    "temperature": random.uniform(*PARAM_RANGES["temperature"]),  # type: ignore[index]
-                    "top_k": random.randint(
+                    "temperature": self.rng.uniform(*PARAM_RANGES["temperature"]),  # type: ignore[index]
+                    "top_k": self.rng.randint(
                         int(PARAM_RANGES["top_k"][0]),
                         int(PARAM_RANGES["top_k"][1]),  # type: ignore[index]
                     ),
@@ -256,13 +260,13 @@ class JudgeGenerator(TextGenerator):
 
             params.update(
                 {
-                    "repetition_penalty": random.uniform(
+                    "repetition_penalty": self.rng.uniform(
                         *PARAM_RANGES["repetition_penalty"]  # type: ignore[index]
                     ),
-                    "encoder_repetition_penalty": random.uniform(
+                    "encoder_repetition_penalty": self.rng.uniform(
                         *PARAM_RANGES["encoder_repetition_penalty"]  # type: ignore[index]
                     ),
-                    "no_repeat_ngram_size": random.choice(
+                    "no_repeat_ngram_size": self.rng.choice(
                         PARAM_RANGES["no_repeat_ngram_size"]  # type: ignore[index]
                     ),
                     "min_new_tokens": max(1, min_new),

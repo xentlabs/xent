@@ -149,6 +149,40 @@ class StoryRewriter(ast.NodeTransformer):
         ast.copy_location(new_node, node)
         return new_node
 
+    def _materialize_generate_masked_call(self, node: ast.Call) -> ast.AST:
+        fn_name = "generate_masked"
+        if node.keywords:
+            raise XentSyntaxError(f"{fn_name} takes no keyword arguments")
+        if len(node.args) != 1:
+            raise XentSyntaxError(
+                f"{fn_name} requires exactly one positive integer argument"
+            )
+        count_arg = node.args[0]
+        if not isinstance(count_arg, ast.Constant) or not isinstance(
+            count_arg.value, int | float
+        ):
+            raise XentSyntaxError(
+                f"{fn_name} argument must be a positive integer literal"
+            )
+        count_value = count_arg.value
+        if isinstance(count_value, float) and not count_value.is_integer():
+            raise XentSyntaxError(
+                f"{fn_name} argument must be a positive integer literal"
+            )
+        num_masked_sequences = int(count_value)
+        if num_masked_sequences <= 0:
+            raise XentSyntaxError(
+                f"{fn_name} argument must be a positive integer literal"
+            )
+
+        generated_items = self.judge.generate_masked(num_masked_sequences)
+        new_node = ast.List(
+            elts=[ast.Constant(value=item) for item in generated_items],
+            ctx=ast.Load(),
+        )
+        ast.copy_location(new_node, node)
+        return new_node
+
     def visit_Call(self, node):
         self.generic_visit(node)
         if isinstance(node.func, ast.Name) and node.func.id == "story":
@@ -162,6 +196,8 @@ class StoryRewriter(ast.NodeTransformer):
             and node.func.id == "generate_list_next_token"
         ):
             return self._materialize_generate_list_next_token_call(node)
+        if isinstance(node.func, ast.Name) and node.func.id == "generate_masked":
+            return self._materialize_generate_masked_call(node)
         return node
 
 

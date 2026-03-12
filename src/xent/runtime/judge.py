@@ -243,6 +243,14 @@ class Judge:
             randomize_length=self.randomize_length,
         )
 
+    def generate_masked(self, num_masked_sequences: int) -> list[str]:
+        return self.length_constrained_text_sampler.generate_masked(
+            max_length=self.max_generation_length,
+            min_length=self.min_generation_length,
+            randomize_length=self.randomize_length,
+            num_masked_sequences=num_masked_sequences,
+        )
+
     def generate_list(self, prompt: str, length: int) -> list[str]:
         return self.text_generator.generate_list(prompt, length)
 

@@ -4,6 +4,9 @@ import torch
 
 from xent.runtime.text_generation.text_generation import TextGenerator
 
+MASKED_PASSAGE_PLACEHOLDER = "[masked passage]"
+MIN_MASKED_PASSAGE_DISTANCE = 10
+
 
 class LengthConstrainedTextSampler:
     def __init__(self, text_generator: TextGenerator, rng: random.Random):
@@ -17,7 +20,7 @@ class LengthConstrainedTextSampler:
             return False
         return int(round_trip.item()) == int(token_id_tensor.item())
 
-    def generate_text(
+    def _sample_text_with_constraints(
         self,
         max_length: int | None,
         min_length: int,
@@ -42,8 +45,71 @@ class LengthConstrainedTextSampler:
             chosen_length = (
                 self.rng.randint(lower, upper) if randomize_length else upper
             )
-
             return self.text_generator.detokenize(entry_tokens[:, :chosen_length])
+
+    def generate_text(
+        self,
+        max_length: int | None,
+        min_length: int,
+        randomize_length: bool,
+    ) -> str:
+        return self._sample_text_with_constraints(
+            max_length=max_length,
+            min_length=min_length,
+            randomize_length=randomize_length,
+        )
+
+    def _choose_masked_starts(
+        self, text_length: int, span_length: int, num_spans: int
+    ) -> list[int]:
+        starts: list[int] = []
+        cursor = 0
+        remaining_spans = num_spans
+
+        for _ in range(num_spans):
+            remaining_after = remaining_spans - 1
+            min_suffix_length = remaining_after * (
+                span_length + MIN_MASKED_PASSAGE_DISTANCE
+            )
+            max_start = text_length - span_length - min_suffix_length
+            if max_start < cursor:
+                raise ValueError(
+                    "Sampled text is too short for the configured masked passage spacing"
+                )
+            start = self.rng.randint(cursor, max_start)
+            starts.append(start)
+            cursor = start + span_length + MIN_MASKED_PASSAGE_DISTANCE
+            remaining_spans -= 1
+
+        return starts
+
+    def generate_masked(
+        self,
+        max_length: int | None,
+        min_length: int,
+        randomize_length: bool,
+        num_masked_sequences: int,
+    ) -> list[str]:
+        original_text = self._sample_text_with_constraints(
+            max_length=max_length,
+            min_length=min_length,
+            randomize_length=randomize_length,
+        )
+        span_length = max(1, len(original_text) // (2 * num_masked_sequences))
+        masked_starts = self._choose_masked_starts(
+            len(original_text), span_length, num_masked_sequences
+        )
+
+        masked_parts: list[str] = []
+        cursor = 0
+        for start in masked_starts:
+            masked_parts.append(original_text[cursor:start])
+            masked_parts.append(MASKED_PASSAGE_PLACEHOLDER)
+            cursor = start + span_length
+        masked_parts.append(original_text[cursor:])
+
+        masked_text = "".join(masked_parts)
+        return [original_text, masked_text]
 
     # RLP-style [prefix, next_token] generation
     def generate_list_next_token(

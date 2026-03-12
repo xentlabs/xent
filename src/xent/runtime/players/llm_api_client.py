@@ -715,7 +715,7 @@ class HuggingFaceClient(LLMClient):
             self.model_instance = AutoModelForCausalLM.from_pretrained(**model_kwargs)
 
             if not (load_in_8bit or load_in_4bit) and self.device != "cuda":
-                self.model_instance = self.model_instance.to(self.device)
+                self.model_instance = self.model_instance.to(self.device)  # pyright: ignore[reportArgumentType]
 
             self.model_instance.eval()
             logging.info(f"Loaded model {model_name_or_path} on {self.device}")
@@ -785,7 +785,7 @@ class HuggingFaceClient(LLMClient):
                 generated_ids,
                 skip_special_tokens=True,
                 clean_up_tokenization_spaces=True,
-            )
+            )  # pyright: ignore[reportAssignmentType]
 
             output_length = len(generated_ids)
             self.increment_token_counts(input_length, output_length)
@@ -808,7 +808,7 @@ class HuggingFaceClient(LLMClient):
                 pad_token_id=self.tokenizer.pad_token_id,
                 eos_token_id=self.tokenizer.eos_token_id,
             )
-            return self.model_instance.generate(
+            return self.model_instance.generate(  # pyright: ignore[reportReturnType]
                 input_ids,
                 attention_mask=attention_mask,
                 generation_config=generation_config,

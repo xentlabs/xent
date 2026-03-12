@@ -140,7 +140,7 @@ class Judge:
         return XString(self.detokenize(tokens[:, :n]))
 
     def detokenize(self, tokens: torch.Tensor) -> str:
-        return self.tokenizer.decode(tokens.cpu().view(-1))
+        return self.tokenizer.decode(tokens.cpu().view(-1))  # pyright: ignore[reportReturnType]
 
     def comp_logits(self, tokens: torch.Tensor) -> torch.Tensor:
         with torch.inference_mode():

@@ -254,11 +254,12 @@ class Judge:
     def generate_list(self, prompt: str, length: int) -> list[str]:
         return self.text_generator.generate_list(prompt, length)
 
-    def generate_list_next_token(self) -> list[str]:
+    def generate_list_next_token(self, n: int = 1) -> list[str]:
         return self.length_constrained_text_sampler.generate_list_next_token(
             min_length=self.min_generation_length,
             max_length=self.max_generation_length,
             randomize_length=self.randomize_length,
+            n=n,
         )
 
     def is_true(self, condition: str) -> bool:

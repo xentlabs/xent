@@ -35,7 +35,7 @@ class TextGenerator(ABC):
             f"{self.__class__.__name__} doesn't support the generate_list interface"
         )
 
-    def generate_list_next_token(self) -> list[str]:
+    def generate_list_next_token(self, n: int = 1) -> list[str]:
         raise XentConfigurationError(
             f"{self.__class__.__name__} doesn't support the generate_list_next_token interface"
         )

@@ -135,13 +135,35 @@ class StoryRewriter(ast.NodeTransformer):
 
     def _materialize_generate_list_next_token_call(self, node: ast.Call) -> ast.AST:
         fn_name = "generate_list_next_token"
-        # Enforce: no args, no keywords
         if node.keywords:
             raise XentSyntaxError(f"{fn_name} takes no keyword arguments")
-        if len(node.args) != 0:
-            raise XentSyntaxError(f"{fn_name} takes no arguments")
 
-        generated_items = self.judge.generate_list_next_token()
+        if len(node.args) == 0:
+            n = 1
+        elif len(node.args) == 1:
+            count_arg = node.args[0]
+            if not isinstance(count_arg, ast.Constant) or not isinstance(
+                count_arg.value, int | float
+            ):
+                raise XentSyntaxError(
+                    f"{fn_name} optional argument must be a positive integer literal"
+                )
+            count_value = count_arg.value
+            if isinstance(count_value, float) and not count_value.is_integer():
+                raise XentSyntaxError(
+                    f"{fn_name} optional argument must be a positive integer literal"
+                )
+            n = int(count_value)
+            if n <= 0:
+                raise XentSyntaxError(
+                    f"{fn_name} optional argument must be a positive integer literal"
+                )
+        else:
+            raise XentSyntaxError(
+                f"{fn_name} takes either no arguments or one positive integer literal"
+            )
+
+        generated_items = self.judge.generate_list_next_token(n)
         new_node = ast.List(
             elts=[ast.Constant(value=item) for item in generated_items],
             ctx=ast.Load(),

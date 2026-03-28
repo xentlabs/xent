@@ -759,6 +759,15 @@ class TestJudge:
         assert judge.first_n_tokens("   ", 5) == "   "
         assert judge.first_n_tokens("\n", 5) == "\n"
 
+    def test_last_n_tokens(self, judge):
+        string = XString("This is a test string for the Xent framework.")
+
+        assert judge.last_n_tokens(string, 5) == " the Xent framework."
+        assert judge.last_n_tokens(str(string), 5) == " the Xent framework."
+        assert judge.last_n_tokens("", 5) == ""
+        assert judge.last_n_tokens("   ", 5) == "   "
+        assert judge.last_n_tokens("\n", 5) == "\n"
+
     @pytest.mark.parametrize(
         "statement, expected_truthfulness",
         [

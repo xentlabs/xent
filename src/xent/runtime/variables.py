@@ -76,6 +76,7 @@ def build_globals(judge: Judge):
         is_true=judge.is_true,
         is_false=judge.is_false,
         first_n_tokens=judge.first_n_tokens,
+        last_n_tokens=judge.last_n_tokens,
         num_words=num_words,
         XString=XString,
         XList=XList,

@@ -139,6 +139,15 @@ class Judge:
 
         return XString(self.detokenize(tokens[:, :n]))
 
+    def last_n_tokens(self, string: str | XString, n: int) -> str | XString:
+        tokens: torch.Tensor = self.tokenize(string)
+        if tokens.shape[-1] <= n:
+            return string
+        if n == 0:
+            return XString("")
+
+        return XString(self.detokenize(tokens[:, -n:]))
+
     def detokenize(self, tokens: torch.Tensor) -> str:
         return self.tokenizer.decode(tokens.cpu().view(-1))  # pyright: ignore[reportReturnType]
 

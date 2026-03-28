@@ -102,6 +102,10 @@ class TestAssignInstruction:
         assert "s2" in xrt.local_vars
         assert str(xrt.local_vars["s2"]) == "test string"
 
+        await eval_line("assign(s3=last_n_tokens(s1, 5))", 1, xrt)
+        assert "s3" in xrt.local_vars
+        assert str(xrt.local_vars["s3"]) == "test string"
+
         # Test nested operations dont work
         # First, lets clear the state
         await eval_line("assign(s1='', s2='', s3='')", 1, xrt)
@@ -1013,6 +1017,10 @@ class TestErrorCases:
         # first_n_tokens with wrong number of args
         with pytest.raises(XentGameError):
             await eval_line("assign(s=first_n_tokens('string'))", 1, xrt)
+
+        # last_n_tokens with wrong number of args
+        with pytest.raises(XentGameError):
+            await eval_line("assign(s=last_n_tokens('string'))", 1, xrt)
 
 
 class TestCombinedOperations:
